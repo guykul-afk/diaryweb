@@ -41,10 +41,17 @@ export function getFirebaseUid() {
 }
 
 // Trigger personality analysis cloud function
-export async function triggerPersonalityAnalysis(uid) {
+export async function triggerPersonalityAnalysis(uid, isFull = false) {
   if (!uid) throw new Error("Missing User ID (UID)");
-  const analyzeFunc = httpsCallable(functions, 'analyze_personality');
-  const result = await analyzeFunc({ uid });
+  const analyzeFunc = httpsCallable(functions, 'analyze_personality', { timeout: 300000 }); // 5 minutes timeout
+  const result = await analyzeFunc({ uid, is_full: isFull });
+  return result.data;
+}
+
+export async function triggerGraphAnalysis(uid, query = 'אנא נתח את הגרף שלי ומצא קשרים חסרים, קונפליקטים ותבניות מעניינות.') {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const analyzeFunc = httpsCallable(functions, 'analyze_knowledge_graph', { timeout: 300000 });
+  const result = await analyzeFunc({ uid, query });
   return result.data;
 }
 
@@ -142,7 +149,9 @@ export async function fetchFirebaseGraph(uid) {
           links.push({
             source: edge.source,
             target: edge.target,
-            label: edge.relation || 'relates'
+            label: edge.relation || 'relates',
+            sentimentScore: edge.sentimentScore !== undefined ? edge.sentimentScore : 0,
+            sourceQuotes: edge.sourceQuotes || []
           });
         }
       });

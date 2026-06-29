@@ -12,8 +12,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('feed');
   const [authLoading, setAuthLoading] = useState(true);
   const [selectedEntryId, setSelectedEntryId] = useState(null);
-  const dataSource = 'firebase';
   const uid = FIREBASE_UID_FALLBACK;
+  const dataSource = 'firebase';
 
   useEffect(() => {
     getFirebaseUid()
@@ -82,8 +82,8 @@ function App() {
     <div className="three-column-layout">
       {/* Right Navigation Sidebar (RTL) */}
       <aside className="sidebar-right">
-        <div className="sidebar-logo" title="יומן">
-          <span>י</span>
+        <div className="sidebar-logo">
+          <span>היומן של גיא</span>
         </div>
 
         <nav className="sidebar-nav">
@@ -92,28 +92,28 @@ function App() {
             onClick={() => setActiveTab('feed')}
             title="יומן רשומות"
           >
-            <BookOpen size={20} />
+            <span>יומן רשומות</span>
           </button>
           <button
             className={`sidebar-btn ${activeTab === 'graph' ? 'active' : ''}`}
             onClick={() => setActiveTab('graph')}
             title="מפת קשרים מלאה"
           >
-            <Network size={20} />
+            <span>מפת קשרים</span>
           </button>
           <button
             className={`sidebar-btn ${activeTab === 'analysis' ? 'active' : ''}`}
             onClick={() => setActiveTab('analysis')}
             title="ניתוח אישיות רב-סוכני"
           >
-            <Brain size={20} />
+            <span>ניתוח אישיות</span>
           </button>
           <button
             className={`sidebar-btn ${activeTab === 'insights' ? 'active' : ''}`}
             onClick={() => setActiveTab('insights')}
             title="תובנות ומאגר ידע"
           >
-            <Sparkles size={20} />
+            <span>תובנות ומאגר</span>
           </button>
         </nav>
 

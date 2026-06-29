@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from firebase_functions import https_fn
 from firebase_admin import initialize_app, firestore
 
-# Configure logging
+# Configure logging - Force redeployment v2
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("personality_analysis")
 
@@ -21,7 +21,12 @@ try:
 except Exception as e:
     logger.info(f"Firebase Admin SDK already initialized or error: {e}")
 
-db = firestore.client()
+db_client = None
+def get_db():
+    global db_client
+    if db_client is None:
+        db_client = firestore.client()
+    return db_client
 
 # =====================================================================
 # Pydantic Schemas for Structured Output
@@ -47,6 +52,8 @@ class GraphEdge(BaseModel):
     source: str = Field(..., description="Source node ID")
     target: str = Field(..., description="Target node ID")
     relation: str = Field(..., description="Relationship label in Hebrew, e.g., 'קשור ל', 'מעורר', 'משפיע על'")
+    sentimentScore: int = Field(..., description="Sentiment score of the relationship: -1 (negative/stressful), 0 (neutral), or 1 (positive/healing).")
+    sourceQuotes: List[str] = Field(..., description="List of 1-2 direct quotes from the user's journal entries that prove this relationship.")
 
 class GraphNode(BaseModel):
     id: str = Field(..., description="Unique node ID in English or Hebrew, lowercase or clean name, e.g., 'rationalization_defense' or 'חרדת_ביצוע'")
@@ -73,7 +80,12 @@ Focus on:
 3. Mood & Affect: Map out the emotional tone, reactivity, and general affect state.
 4. DSM-5 Dimensions: Reference relevant DSM-5 diagnostic frameworks (e.g., anxiety features, depressive symptoms, sleep-wake concerns, adjustment issues) without diagnosing, but pointing out patterns and severity indicators.
 
-Format your output as a professional clinical assessment report, in Hebrew. Be thorough, insightful, and empathetic."""
+CRITICAL RULES:
+- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
+- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
+- Quote directly from the text if needed, but only use actual words from the entries.
+
+Format your output as a professional clinical assessment report, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
 
 PSYCHODYNAMIC_SYSTEM_PROMPT = """You are an expert Psychodynamic Therapist trained in Jungian, Freudian, and Object Relations theories.
 Your task is to analyze the user's personal journal entries and construct a psychodynamic formulation.
@@ -82,7 +94,12 @@ Focus on:
 2. Jungian Archetypes & Shadows: Detect archetypal themes (e.g., Shadow, Persona, Anima/Animus, Self, Hero, Wise Old Man) and the integration/expression of the unconscious.
 3. Object Relations & Attachment: Map out the user's internal working models of self and others, attachment style indicators (secure, anxious, avoidant), and repeating relational patterns.
 
-Format your output as a deep psychodynamic formulation, in Hebrew. Be thorough, insightful, and empathetic."""
+CRITICAL RULES:
+- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
+- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
+- Quote directly from the text if needed, but only use actual words from the entries.
+
+Format your output as a deep psychodynamic formulation, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
 
 CBT_SYSTEM_PROMPT = """You are an expert Cognitive Behavioral Therapist (CBT) specializing in identifying cognitive schemas and distortions.
 Your task is to analyze the user's personal journal entries and construct a CBT formulation.
@@ -91,7 +108,12 @@ Focus on:
 2. Core Beliefs & Intermediate Beliefs: Extract underlying core beliefs about the self, others, and the world.
 3. CBT Triangle: Describe the interactions between typical situations, negative automatic Thoughts, corresponding Feelings (physical and emotional), and subsequent Behaviors.
 
-Format your output as a structured CBT analysis, in Hebrew. Be thorough, insightful, and empathetic."""
+CRITICAL RULES:
+- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
+- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
+- Quote directly from the text if needed, but only use actual words from the entries.
+
+Format your output as a structured CBT analysis, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
 
 BEHAVIORAL_SYSTEM_PROMPT = """You are a Board Certified Behavior Analyst (BCBA) specialized in functional behavior analysis (FBA).
 Your task is to analyze the user's personal journal entries and construct a behavioral report.
@@ -100,7 +122,12 @@ Focus on:
 2. Maintaining Reinforcers: Distinguish between negative reinforcement (e.g., relief from anxiety, avoidance of task) and positive reinforcement (e.g., approval, control, distraction).
 3. Skill Deficits & Behavioral Assets: Identify strengths and areas where coping skills could be introduced or reinforced.
 
-Format your output as a structured behavioral assessment, in Hebrew. Be thorough, insightful, and empathetic."""
+CRITICAL RULES:
+- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
+- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
+- Quote directly from the text if needed, but only use actual words from the entries.
+
+Format your output as a structured behavioral assessment, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
 
 HUMANISTIC_SYSTEM_PROMPT = """You are an expert Humanistic and Existentialist Therapist focusing on meaning, self-actualization, and ultimate concerns.
 Your task is to analyze the user's journal entries and construct an existential-humanistic report.
@@ -109,7 +136,12 @@ Focus on:
 2. Self-Actualization & Authenticity: Assess the degree of authenticity in self-expression vs. social compliance/pleasing, and their progress towards self-actualization.
 3. Unconditional Self-Regard: Analyze the level of self-acceptance, conditions of worth, and overall growth.
 
-Format your output as a warm, humanistic, and existential analysis, in Hebrew. Be thorough, insightful, and empathetic."""
+CRITICAL RULES:
+- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
+- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
+- Quote directly from the text if needed, but only use actual words from the entries.
+
+Format your output as a warm, humanistic, and existential analysis, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
 
 ORCHESTRATOR_SYSTEM_PROMPT = """You are the Orchestrator agent of a psychological multi-agent system.
 Your task is to integrate the findings from 5 specialized psychological agents (Clinical, Psychodynamic, CBT, Behavioral, Humanistic) and produce a cohesive executive summary and structured profile.
@@ -126,7 +158,12 @@ Your output must be structured exactly as requested, containing:
    - Linguistic metrics (emotional density, self-focus, stress level, scores from 0 to 100).
 3. A list of NEW psychological insight nodes to add to the knowledge graph.
    - For each new node, define an ID, label (Hebrew), type (Insight, Trait, Pattern, Defense, etc.), value/weight, and description (content in Hebrew).
-   - Define relatedEdges to connect this new node to existing nodes or other new nodes. In relatedEdges, specify source, target, and the relation (e.g., 'משפיע על', 'קשר ל', 'מעורר'). Ensure you link the insights to the existing graph concepts where appropriate.
+   - Define relatedEdges to connect this new node to existing nodes or other new nodes. In relatedEdges, specify source, target, the relation, sentimentScore (-1 to 1), and sourceQuotes (actual quotes from text). Ensure you link the insights to the existing graph concepts where appropriate.
+
+CRITICAL RULES:
+- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
+- Base your executive summary STRICTLY on the provided journal entries and agent reports. 
+- Quote directly from the text if needed, but only use actual words from the entries.
 
 Write all summaries, node labels, and descriptions in HEBREW.
 """
@@ -147,7 +184,12 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str) -> str:
             model_name="gemini-2.5-flash",
             system_instruction=system_prompt
         )
-        response = model.generate_content(prompt_content)
+        response = model.generate_content(
+            prompt_content,
+            generation_config=genai.GenerationConfig(
+                temperature=0.2  # Lower temperature to prevent hallucination
+            )
+        )
         return response.text
     except Exception as e:
         logger.error(f"Error running agent {agent_name}: {e}")
@@ -176,13 +218,13 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     logger.info(f"Starting personality analysis for user: {uid}")
 
     # 2. Fetch User Config and Metadata
-    user_ref = db.collection('users').document(uid)
+    user_ref = get_db().collection('users').document(uid)
     user_doc = user_ref.get()
     user_data = user_doc.to_dict() if user_doc.exists else {}
     new_entries_since_last = user_data.get('new_entries_since_last_analysis', 0)
 
     # 3. Fetch Entries
-    entries_ref = db.collection('users').document(uid).collection('entries')
+    entries_ref = get_db().collection('users').document(uid).collection('entries')
     entries_snapshot = entries_ref.stream()
     
     entries = []
@@ -212,7 +254,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     entries = sorted(entries, key=get_timestamp_val)
 
     # 4. Fetch Existing Graph Nodes (OKF)
-    graph_ref = db.collection('users').document(uid).collection('knowledge_graph_nodes')
+    graph_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
     graph_snapshot = graph_ref.stream()
     existing_nodes = []
     for doc in graph_snapshot:
@@ -224,11 +266,12 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     existing_nodes_context = "\n".join([f"- {n['id']} (Label: {n['label']})" for n in existing_nodes])
 
     # 5. Fetch Previous Analysis to decide if it's baseline or delta
-    analysis_ref = db.collection('users').document(uid).collection('personality_analysis')
+    analysis_ref = get_db().collection('users').document(uid).collection('personality_analysis')
     prev_analysis_query = analysis_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).stream()
     prev_analyses = list(prev_analysis_query)
     
-    is_delta = len(prev_analyses) > 0 and new_entries_since_last > 0
+    is_full = req.data.get('is_full', False)
+    is_delta = len(prev_analyses) > 0 and new_entries_since_last > 0 and not is_full
     prev_analysis = prev_analyses[0].to_dict() if prev_analyses else None
 
     # Filter target entries depending on run type
@@ -322,7 +365,8 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             orchestrator_prompt,
             generation_config=genai.GenerationConfig(
                 response_mime_type="application/json",
-                response_schema=OrchestratorOutput
+                response_schema=OrchestratorOutput,
+                temperature=0.2  # Lower temperature to prevent hallucination
             )
         )
         
@@ -355,7 +399,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     for node in orchestrator_output.new_nodes:
         # Sanitize node id
         node_doc_id = node.id.strip().replace(" ", "_")
-        node_ref = db.collection('users').document(uid).collection('knowledge_graph_nodes').document(node_doc_id)
+        node_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(node_doc_id)
         
         # Format edges
         edges_list = []
@@ -363,7 +407,9 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             edges_list.append({
                 "source": edge.source.strip().replace(" ", "_"),
                 "target": edge.target.strip().replace(" ", "_"),
-                "relation": edge.relation
+                "relation": edge.relation,
+                "sentimentScore": getattr(edge, "sentimentScore", 0),
+                "sourceQuotes": getattr(edge, "sourceQuotes", [])
             })
             
         node_ref.set({
@@ -385,4 +431,54 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         "analysis_id": analysis_doc_id,
         "is_delta": is_delta,
         "new_nodes_added": len(orchestrator_output.new_nodes)
+    }
+
+@https_fn.on_call()
+def dummy_force_redeploy(req: https_fn.CallableRequest) -> dict:
+    return {"status": "ok"}
+
+DETECTIVE_SYSTEM_PROMPT = """You are an expert Psychological Detective Agent.
+Your task is to analyze the user's complete knowledge graph (nodes and edges) and provide deep insights, or answer their specific question based on the graph.
+Focus on:
+1. Missing Links: Identify nodes that are semantically or psychologically related but have no direct edges. Suggest why this might be happening (e.g. defense mechanisms, compartmentalization).
+2. Core Conflicts: Look at contradictory edges or central hubs with mixed sentiment and explain the underlying tension.
+3. Emerging Patterns: Highlight overarching themes.
+
+If the user asks a specific question, answer it directly using the graph data.
+Output your response in Hebrew using markdown."""
+
+@https_fn.on_call(timeout_sec=120)
+def analyze_knowledge_graph(req: https_fn.CallableRequest) -> dict:
+    uid = req.data.get('uid')
+    if not uid and req.auth:
+        uid = req.auth.uid
+    if not uid:
+        return {"status": "error", "message": "Missing UID"}
+        
+    query = req.data.get('query', 'אנא נתח את הגרף שלי ומצא קשרים חסרים, קונפליקטים ותבניות מעניינות.')
+
+    logger.info(f"Detective agent analyzing graph for {uid} with query: {query}")
+
+    # Fetch nodes
+    nodes_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
+    nodes_snapshot = nodes_ref.stream()
+    
+    graph_data = []
+    for doc in nodes_snapshot:
+        data = doc.to_dict()
+        node_id = data.get('id', doc.id)
+        label = data.get('label', node_id)
+        edges = data.get('relatedEdges', [])
+        edges_str = ", ".join([f"[{e.get('relation')}] to {e.get('target')} (Sentiment: {e.get('sentimentScore', 0)})" for e in edges])
+        graph_data.append(f"Node: {label} (Type: {data.get('type', '')})\n  Connections: {edges_str if edges_str else 'None'}")
+        
+    graph_context = "\n".join(graph_data)
+    
+    prompt = f"User Query: {query}\n\nGraph Data:\n{graph_context}"
+    
+    response = run_agent("Detective", DETECTIVE_SYSTEM_PROMPT, prompt)
+    
+    return {
+        "status": "success",
+        "result": response
     }

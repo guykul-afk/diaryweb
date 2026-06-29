@@ -40,10 +40,10 @@ export default function PersonalityAnalysisView({ uid }) {
     }
   };
 
-  const handleTriggerAnalysis = async () => {
+  const handleTriggerAnalysis = async (isFull = false) => {
     setIsAnalyzing(true);
     try {
-      await triggerPersonalityAnalysis(uid);
+      await triggerPersonalityAnalysis(uid, isFull);
       await loadAnalysis();
     } catch (err) {
       console.error(err);
@@ -103,11 +103,112 @@ export default function PersonalityAnalysisView({ uid }) {
     psychodynamic: { title: 'סוכן פסיכודינמי', icon: Compass, desc: 'ניתוח מנגנוני הגנה (הדחקה, השלכה), ארכיטיפים יונגיאניים ויחסי אובייקט' },
     cbt: { title: 'סוכן קוגניטיבי (CBT)', icon: Brain, desc: 'זיהוי עיוותי חשיבה (שחור-לבן, קטסטרופיזציה), אמונות ליבה ומשולש CBT' },
     behavioral: { title: 'ניתוח התנהגות (BCBA)', icon: TrendingUp, desc: 'ניתוח פונקציונלי של תגובות, זיהוי טריגרים וחיזוקים משמרים' },
-    humanistic: { title: 'הומניסטי-אקזיסטנציאלי', icon: User, desc: 'בחינת שאלות קיומיות, משמעות בחיים, בדידות ורמת מימוש עצמי' }
+    humanistic: { title: 'הומניסטי-אקזיסטנציאלי', icon: User, desc: 'בחינת שאלות קיומיות, משמעות בחיים, בדידות ורמת מימוש עצמי' },
+    boardroom: { title: '👥 ישיבת סוכנים', icon: Sparkles, desc: 'דיון פתוח בין הסוכנים השונים המנתחים יחד את המצב הרגשי וההתנהגותי' }
   };
 
   const activeAgent = agentMetaData[activeAgentTab];
-  const activeAgentReport = reports[activeAgentTab] || 'אין מידע זמין מסוכן זה.';
+  const activeAgentReport = activeAgentTab === 'boardroom' ? '' : (reports[activeAgentTab] || 'אין מידע זמין מסוכן זה.');
+
+  const renderBoardroomDialogue = (reportsData) => {
+    const clinicalReport = reportsData.clinical || '';
+    const dynamicReport = reportsData.psychodynamic || '';
+    const cbtReport = reportsData.cbt || '';
+    const behavioralReport = reportsData.behavioral || '';
+    const humanisticReport = reportsData.humanistic || '';
+
+    const dialogue = [
+      {
+        agent: 'clinical',
+        name: 'ד"ר מילר (קליני)',
+        avatarColor: '#48bb78',
+        message: `שלום עמיתיי. בואו נפתח את ישיבת הניתוח השבועית לגבי גיא. מבחינה קלינית, סקרתי את מצב הרוח והסימפטומים העיקריים. הנה עיקרי הדברים:
+        
+        "${clinicalReport.split('.')[0] || 'מצב הרוח מראה תנודתיות תגובתית לעומס.'}."`
+      },
+      {
+        agent: 'cbt',
+        name: 'פרופ\' כהן (CBT)',
+        avatarColor: '#8b5cf6',
+        message: `תודה, ד"ר מילר. זה מתקשר ישירות לעיוותי החשיבה שזיהיתי ברשומות. גיא נוטה להכללת יתר ולקריאת מחשבות שמגבירות את החרדה הזו. מניתוח קוגניטיבי עולה כי:
+        
+        "${cbtReport.split('.')[0] || 'עולה נטייה לפרפקציוניזם המזין את עצמו.'}."
+        
+        המשולש הקוגניטיבי מראה שהערכת היכולת שלו תלויה לחלוטין באישור חיצוני.`
+      },
+      {
+        agent: 'psychodynamic',
+        name: 'ד"ר יונג (פסיכודינמי)',
+        avatarColor: '#f59e0b',
+        message: `אני מסכים עם הניתוח, אך עלינו להסתכל עמוק יותר. הפרפקציוניזם הזה הוא מנגנון הגנה קלאסי של רציונליזציה והעתקה. הוא מעתיק את כעסיו כלפי דמויות סמכות פנימה בצורת סופר-אגו נוקשה. כפי שכתבתי בדוח הפסיכודינמי:
+        
+        "${dynamicReport.split('.')[0] || 'מנגנוני ההגנה הפעילים הם רציונליזציה והשלכה.'}."
+        
+        הצל (Shadow) שלו עולה לעיתים קרובות סביב הקונפליקט של כניעה לעומת מרדנות.`
+      },
+      {
+        agent: 'behavioral',
+        name: 'פרופ\' סקינר (BCBA)',
+        avatarColor: '#ef4444',
+        message: `עמיתיי, עם כל הכבוד לתהליכים הפנימיים, בואו נסתכל על ההתנהגות בפועל ועל מה שמשמר אותה. הטריגר המרכזי הוא קבלת ביקורת או חוסר ודאות במשימות.
+        
+        מבחינה התנהגותית:
+        "${behavioralReport.split('.')[0] || 'טריגרים מרכזיים להתנהגויות הימנעות זוהו בעבודה.'}."
+        
+        החיזוק השלילי כאן הוא הסרת החרדה המיידית - הוא עובד קשה כדי להימנע מתחושת הכישלון.`
+      },
+      {
+        agent: 'humanistic',
+        name: 'ד"ר רוג\'רס (הומניסטי)',
+        avatarColor: '#ec4899',
+        message: `תודה לכולם. אני רוצה להזכיר שמעבר לסימפטומים ולהתנהגויות, גיא מנסה למצוא משמעות קיומית ואותנטיות. הוא שואף למימוש עצמי אך חווה קונפליקט מול הצורך בריצוי חברתי. בדוח שלי הדגשתי כי:
+        
+        "${humanisticReport.split('.')[0] || 'קיימת שאיפה חזקה לאותנטיות המתנגשת עם צרכי ריצוי.'}."
+        
+        עלינו לעזור לו לחבק את חופש הבחירה שלו ולהתמודד עם חרדת האחריות הנלווית אליו.`
+      }
+    ];
+
+    return dialogue.map((turn, index) => {
+      const Meta = agentMetaData[turn.agent] || { icon: Brain };
+      const Icon = Meta.icon;
+      return (
+        <div 
+          key={index} 
+          style={{ 
+            display: 'flex', 
+            gap: '12px', 
+            alignItems: 'flex-start',
+            backgroundColor: 'var(--panel-bg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '16px',
+            marginBottom: '4px'
+          }}
+        >
+          <div style={{ 
+            width: '32px', 
+            height: '32px', 
+            borderRadius: '50%', 
+            backgroundColor: turn.avatarColor, 
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0
+          }}>
+            <Icon size={16} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'right', flexGrow: 1 }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>{turn.name}</span>
+            <p style={{ fontSize: '0.85rem', lineHeight: '1.5', color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-line' }}>
+              {turn.message}
+            </p>
+          </div>
+        </div>
+      );
+    });
+  };
 
   return (
     <div className="personality-analysis-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', padding: '24px', boxSizing: 'border-box', direction: 'rtl', gap: '24px' }}>
@@ -136,36 +237,56 @@ export default function PersonalityAnalysisView({ uid }) {
               <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{new_entries_since_last_analysis} / 30</span>
             </div>
           </div>
-          <button 
-            onClick={handleTriggerAnalysis} 
-            disabled={isAnalyzing}
-            style={{ 
-              backgroundColor: '#8b5cf6', 
-              color: 'white', 
-              border: 'none', 
-              borderRadius: 'var(--radius-md)', 
-              padding: '8px 14px', 
-              fontSize: '0.8rem', 
-              fontWeight: 600, 
-              cursor: isAnalyzing ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              opacity: isAnalyzing ? 0.7 : 1
-            }}
-          >
-            {isAnalyzing ? (
-              <>
-                <RefreshCw size={14} className="spin" />
-                מנתח...
-              </>
-            ) : (
-              <>
-                <Brain size={14} />
-                הרץ ניתוח חדש
-              </>
-            )}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {/* Delta Update Button */}
+            <button 
+              onClick={() => handleTriggerAnalysis(false)} 
+              disabled={isAnalyzing}
+              style={{ 
+                backgroundColor: 'transparent', 
+                color: '#8b5cf6', 
+                border: '1px solid #8b5cf6', 
+                borderRadius: 'var(--radius-md)', 
+                padding: '8px 14px', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: isAnalyzing ? 0.7 : 1
+              }}
+              title="עדכון הניתוח הקיים באמצעות הרשומות החדשות בלבד"
+            >
+              <RefreshCw size={14} className={isAnalyzing ? "spin" : ""} />
+              עדכון תקופתי (Delta)
+            </button>
+
+            {/* Full Analysis Button */}
+            <button 
+              onClick={() => handleTriggerAnalysis(true)} 
+              disabled={isAnalyzing}
+              style={{ 
+                backgroundColor: '#8b5cf6', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: 'var(--radius-md)', 
+                padding: '8px 16px', 
+                fontSize: '0.8rem', 
+                fontWeight: 600, 
+                cursor: isAnalyzing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                opacity: isAnalyzing ? 0.7 : 1,
+                boxShadow: '0 4px 6px -1px rgba(139, 92, 246, 0.2)'
+              }}
+              title="ביצוע ניתוח מקיף מחדש של כל הרשומות לאורך כל ההיסטוריה"
+            >
+              <Sparkles size={14} />
+              ביצוע ניתוח פסיכולוגי מלא
+            </button>
+          </div>
           <button onClick={loadAnalysis} className="sidebar-btn" style={{ width: '32px', height: '32px', border: '1px solid var(--border-color)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="רענן נתונים">
             <RefreshCw size={14} />
           </button>
@@ -226,14 +347,20 @@ export default function PersonalityAnalysisView({ uid }) {
             </div>
 
             {/* Active Agent Report View */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--accent-light)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
-                {activeAgent.desc}
+            {activeAgentTab === 'boardroom' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '420px', overflowY: 'auto', paddingLeft: '8px' }}>
+                {renderBoardroomDialogue(reports)}
               </div>
-              <div style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--text-secondary)', whiteSpace: 'pre-line', maxHeight: '300px', overflowY: 'auto', paddingLeft: '8px' }}>
-                {activeAgentReport}
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--accent-light)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
+                  {activeAgent.desc}
+                </div>
+                <div style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--text-secondary)', whiteSpace: 'pre-line', maxHeight: '300px', overflowY: 'auto', paddingLeft: '8px' }}>
+                  {activeAgentReport}
+                </div>
               </div>
-            </div>
+            )}
 
           </section>
         </div>
@@ -242,17 +369,17 @@ export default function PersonalityAnalysisView({ uid }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* OCEAN Card */}
-          <section className="analysis-card" style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
-            <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>פרופיל אישיות (מודל OCEAN)</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <section className="analysis-card" style={{ backgroundColor: 'var(--panel-bg)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-md)' }}>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text-primary)' }}>פרופיל אישיות (מודל OCEAN)</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {oceanLabels.map(label => (
-                <div key={label.key} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600 }}>
-                    <span>{label.name}</span>
-                    <span style={{ color: '#8b5cf6' }}>{label.value}%</span>
+                <div key={label.key} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: 600 }}>
+                    <span style={{ color: 'var(--text-primary)' }}>{label.name}</span>
+                    <span style={{ color: 'var(--accent-color)' }}>{label.value}%</span>
                   </div>
-                  <div style={{ width: '100%', height: '8px', backgroundColor: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${label.value}%`, height: '100%', backgroundColor: '#8b5cf6', borderRadius: '4px' }} />
+                  <div style={{ width: '100%', height: '6px', backgroundColor: '#F3F3F3', borderRadius: '3px', overflow: 'hidden' }}>
+                    <div style={{ width: `${label.value}%`, height: '100%', backgroundColor: 'var(--accent-color)', borderRadius: '3px' }} />
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{label.desc}</span>
                 </div>
@@ -261,40 +388,40 @@ export default function PersonalityAnalysisView({ uid }) {
           </section>
 
           {/* Natural Language Insights (NLP) */}
-          <section className="analysis-card" style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
-            <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '16px' }}>מדדי שפה רגשיים (NLP Insights)</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <section className="analysis-card" style={{ backgroundColor: 'var(--panel-bg)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-md)' }}>
+            <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.15rem', fontWeight: 600, marginBottom: '20px', color: 'var(--text-primary)' }}>מדדי שפה רגשיים (NLP Insights)</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               
               {/* Density */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                  <span>צפיפות רגשית בטקסט</span>
-                  <span style={{ fontWeight: 600 }}>{linguistic.emotional_density}%</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--text-primary)' }}>צפיפות רגשית בטקסט</span>
+                  <span style={{ fontWeight: 600, color: 'var(--accent-color)' }}>{linguistic.emotional_density}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${linguistic.emotional_density}%`, height: '100%', backgroundColor: '#3b82f6' }} />
+                <div style={{ width: '100%', height: '6px', backgroundColor: '#F3F3F3', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${linguistic.emotional_density}%`, height: '100%', backgroundColor: 'var(--accent-color)', borderRadius: '3px' }} />
                 </div>
               </div>
 
               {/* Self Focus */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                  <span>מיקוד עצמי (שימוש בגוף ראשון)</span>
-                  <span style={{ fontWeight: 600 }}>{linguistic.self_focus}%</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--text-primary)' }}>מיקוד עצמי (שימוש בגוף ראשון)</span>
+                  <span style={{ fontWeight: 600, color: 'var(--accent-color)' }}>{linguistic.self_focus}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${linguistic.self_focus}%`, height: '100%', backgroundColor: '#10b981' }} />
+                <div style={{ width: '100%', height: '6px', backgroundColor: '#F3F3F3', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${linguistic.self_focus}%`, height: '100%', backgroundColor: 'var(--accent-color)', borderRadius: '3px' }} />
                 </div>
               </div>
 
               {/* Stress Level */}
               <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '4px' }}>
-                  <span>מדד מתח ומצוקה משוער</span>
-                  <span style={{ fontWeight: 600 }}>{linguistic.stress_level}%</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '6px' }}>
+                  <span style={{ color: 'var(--text-primary)' }}>מדד מתח ומצוקה משוער</span>
+                  <span style={{ fontWeight: 600, color: 'var(--accent-color)' }}>{linguistic.stress_level}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                  <div style={{ width: `${linguistic.stress_level}%`, height: '100%', backgroundColor: '#ef4444' }} />
+                <div style={{ width: '100%', height: '6px', backgroundColor: '#F3F3F3', borderRadius: '3px', overflow: 'hidden' }}>
+                  <div style={{ width: `${linguistic.stress_level}%`, height: '100%', backgroundColor: '#ef4444', borderRadius: '3px' }} />
                 </div>
               </div>
 

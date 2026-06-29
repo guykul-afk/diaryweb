@@ -1,13 +1,23 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import ForceGraph3D from 'react-force-graph-3d';
 import { Info, Search, Filter, Hash, Heart } from 'lucide-react';
-import { fetchFirebaseGraph, fetchFirebaseEntries } from './firebase';
+import { fetchFirebaseGraph, fetchFirebaseEntries, triggerGraphAnalysis } from './firebase';
 import { forceCollide } from 'd3-force';
 
 export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
   const [rawGraphData, setRawGraphData] = useState({ nodes: [], links: [] });
   const [entries, setEntries] = useState([]);
   const [selectedNode, setSelectedNode] = useState(null);
+  const [selectedLink, setSelectedLink] = useState(null);
+  const [graphMode, setGraphMode] = useState('2d'); // '2d' or '3d'
+
+  const getLinkColor = (link) => {
+    if (selectedLink && link === selectedLink) return '#ff6b6b';
+    if (link.sentimentScore > 0) return 'rgba(72, 187, 120, 0.6)';
+    if (link.sentimentScore < 0) return 'rgba(229, 62, 62, 0.6)';
+    return '#E0E0E0';
+  };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -96,6 +106,14 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
     if (type === 'person' || type === 'people' || type === 'name' || node.id.match(/^[A-Z][a-z]+ [A-Z][a-z]+$/)) return 'Person';
     if (type === 'emotion' || type === 'mood' || type === 'feeling') return 'Emotion';
     if (type === 'topic' || type === 'hashtag') return 'Topic';
+
+    const nodeIdLower = node.id.toLowerCase();
+    const nodeLabelLower = (node.name || node.id).toLowerCase();
+    const HEBREW_PERSON_NAMES = ['גיא', 'טלי', 'גיל', 'איתן', 'יוגב', 'שמואל', 'נוה', 'נווה', 'אבא', 'אמא', 'אימא', 'אסף', 'ילדים', 'הילדים', 'בן של'];
+    const HEBREW_EMOTION_KEYWORDS = ['לחץ', 'חרדה', 'עצב', 'כעס', 'שמחה', 'פחד', 'דאגה', 'אהבה', 'תסכול', 'עומס', 'מתח', 'רגש'];
+
+    if (HEBREW_PERSON_NAMES.some(name => nodeIdLower.includes(name) || nodeLabelLower.includes(name))) return 'Person';
+    if (HEBREW_EMOTION_KEYWORDS.some(keyword => nodeIdLower.includes(keyword) || nodeLabelLower.includes(keyword))) return 'Emotion';
     
     // Check if node is listed in entry topics or moods
     if (uniqueTopics.some(t => t.toLowerCase() === node.id.toLowerCase())) return 'Topic';
@@ -205,6 +223,26 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       finalActiveNodeIds = baseFilteredNodeIds;
     }
 
+    // 2.5 Ego Network filter - if a node is selected, keep only it and its neighbors
+    if (selectedNode) {
+      const selectedId = selectedNode.id;
+      const egoIds = new Set([selectedId]);
+      
+      rawGraphData.links.forEach(link => {
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+        
+        if (sourceId === selectedId) egoIds.add(targetId);
+        if (targetId === selectedId) egoIds.add(sourceId);
+      });
+
+      const intersectedIds = new Set();
+      finalActiveNodeIds.forEach(id => {
+        if (egoIds.has(id)) intersectedIds.add(id);
+      });
+      finalActiveNodeIds = intersectedIds;
+    }
+
     const filteredNodes = rawGraphData.nodes.filter(node => finalActiveNodeIds.has(node.id));
 
     // 3. Filter links (keep links between active nodes)
@@ -231,7 +269,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       nodes: filteredNodes,
       links: filteredLinks
     };
-  }, [rawGraphData, searchQuery, selectedTopics, selectedMoods, minWeight, visibleTypes, conceptMetadataMap]);
+  }, [rawGraphData, searchQuery, selectedTopics, selectedMoods, minWeight, visibleTypes, conceptMetadataMap, selectedNode]);
 
   // Helper to calculate node radius based on weight with high variance
   const getNodeRadius = (node) => {
@@ -472,12 +510,42 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
               </div>
             </div>
           )}
+
+          {/* Detective Agent Button */}
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+            <button
+              onClick={async () => {
+                try {
+                  alert('🕵️ סוכן הבלש חוקר את המפה שלך, זה עשוי לקחת כדקה...');
+                  const res = await triggerGraphAnalysis(uid);
+                  if (res.status === 'success') {
+                    // Temporarily using alert, a modal would be better in the future
+                    alert('תוצאות הבלש:\n\n' + res.result);
+                  } else {
+                    alert('שגיאה: ' + res.message);
+                  }
+                } catch (e) {
+                  alert('שגיאה בקריאה לבלש: ' + e.message);
+                }
+              }}
+              style={{ width: '100%', padding: '10px', backgroundColor: '#2d3748', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              <span>🕵️</span> הפעל סוכן בלש (On-Demand)
+            </button>
+          </div>
         </div>
 
         {/* Selected Node Details */}
         {selectedNode ? (
           <div className="concept-details">
-            <div className="concept-header">
+            <div className="concept-header" style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setSelectedNode(null)}
+                style={{ position: 'absolute', left: 0, top: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)', padding: '0 5px' }}
+                title="סגור חלונית וחזור למפה המלאה"
+              >
+                ×
+              </button>
               <span className="concept-badge" style={{ backgroundColor: getNodeColor(selectedNode, false), color: '#ffffff' }}>
                 {selectedNode.type}
               </span>
@@ -559,16 +627,102 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
               </div>
             </div>
           </div>
+        ) : selectedLink ? (
+          <div className="concept-details">
+            <div className="concept-header" style={{ position: 'relative' }}>
+              <button 
+                onClick={() => setSelectedLink(null)}
+                style={{ position: 'absolute', left: 0, top: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)', padding: '0 5px' }}
+                title="סגור חלונית"
+              >
+                ×
+              </button>
+              <h3 className="concept-title">פרטי קשר (Edge)</h3>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                בין <strong>{typeof selectedLink.source === 'object' ? selectedLink.source.name || selectedLink.source.id : selectedLink.source}</strong> ל-<strong>{typeof selectedLink.target === 'object' ? selectedLink.target.name || selectedLink.target.id : selectedLink.target}</strong>
+              </div>
+            </div>
+            <div className="concept-body">
+              <p style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>סוג הקשר: {selectedLink.label || selectedLink.relation || 'לא צוין'}</p>
+              {selectedLink.sentimentScore !== undefined && (
+                <p style={{ fontSize: '0.8rem', marginTop: '8px' }}>
+                  סנטימנט: {selectedLink.sentimentScore > 0 ? 'חיובי 🟢' : selectedLink.sentimentScore < 0 ? 'שלילי 🔴' : 'ניטרלי ⚪'}
+                </p>
+              )}
+              {selectedLink.sourceQuotes && selectedLink.sourceQuotes.length > 0 && (
+                <div style={{ marginTop: '12px' }}>
+                  <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>ציטוטים מתוך היומן:</h4>
+                  {selectedLink.sourceQuotes.map((q, i) => (
+                    <blockquote key={i} style={{ fontSize: '0.8rem', fontStyle: 'italic', borderRight: '3px solid var(--accent-color)', paddingRight: '8px', margin: '4px 0', color: 'var(--text-muted)' }}>
+                      "{q}"
+                    </blockquote>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="graph-instructions">
             <Info size={28} style={{ color: 'var(--text-muted)', marginBottom: '10px' }} />
-            <p style={{ fontSize: '0.8rem' }}>לחץ על צומת (Node) בגרף כדי לראות את המושגים, הקשרים והתוכן שלו.</p>
+            <p style={{ fontSize: '0.8rem' }}>לחץ על צומת (Node) או קו (Edge) בגרף כדי לחקור את המידע.</p>
           </div>
         )}
       </div>
 
       {/* Main graph canvas */}
-      <div className="graph-canvas-wrapper" ref={containerRef}>
+      <div className="graph-canvas-wrapper" ref={containerRef} style={{ position: 'relative' }}>
+        {/* Floating 2D/3D Toggle */}
+        {!loading && !error && (
+          <div style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            zIndex: 10,
+            display: 'flex',
+            gap: '4px',
+            backgroundColor: 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            padding: '4px',
+            boxShadow: 'var(--shadow-sm)',
+            direction: 'rtl'
+          }}>
+            <button
+              onClick={() => setGraphMode('2d')}
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: graphMode === '2d' ? '#8b5cf6' : 'transparent',
+                color: graphMode === '2d' ? '#ffffff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              דו-ממד (2D)
+            </button>
+            <button
+              onClick={() => setGraphMode('3d')}
+              style={{
+                padding: '6px 12px',
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: graphMode === '3d' ? '#8b5cf6' : 'transparent',
+                color: graphMode === '3d' ? '#ffffff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              תלת-ממד (3D)
+            </button>
+          </div>
+        )}
+
         {loading && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', fontSize: '0.9rem', color: 'var(--text-muted)' }}>טוען גרף ידע...</div>}
         {error && (
           <div style={{ 
@@ -576,7 +730,6 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
             padding: '20px',
             backgroundColor: '#fff5f5',
             borderRadius: 'var(--radius-md)',
-            border: '1px solid #fed7d7',
             margin: '20px',
             fontSize: '0.85rem'
           }}>
@@ -584,25 +737,30 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
           </div>
         )}
         
-        {!loading && !error && (
+        {!loading && !error && graphMode === '2d' && (
           <ForceGraph2D
             ref={fgRef}
             graphData={filteredGraphData}
             width={dimensions.width}
             height={dimensions.height}
             nodeLabel="name"
-            nodeColor={node => getNodeColor(node, selectedNode && node.id === selectedNode.id)}
+            nodeColor={node => ((node.weight && node.weight > 3) || (selectedNode && node.id === selectedNode.id) ? '#00355F' : '#FFFFFF')}
             nodeVal={node => getNodeRadius(node)}
             onNodeClick={handleNodeClick}
+            onBackgroundClick={() => { setSelectedNode(null); setSelectedLink(null); }}
+            onLinkClick={(link) => setSelectedLink(link)}
             linkDirectionalArrowLength={4}
             linkDirectionalArrowRelPos={1}
             linkWidth={1.5}
-            linkColor={() => 'rgba(203, 213, 224, 0.7)'}
+            linkColor={getLinkColor}
             nodeCanvasObject={(node, ctx, globalScale) => {
               const label = node.name;
               const r = getNodeRadius(node);
               const isSelected = selectedNode && node.id === selectedNode.id;
               
+              // Central (primary) node check: weight > 3 or selected
+              const isPrimary = (node.weight && node.weight > 3) || isSelected;
+
               // Check if this node matches the search query directly (if searching)
               let isMatchingSearch = true;
               if (searchQuery.trim()) {
@@ -614,33 +772,43 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
               ctx.beginPath();
               ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
               
-              // Fade out neighbors visually to make search matches pop
-              ctx.fillStyle = isMatchingSearch ? getNodeColor(node, isSelected) : 'rgba(200, 200, 200, 0.25)';
-              ctx.fill();
-              
-              // Border ring
-              ctx.strokeStyle = isSelected ? '#ffffff' : isMatchingSearch ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.25)';
-              ctx.lineWidth = isSelected ? 2 / globalScale : 1 / globalScale;
-              ctx.stroke();
+              if (isPrimary) {
+                // Central: filled with blue #00355F
+                ctx.fillStyle = isMatchingSearch ? '#00355F' : 'rgba(0, 53, 95, 0.25)';
+                ctx.fill();
+                
+                ctx.strokeStyle = isSelected ? '#ff6b6b' : 'transparent';
+                ctx.lineWidth = 2 / globalScale;
+                ctx.stroke();
+              } else {
+                // Secondary: Outline and white center
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fill();
+                
+                ctx.strokeStyle = isMatchingSearch ? '#00355F' : 'rgba(0, 53, 95, 0.25)';
+                ctx.lineWidth = 1.5 / globalScale;
+                ctx.stroke();
+              }
 
               // Shadow effect for premium feel
-              ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
               ctx.shadowBlur = 4;
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 2;
               
-              // 2. Draw text label if zoomed in enough, selected, or matching search directly
-              if (globalScale > 1.2 || isSelected || (isMatchingSearch && node.weight && node.weight > 3)) {
-                const fontSize = 10 / globalScale;
-                ctx.font = `${fontSize}px var(--font-sans)`;
+              // 2. Draw text label
+              if (globalScale > 0.8 || isSelected || isPrimary) {
+                const fontSize = 11 / globalScale;
+                // Use Serif font for primary nodes, Sans-Serif for secondary nodes
+                ctx.font = `${isPrimary ? 'bold' : 'normal'} ${fontSize}px var(--font-serif)`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 
                 // Measure text
                 const textWidth = ctx.measureText(label).width;
-                const padX = 4 / globalScale;
-                const padY = 2 / globalScale;
-                const textY = node.y + r + 8 / globalScale;
+                const padX = 5 / globalScale;
+                const padY = 3 / globalScale;
+                const textY = node.y + r + 10 / globalScale;
                 
                 // Text background pill
                 ctx.beginPath();
@@ -651,20 +819,37 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
                   fontSize + padY*2, 
                   4 / globalScale
                 );
-                ctx.fillStyle = isMatchingSearch ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.4)';
+                ctx.fillStyle = isMatchingSearch ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)';
                 ctx.fill();
-                ctx.strokeStyle = isMatchingSearch ? 'rgba(226, 232, 240, 0.9)' : 'rgba(226, 232, 240, 0.4)';
+                ctx.strokeStyle = 'rgba(0, 53, 95, 0.05)';
                 ctx.lineWidth = 0.5 / globalScale;
                 ctx.stroke();
                 
                 // Draw text
-                ctx.fillStyle = isMatchingSearch ? '#2d3748' : 'rgba(113, 128, 150, 0.4)';
+                ctx.fillStyle = isMatchingSearch ? '#1A1A1A' : 'rgba(26, 26, 26, 0.4)';
                 ctx.fillText(label, node.x, textY);
               }
               
               // Reset shadow
               ctx.shadowColor = 'transparent';
             }}
+          />
+        )}
+
+        {!loading && !error && graphMode === '3d' && (
+          <ForceGraph3D
+            ref={fgRef}
+            graphData={filteredGraphData}
+            width={dimensions.width}
+            height={dimensions.height}
+            nodeLabel="name"
+            nodeColor={node => getNodeColor(node, selectedNode && node.id === selectedNode.id)}
+            nodeVal={node => getNodeRadius(node) * 1.5} // slightly larger spheres for better 3D visibility
+            onNodeClick={handleNodeClick}
+            onBackgroundClick={() => { setSelectedNode(null); setSelectedLink(null); }}
+            onLinkClick={(link) => setSelectedLink(link)}
+            linkWidth={1.5}
+            linkColor={getLinkColor}
           />
         )}
       </div>

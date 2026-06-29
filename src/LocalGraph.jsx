@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 
 const NODE_COLORS = {
-  Person: { bg: '#e0e7ff', border: '#6366f1', text: '#3730a3' },   // Indigo
-  Emotion: { bg: '#fce7f3', border: '#ec4899', text: '#9d174d' },  // Pink
-  Topic: { bg: '#e0f2fe', border: '#0ea5e9', text: '#0369a1' },    // Sky
-  Concept: { bg: '#f4f4f5', border: '#71717a', text: '#27272a' },  // Zinc
+  Person: { bg: '#FFFFFF', border: '#00355F', text: '#1A1A1A' },
+  Emotion: { bg: '#FFFFFF', border: '#00355F', text: '#1A1A1A' },
+  Topic: { bg: '#FFFFFF', border: '#00355F', text: '#1A1A1A' },
+  Concept: { bg: '#FFFFFF', border: '#00355F', text: '#1A1A1A' },
 };
 
 export default function LocalGraph({ entry, graphData, entries }) {
@@ -25,7 +25,7 @@ export default function LocalGraph({ entry, graphData, entries }) {
       if (type === 'topic' || type === 'hashtag') return 'Topic';
 
       const nodeIdLower = node.id.toLowerCase();
-      const HEBREW_PERSON_NAMES = ['גיא', 'טלי', 'איתן', 'יוגב', 'שמואל', 'נוה', 'אבא', 'אימא', 'ילדים', 'הילדים', 'בן של'];
+      const HEBREW_PERSON_NAMES = ['גיא', 'טלי', 'גיל', 'איתן', 'יוגב', 'שמואל', 'נוה', 'נווה', 'אבא', 'אמא', 'אימא', 'אסף', 'ילדים', 'הילדים', 'בן של'];
       const HEBREW_EMOTION_KEYWORDS = ['לחץ', 'חרדה', 'עצב', 'כעס', 'שמחה', 'פחד', 'דאגה', 'אהבה', 'תסכול', 'עומס', 'מתח', 'רגש'];
 
       if (HEBREW_PERSON_NAMES.some(name => nodeIdLower.includes(name))) return 'Person';
@@ -139,9 +139,9 @@ export default function LocalGraph({ entry, graphData, entries }) {
               y1={srcNode.y}
               x2={tgtNode.x}
               y2={tgtNode.y}
-              stroke="#e4e4e7"
-              strokeWidth={link.source === 'CENTER_ENTRY' || link.target === 'CENTER_ENTRY' ? 1.5 : 1}
-              strokeDasharray={link.source === 'CENTER_ENTRY' || link.target === 'CENTER_ENTRY' ? 'none' : '3,3'}
+              stroke="#E0E0E0"
+              strokeWidth={1}
+              strokeDasharray={link.source === 'CENTER_ENTRY' || link.target === 'CENTER_ENTRY' ? 'none' : '2,2'}
             />
           );
         })}
@@ -149,24 +149,24 @@ export default function LocalGraph({ entry, graphData, entries }) {
         {/* Draw Nodes */}
         {nodesWithPositions.map((node) => {
           const colors = node.isCenter 
-            ? { bg: '#18181b', border: '#09090b', text: '#ffffff' }
+            ? { bg: '#00355F', border: '#00355F', text: '#ffffff' }
             : (NODE_COLORS[node.type] || NODE_COLORS.Concept);
 
           return (
             <g key={node.id} transform={`translate(${node.x}, ${node.y})`}>
               <circle
-                r={node.isCenter ? 12 : 8}
+                r={node.isCenter ? 12 : 7}
                 fill={colors.bg}
                 stroke={colors.border}
                 strokeWidth={1.5}
               />
               <text
-                y={node.isCenter ? -18 : 16}
+                y={node.isCenter ? -18 : 15}
                 textAnchor="middle"
                 fontSize={node.isCenter ? '10px' : '9px'}
                 fontWeight={node.isCenter ? 700 : 500}
-                fill={node.isCenter ? '#09090b' : colors.text}
-                style={{ direction: 'rtl', fontFamily: 'var(--font-sans)' }}
+                fill={node.isCenter ? '#00355F' : colors.text}
+                style={{ direction: 'rtl', fontFamily: 'var(--font-serif)' }}
               >
                 {node.name}
               </text>
