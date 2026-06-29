@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const firebaseConfig = {
   projectId: "mindcloud-8ccc6",
@@ -16,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const functions = getFunctions(app);
 
 // Keep track of the active user session or sign in anonymously if none exists
 export function getFirebaseUid() {
@@ -38,7 +40,28 @@ export function getFirebaseUid() {
   });
 }
 
+// Trigger personality analysis cloud function
+export async function triggerPersonalityAnalysis(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const analyzeFunc = httpsCallable(functions, 'analyze_personality');
+  const result = await analyzeFunc({ uid });
+  return result.data;
+}
+
 export { db, auth };
+
+// Fetch original insights from users/{uid}/insights/current
+export async function fetchOriginalInsights(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const docRef = doc(db, `users/${uid}/insights`, 'current');
+  const docSnap = await getDoc(docRef);
+  if (docSnap.exists()) {
+    return docSnap.data();
+  }
+  return null;
+}
+
+
 
 // Helper to fetch entries from Firebase Firestore
 export async function fetchFirebaseEntries(uid) {
@@ -53,6 +76,7 @@ export async function fetchFirebaseEntries(uid) {
     // Convert to a format matching the local file structure so the frontend code works seamlessly
     entries.push({
       id: data.id || doc.id,
+      insights: data.insights || [],
       frontmatter: {
         date: data.timestamp ? new Date(data.timestamp).toISOString().split('T')[0] : 'תאריך לא ידוע',
         topics: data.topics || [],
@@ -62,6 +86,28 @@ export async function fetchFirebaseEntries(uid) {
     });
   });
   return entries;
+}
+
+// Helper to fetch personality analysis documents
+export async function fetchPersonalityAnalysis(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const analysisRef = collection(db, `users/${uid}/personality_analysis`);
+  const q = query(analysisRef, orderBy('timestamp', 'desc'));
+  const querySnapshot = await getDocs(q);
+  
+  const analyses = [];
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    analyses.push({
+      id: doc.id,
+      timestamp: data.timestamp,
+      executive_summary: data.executive_summary || '',
+      reports: data.reports || {},
+      metrics: data.metrics || {},
+      new_entries_since_last_analysis: data.new_entries_since_last_analysis || 0
+    });
+  });
+  return analyses;
 }
 
 // Helper to fetch knowledge graph nodes & links from Firebase Firestore

@@ -1,40 +1,34 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Calendar, Tag, RefreshCw, Search } from 'lucide-react';
-import { fetchFirebaseEntries } from './firebase';
+import { Calendar, Tag, RefreshCw, Search, BookOpen } from 'lucide-react';
+import { fetchFirebaseEntries, fetchFirebaseGraph } from './firebase';
+import LocalGraph from './LocalGraph';
 
-export default function FeedView({ dataSource, uid, scrollToEntryId, onClearScroll }) {
+export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEntry }) {
   const [entries, setEntries] = useState([]);
+  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sliderValue, setSliderValue] = useState(0);
 
-  useEffect(() => {
-    if (!loading && scrollToEntryId && entries.length > 0) {
-      const element = document.getElementById(`entry-${scrollToEntryId}`);
-      if (element) {
-        setTimeout(() => {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          element.style.boxShadow = '0 0 0 3px var(--accent-color)';
-          element.style.borderColor = 'var(--accent-color)';
-          setTimeout(() => {
-            element.style.boxShadow = '';
-            element.style.borderColor = '';
-          }, 3000);
-          if (onClearScroll) onClearScroll();
-        }, 300);
-      }
-    }
-  }, [loading, scrollToEntryId, entries]);
-
-  const fetchEntries = async () => {
+  const fetchEntriesAndGraph = async () => {
     setLoading(true);
     setError(null);
     try {
       if (!uid) {
         throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
       }
-      const data = await fetchFirebaseEntries(uid);
-      setEntries(data);
+      const [entriesData, graphDataRes] = await Promise.all([
+        fetchFirebaseEntries(uid),
+        fetchFirebaseGraph(uid)
+      ]);
+      setEntries(entriesData);
+      setGraphData(graphDataRes);
+
+      // Auto-select first entry if none selected
+      if (entriesData.length > 0 && !selectedEntryId) {
+        onSelectEntry(entriesData[0].id);
+      }
     } catch (err) {
       setError(err.message);
       setEntries([]);
@@ -45,9 +39,67 @@ export default function FeedView({ dataSource, uid, scrollToEntryId, onClearScro
 
   useEffect(() => {
     if (uid) {
-      fetchEntries();
+      fetchEntriesAndGraph();
     }
   }, [uid]);
+
+  // Sync selectedEntryId if it changes and is not in filtered list, or set default
+  const selectedEntry = useMemo(() => {
+    return entries.find(e => e.id === selectedEntryId) || null;
+  }, [entries, selectedEntryId]);
+
+  // Calculate the min/max dates and sort them for the timeline
+  const dateRange = useMemo(() => {
+    if (entries.length === 0) return { min: 0, max: 0, list: [] };
+    const list = entries
+      .map(e => ({
+        id: e.id,
+        dateStr: e.frontmatter.date,
+        time: new Date(e.frontmatter.date).getTime()
+      }))
+      .filter(e => !isNaN(e.time))
+      .sort((a, b) => a.time - b.time); // Oldest to newest
+      
+    if (list.length === 0) return { min: 0, max: 0, list: [] };
+    return {
+      min: list[0].time,
+      max: list[list.length - 1].time,
+      list
+    };
+  }, [entries]);
+
+  // Sync slider value when entries load
+  useEffect(() => {
+    if (dateRange.list.length > 0) {
+      setSliderValue(dateRange.max); // Default to the newest entry
+    }
+  }, [dateRange]);
+
+  const handleSliderChange = (e) => {
+    const targetTime = parseInt(e.target.value);
+    setSliderValue(targetTime);
+    
+    if (dateRange.list.length === 0) return;
+    
+    // Find closest entry
+    let closestEntry = dateRange.list[0];
+    let minDiff = Math.abs(dateRange.list[0].time - targetTime);
+    
+    for (let i = 1; i < dateRange.list.length; i++) {
+      const diff = Math.abs(dateRange.list[i].time - targetTime);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestEntry = dateRange.list[i];
+      }
+    }
+    
+    onSelectEntry(closestEntry.id);
+  };
+
+  const formatSliderDate = (time) => {
+    if (!time) return '';
+    return new Date(time).toISOString().split('T')[0];
+  };
 
   // Client-side filtering by name, mood, hashtag, or keyword
   const filteredEntries = useMemo(() => {
@@ -55,18 +107,11 @@ export default function FeedView({ dataSource, uid, scrollToEntryId, onClearScro
     const query = searchQuery.toLowerCase().trim();
     
     return entries.filter(entry => {
-      // 1. Text search in content
       const contentMatch = (entry.content || '').toLowerCase().includes(query);
-      
-      // 2. Search in topics (tags)
       const topicsMatch = entry.frontmatter.topics && 
         entry.frontmatter.topics.some(topic => topic.toLowerCase().includes(query));
-        
-      // 3. Search in mood
       const moodMatch = entry.frontmatter.mood && 
         entry.frontmatter.mood.toLowerCase().includes(query);
-        
-      // 4. Search in triples (subject, relation, object - matching names or concepts)
       const triplesMatch = entry.frontmatter.triples && 
         entry.frontmatter.triples.some(t => {
           const s = (t.subject || t.s || '').toLowerCase();
@@ -80,107 +125,247 @@ export default function FeedView({ dataSource, uid, scrollToEntryId, onClearScro
   }, [entries, searchQuery]);
 
   return (
-    <div className="view-container">
-      <div className="feed-layout">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h2 style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-            רשומות מיומן הידע בפיירבייס ({filteredEntries.length})
+    <div style={{ display: 'flex', flexGrow: 1, height: '100%', overflow: 'hidden' }}>
+      
+      {/* 1. Middle Column: Timeline Pane */}
+      <aside className="timeline-pane">
+        {/* Header Section */}
+        <div style={{ 
+          padding: '16px 20px', 
+          borderBottom: '1px solid var(--border-color)', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between' 
+        }}>
+          <h2 style={{ fontSize: '0.95rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <BookOpen size={16} />
+            רשומות יומן ({filteredEntries.length})
           </h2>
           <button 
-            onClick={fetchEntries}
+            onClick={fetchEntriesAndGraph}
             style={{ 
               background: 'none', 
               border: '1px solid var(--border-color)', 
               borderRadius: 'var(--radius-sm)', 
-              padding: '6px 12px', 
-              cursor: 'pointer',
+              width: '28px',
+              height: '28px',
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              fontSize: '0.9rem',
+              justifyContent: 'center',
+              cursor: 'pointer',
               color: 'var(--text-secondary)'
             }}
+            title="רענן מידע"
           >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            רענן
+            <RefreshCw size={12} className={loading ? 'spin' : ''} />
           </button>
         </div>
 
-        {/* Real-time search/filter input at the top of the feed */}
-        <div style={{ position: 'relative', marginBottom: '20px' }}>
+        {/* Search Input */}
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)', position: 'relative' }}>
           <input
             type="text"
-            placeholder="חפש לפי שם, רגש, מילה או # נושא..."
+            placeholder="חפש מושג, רגש או #נושא..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{
               width: '100%',
-              padding: '12px 42px 12px 16px',
+              padding: '8px 36px 8px 12px',
               borderRadius: 'var(--radius-md)',
               border: '1px solid var(--border-color)',
               fontFamily: 'var(--font-sans)',
-              fontSize: '1rem',
+              fontSize: '0.85rem',
               outline: 'none',
-              boxShadow: 'var(--shadow-sm)',
+              backgroundColor: 'var(--bg-color)',
               boxSizing: 'border-box',
               textAlign: 'right'
             }}
           />
-          <Search size={18} style={{ position: 'absolute', right: '14px', top: '14px', color: 'var(--text-muted)' }} />
+          <Search size={14} style={{ position: 'absolute', right: '26px', top: '20px', color: 'var(--text-muted)' }} />
         </div>
 
-        {loading && <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>טוען רשומות...</div>}
-        {error && (
+        {/* Slider Section */}
+        {!loading && !error && dateRange.list.length > 1 && (
           <div style={{ 
-            textAlign: 'center', 
-            padding: '24px', 
-            color: '#c53030', 
-            backgroundColor: '#fff5f5', 
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid #fed7d7'
+            padding: '12px 16px', 
+            borderBottom: '1px solid var(--border-color)', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '6px' 
           }}>
-            {error}
-          </div>
-        )}
-        
-        {!loading && !error && filteredEntries.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
-            לא נמצאו רשומות יומן המתאימות לסינון זה.
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              <span>{formatSliderDate(dateRange.min)}</span>
+              <span style={{ fontWeight: 600 }}>{formatSliderDate(sliderValue)}</span>
+              <span>{formatSliderDate(dateRange.max)}</span>
+            </div>
+            <input
+              type="range"
+              min={dateRange.min}
+              max={dateRange.max}
+              value={sliderValue}
+              onChange={handleSliderChange}
+              style={{
+                width: '100%',
+                cursor: 'pointer',
+                accentColor: 'var(--accent-color)',
+                height: '4px'
+              }}
+            />
           </div>
         )}
 
-        {!loading && !error && filteredEntries.map((entry) => (
-          <div className="feed-card" id={`entry-${entry.id}`} key={entry.id} style={{ transition: 'all 0.5s ease' }}>
-            <div className="card-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calendar size={18} style={{ color: 'var(--accent-color)' }} />
-                <span className="card-date">{entry.frontmatter.date}</span>
+        {/* Timeline Entries List */}
+        <div style={{ flexGrow: 1, overflowY: 'auto', padding: '12px' }}>
+          {loading && <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>טוען רשומות...</div>}
+          {error && <div style={{ padding: '12px', color: '#ef4444', fontSize: '0.8rem' }}>{error}</div>}
+          {!loading && !error && filteredEntries.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>לא נמצאו רשומות.</div>
+          )}
+
+          {!loading && !error && filteredEntries.map((entry) => {
+            const isSelected = entry.id === selectedEntryId;
+            return (
+              <div
+                key={entry.id}
+                onClick={() => onSelectEntry(entry.id)}
+                style={{
+                  padding: '14px',
+                  borderRadius: 'var(--radius-md)',
+                  border: isSelected ? '1px solid var(--accent-color)' : '1px solid transparent',
+                  backgroundColor: isSelected ? 'var(--accent-light)' : 'transparent',
+                  cursor: 'pointer',
+                  marginBottom: '8px',
+                  transition: 'all 0.15s ease-in-out',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '6px'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+                    {entry.frontmatter.date}
+                  </span>
+                  {entry.frontmatter.mood && (
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                      רגש: {entry.frontmatter.mood}
+                    </span>
+                  )}
+                </div>
+                <div style={{ 
+                  fontSize: '0.85rem', 
+                  fontWeight: 600, 
+                  color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}>
+                  {entry.content ? entry.content.substring(0, 50) + (entry.content.length > 50 ? '...' : '') : 'רשומה ללא כותרת'}
+                </div>
+                {entry.frontmatter.topics && (
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                    {entry.frontmatter.topics.slice(0, 3).map((topic, idx) => (
+                      <span 
+                        key={idx} 
+                        style={{ 
+                          fontSize: '0.65rem', 
+                          padding: '2px 6px', 
+                          borderRadius: '10px', 
+                          backgroundColor: isSelected ? '#ffffff' : 'var(--accent-light)',
+                          color: 'var(--text-muted)'
+                        }}
+                      >
+                        #{topic}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="card-topics">
-                {entry.frontmatter.topics && entry.frontmatter.topics.map((topic, i) => (
-                  <span className="topic-badge" key={i}>
-                    <Tag size={10} style={{ marginLeft: '4px' }} />
-                    {topic}
+            );
+          })}
+        </div>
+      </aside>
+
+      {/* 2. Left Column: Reader Pane */}
+      <main className="reader-pane">
+        {selectedEntry ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
+            {/* Header / Date */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={18} style={{ color: 'var(--text-muted)' }} />
+                <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+                  {selectedEntry.frontmatter.date}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {selectedEntry.frontmatter.topics && selectedEntry.frontmatter.topics.map((topic, i) => (
+                  <span 
+                    key={i} 
+                    style={{ 
+                      fontSize: '0.75rem', 
+                      backgroundColor: 'var(--panel-bg)', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: 'var(--radius-sm)', 
+                      padding: '4px 8px',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    #{topic}
                   </span>
                 ))}
               </div>
             </div>
-            <div className="card-body">
-              {entry.content}
-            </div>
-            {entry.frontmatter.open_threads && entry.frontmatter.open_threads.length > 0 && (
-              <div className="card-threads">
-                <div className="threads-title">נושאים פתוחים / משימות:</div>
-                <ul className="threads-list">
-                  {entry.frontmatter.open_threads.map((thread, i) => (
-                    <li key={i}>- {thread}</li>
+
+            {/* Entry Content Body */}
+            <article style={{ 
+              fontSize: '1rem', 
+              lineHeight: '1.75', 
+              color: 'var(--text-secondary)', 
+              whiteSpace: 'pre-wrap', 
+              fontFamily: 'var(--font-sans)'
+            }}>
+              {selectedEntry.content}
+            </article>
+
+            {/* Open Threads / Actions */}
+            {selectedEntry.frontmatter.open_threads && selectedEntry.frontmatter.open_threads.length > 0 && (
+              <div style={{ 
+                marginTop: '16px', 
+                backgroundColor: 'var(--panel-bg)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 'var(--radius-lg)', 
+                padding: '16px' 
+              }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                  נושאים פתוחים / משימות:
+                </div>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {selectedEntry.frontmatter.open_threads.map((thread, idx) => (
+                    <li key={idx} style={{ display: 'flex', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>•</span>
+                      {thread}
+                    </li>
                   ))}
                 </ul>
               </div>
             )}
+
+            {/* Local Graph Visual Box */}
+            <div className="local-graph-box">
+              <LocalGraph 
+                entry={selectedEntry} 
+                graphData={graphData} 
+                entries={entries}
+              />
+            </div>
           </div>
-        ))}
-      </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px' }}>
+            <BookOpen size={48} style={{ color: 'var(--border-color)' }} />
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>בחר רשומה מציר הזמן כדי לצפות בפרטים ובקשרים שלה</div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
