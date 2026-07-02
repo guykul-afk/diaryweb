@@ -156,7 +156,6 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
     return 'Concept';
   };
 
-  // Map concepts to their associated entry topics, moods, and entries list
   const conceptMetadataMap = useMemo(() => {
     const map = {};
     
@@ -168,6 +167,18 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       };
     });
 
+    // Helper for entry timestamps
+    const entryTimeMsList = entries.map(entry => {
+      let timeMs = null;
+      if (entry.rawTimestamp) {
+        timeMs = entry.rawTimestamp.toDate 
+          ? entry.rawTimestamp.toDate().getTime() 
+          : new Date(entry.rawTimestamp).getTime();
+      }
+      return { entry, timeMs };
+    });
+
+    // 1. Text-based mention mapping (fallback/supplementary)
     entries.forEach(entry => {
       const entryText = (entry.content || '').toLowerCase();
       const entryTopics = entry.frontmatter.topics || [];
@@ -190,8 +201,37 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       });
     });
 
+    // 2. Edge timestamp based mapping
+    rawGraphData.links.forEach(link => {
+      if (!link.timestamp) return;
+      const linkTime = Number(link.timestamp);
+      
+      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+      
+      const matched = entryTimeMsList.find(item => item.timeMs && Math.abs(item.timeMs - linkTime) < 5000);
+      if (matched) {
+        const entry = matched.entry;
+        const entryTopics = entry.frontmatter.topics || [];
+        const entryMood = entry.frontmatter.mood || 'ניטרלי';
+
+        [sourceId, targetId].forEach(nodeId => {
+          if (!nodeId) return;
+          const nodeIdLower = nodeId.toLowerCase();
+          const nodeMeta = map[nodeIdLower];
+          if (nodeMeta) {
+            entryTopics.forEach(t => nodeMeta.topics.add(t));
+            nodeMeta.moods.add(entryMood);
+            if (!nodeMeta.entries.some(e => e.id === entry.id)) {
+              nodeMeta.entries.push({ id: entry.id, date: entry.frontmatter.date });
+            }
+          }
+        });
+      }
+    });
+
     return map;
-  }, [rawGraphData.nodes, entries]);
+  }, [rawGraphData.nodes, rawGraphData.links, entries]);
 
   // Apply filters to graph data
   const filteredGraphData = useMemo(() => {
@@ -347,10 +387,10 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
   // Setup force simulation with collision detection
   useEffect(() => {
     if (fgRef.current) {
-      fgRef.current.d3Force('charge').strength(-120);
-      fgRef.current.d3Force('link').distance(65);
+      fgRef.current.d3Force('charge').strength(-250);
+      fgRef.current.d3Force('link').distance(120);
       // Dynamic collision detection to match the new size variance
-      fgRef.current.d3Force('collision', forceCollide(node => getNodeRadius(node) + 12));
+      fgRef.current.d3Force('collision', forceCollide(node => getNodeRadius(node) + 20));
     }
   }, [filteredGraphData]);
 
