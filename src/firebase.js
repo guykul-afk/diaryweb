@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
+import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
 const firebaseConfig = {
   projectId: "mindcloud-8ccc6",
@@ -18,6 +18,13 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const functions = getFunctions(app);
+
+if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.search.includes('useEmulator=true')) {
+  console.log("Connecting to local Firebase Emulators...");
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099');
+  connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+}
 
 // Keep track of the active user session or sign in anonymously if none exists
 export function getFirebaseUid() {
@@ -55,6 +62,12 @@ export async function triggerGraphAnalysis(uid, query = 'אנא נתח את הג
   return result.data;
 }
 
+export async function verifyPasscode(passcode) {
+  const verifyFunc = httpsCallable(functions, 'verify_passcode');
+  const result = await verifyFunc({ passcode });
+  return result.data;
+}
+
 export { db, auth };
 
 // Fetch original insights from users/{uid}/insights/current
@@ -89,7 +102,8 @@ export async function fetchFirebaseEntries(uid) {
         topics: data.topics || [],
         open_threads: (data.openThreads || data.open_threads || []).map(t => typeof t === 'string' ? t : t.text || '')
       },
-      content: data.transcript || data.content || ''
+      content: data.transcript || data.content || '',
+      rawTimestamp: data.timestamp
     });
   });
   return entries;

@@ -27,6 +27,10 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
   const [selectedMoods, setSelectedMoods] = useState([]);
   const [minWeight, setMinWeight] = useState(1);
   const [visibleTypes, setVisibleTypes] = useState(['Concept', 'Person', 'Topic', 'Emotion']);
+  const [minDegree, setMinDegree] = useState(0);
+  const [minLinkWeight, setMinLinkWeight] = useState(1);
+  const [egoDepth, setEgoDepth] = useState(1);
+  const [selectedDateIndex, setSelectedDateIndex] = useState(0);
 
   const containerRef = useRef(null);
   const fgRef = useRef();
@@ -100,6 +104,36 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
     return Array.from(moods);
   }, [entries]);
 
+  const allDatesSorted = useMemo(() => {
+    const dates = entries
+      .map(e => e.frontmatter.date)
+      .filter(d => d && d !== 'תאריך לא ידוע')
+      .sort();
+    return Array.from(new Set(dates));
+  }, [entries]);
+
+  useEffect(() => {
+    if (allDatesSorted.length > 0) {
+      setSelectedDateIndex(allDatesSorted.length - 1);
+    }
+  }, [allDatesSorted]);
+
+  const rawNodeDegrees = useMemo(() => {
+    const degrees = {};
+    rawGraphData.nodes.forEach(n => { degrees[n.id] = 0; });
+    rawGraphData.links.forEach(l => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      if (degrees[s] !== undefined) degrees[s]++;
+      if (degrees[t] !== undefined) degrees[t]++;
+    });
+    return degrees;
+  }, [rawGraphData]);
+
+  const hasLinkWeight = useMemo(() => {
+    return rawGraphData.links.some(l => l.weight !== undefined || l.val !== undefined || l.strength !== undefined || l.value !== undefined);
+  }, [rawGraphData]);
+
   // Dynamic helper to identify node types
   const getNodeType = (node) => {
     const type = (node.type || '').toLowerCase();
@@ -161,7 +195,9 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
 
   // Apply filters to graph data
   const filteredGraphData = useMemo(() => {
-    // 1. Filter nodes by base filters (type, weight, topics, moods)
+    const maxDateStr = allDatesSorted[selectedDateIndex];
+
+    // 1. Filter nodes by base filters (type, weight, topics, moods, date range, degree)
     const baseFilteredNodes = rawGraphData.nodes.filter(node => {
       const type = getNodeType(node);
       
@@ -169,10 +205,21 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       if (!visibleTypes.includes(type)) return false;
 
       const nodeIdLower = node.id.toLowerCase();
-      const metadata = conceptMetadataMap[nodeIdLower] || { topics: new Set(), moods: new Set() };
+      const metadata = conceptMetadataMap[nodeIdLower] || { topics: new Set(), moods: new Set(), entries: [] };
 
       // Weight Filter
       if (node.weight < minWeight) return false;
+
+      // Degree Filter
+      const degree = rawNodeDegrees[node.id] || 0;
+      if (degree < minDegree) return false;
+
+      // Date Range Filter (timeline slider) - only filter if the user has moved the slider away from the maximum/latest date
+      if (allDatesSorted.length > 0 && maxDateStr && selectedDateIndex < allDatesSorted.length - 1) {
+        const nodeEntries = metadata.entries || [];
+        const hasEntryInVal = nodeEntries.some(e => e.date && e.date <= maxDateStr);
+        if (!hasEntryInVal) return false;
+      }
 
       // Topics Filter
       if (selectedTopics.length > 0) {
@@ -223,18 +270,29 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       finalActiveNodeIds = baseFilteredNodeIds;
     }
 
-    // 2.5 Ego Network filter - if a node is selected, keep only it and its neighbors
+    // 2.5 Ego Network filter - if a node is selected, keep only it and its neighbors up to egoDepth
     if (selectedNode) {
       const selectedId = selectedNode.id;
       const egoIds = new Set([selectedId]);
+      let currentLevel = new Set([selectedId]);
       
-      rawGraphData.links.forEach(link => {
-        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-        
-        if (sourceId === selectedId) egoIds.add(targetId);
-        if (targetId === selectedId) egoIds.add(sourceId);
-      });
+      for (let i = 0; i < egoDepth; i++) {
+        const nextLevel = new Set();
+        rawGraphData.links.forEach(link => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          
+          if (currentLevel.has(sourceId) && !egoIds.has(targetId)) {
+            nextLevel.add(targetId);
+            egoIds.add(targetId);
+          }
+          if (currentLevel.has(targetId) && !egoIds.has(sourceId)) {
+            nextLevel.add(sourceId);
+            egoIds.add(sourceId);
+          }
+        });
+        currentLevel = nextLevel;
+      }
 
       const intersectedIds = new Set();
       finalActiveNodeIds.forEach(id => {
@@ -261,6 +319,12 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
         
         if (!sourceMatches && !targetMatches) return false;
       }
+
+      // Link weight filter
+      if (hasLinkWeight) {
+        const w = link.weight || link.val || link.strength || link.value || 1;
+        if (w < minLinkWeight) return false;
+      }
       
       return finalActiveNodeIds.has(sourceId) && finalActiveNodeIds.has(targetId);
     });
@@ -269,7 +333,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       nodes: filteredNodes,
       links: filteredLinks
     };
-  }, [rawGraphData, searchQuery, selectedTopics, selectedMoods, minWeight, visibleTypes, conceptMetadataMap, selectedNode]);
+  }, [rawGraphData, searchQuery, selectedTopics, selectedMoods, minWeight, visibleTypes, conceptMetadataMap, selectedNode, minDegree, minLinkWeight, egoDepth, selectedDateIndex, allDatesSorted, rawNodeDegrees, hasLinkWeight]);
 
   // Helper to calculate node radius based on weight with high variance
   const getNodeRadius = (node) => {
@@ -351,6 +415,12 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
                 setSelectedMoods([]);
                 setMinWeight(1);
                 setVisibleTypes(['Concept', 'Person', 'Topic', 'Emotion']);
+                setMinDegree(0);
+                setMinLinkWeight(1);
+                setEgoDepth(1);
+                if (allDatesSorted.length > 0) {
+                  setSelectedDateIndex(allDatesSorted.length - 1);
+                }
               }}
               style={{
                 background: 'none',
@@ -426,6 +496,46 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
             </div>
           </div>
 
+          {/* Separation Depth Filter (Ego Depth) - visible when a node is selected */}
+          {selectedNode && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', backgroundColor: 'var(--accent-light)', padding: '10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+              <label style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', color: 'var(--accent-color)', fontWeight: 600 }}>
+                <span>דרגת מרחק מ-{selectedNode.name}:</span>
+                <strong>{egoDepth} {egoDepth === 1 ? 'דרגה' : 'דרגות'}</strong>
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="4"
+                step="1"
+                value={egoDepth}
+                onChange={(e) => setEgoDepth(parseInt(e.target.value))}
+                style={{ width: '100%', accentColor: 'var(--accent-color)' }}
+              />
+            </div>
+          )}
+
+          {/* Time range slider (Timeline Slider) */}
+          {allDatesSorted.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>הצג מידע מצטבר עד תאריך:</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                  <span>מ-{allDatesSorted[0]} עד:</span>
+                  <strong>{allDatesSorted[selectedDateIndex] || ''}</strong>
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max={allDatesSorted.length - 1}
+                  value={selectedDateIndex}
+                  onChange={(e) => setSelectedDateIndex(parseInt(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Weight Filter Slider */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
@@ -442,6 +552,42 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
               style={{ width: '100%' }}
             />
           </div>
+
+          {/* Node Degree Filter (Minimum connections) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+              <span>כמות קשרים מינימלית לצומת:</span>
+              <strong>{minDegree}</strong>
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="15"
+              step="1"
+              value={minDegree}
+              onChange={(e) => setMinDegree(parseInt(e.target.value))}
+              style={{ width: '100%' }}
+            />
+          </div>
+
+          {/* Connection Strength (Edge Weight) Filter - rendered conditionally if weight data is available */}
+          {hasLinkWeight && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+                <span>חוזק קשר מינימלי (משקל):</span>
+                <strong>{minLinkWeight}</strong>
+              </label>
+              <input
+                type="range"
+                min="1"
+                max="10"
+                step="1"
+                value={minLinkWeight}
+                onChange={(e) => setMinLinkWeight(parseInt(e.target.value))}
+                style={{ width: '100%' }}
+              />
+            </div>
+          )}
 
           {/* Topics Filter List */}
           {uniqueTopics.length > 0 && (
@@ -495,9 +641,9 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
                         padding: '3px 8px',
                         borderRadius: '12px',
                         border: '1px solid',
-                        borderColor: isSelected ? '#b83280' : 'var(--border-color)',
-                        backgroundColor: isSelected ? '#fbb6ce' : 'transparent',
-                        color: isSelected ? '#97266d' : 'var(--text-secondary)',
+                        borderColor: isSelected ? 'var(--accent-color)' : 'var(--border-color)',
+                        backgroundColor: isSelected ? 'var(--accent-light)' : 'transparent',
+                        color: isSelected ? 'var(--accent-color)' : 'var(--text-secondary)',
                         fontSize: '0.7rem',
                         cursor: 'pointer',
                         fontWeight: isSelected ? 600 : 400
@@ -511,28 +657,6 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
             </div>
           )}
 
-          {/* Detective Agent Button */}
-          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
-            <button
-              onClick={async () => {
-                try {
-                  alert('🕵️ סוכן הבלש חוקר את המפה שלך, זה עשוי לקחת כדקה...');
-                  const res = await triggerGraphAnalysis(uid);
-                  if (res.status === 'success') {
-                    // Temporarily using alert, a modal would be better in the future
-                    alert('תוצאות הבלש:\n\n' + res.result);
-                  } else {
-                    alert('שגיאה: ' + res.message);
-                  }
-                } catch (e) {
-                  alert('שגיאה בקריאה לבלש: ' + e.message);
-                }
-              }}
-              style={{ width: '100%', padding: '10px', backgroundColor: '#2d3748', color: 'white', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              <span>🕵️</span> הפעל סוכן בלש (On-Demand)
-            </button>
-          </div>
         </div>
 
         {/* Selected Node Details */}
@@ -671,15 +795,15 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
 
       {/* Main graph canvas */}
       <div className="graph-canvas-wrapper" ref={containerRef} style={{ position: 'relative' }}>
-        {/* Floating 2D/3D Toggle */}
+        {/* Floating Layout Selector */}
         {!loading && !error && (
-          <div style={{
-            position: 'absolute',
-            top: '16px',
-            right: '16px',
+          <div style={{ 
+            position: 'absolute', 
+            top: '16px', 
+            left: '16px', 
+            display: 'flex', 
+            gap: '8px', 
             zIndex: 10,
-            display: 'flex',
-            gap: '4px',
             backgroundColor: 'rgba(255, 255, 255, 0.85)',
             backdropFilter: 'blur(8px)',
             border: '1px solid var(--border-color)',
@@ -694,9 +818,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
                 padding: '6px 12px',
                 fontSize: '0.75rem',
                 fontWeight: 600,
-                border: 'none',
-                borderRadius: 'var(--radius-sm)',
-                backgroundColor: graphMode === '2d' ? '#8b5cf6' : 'transparent',
+                backgroundColor: graphMode === '2d' ? 'var(--accent-color)' : 'transparent',
                 color: graphMode === '2d' ? '#ffffff' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'
@@ -712,7 +834,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
                 fontWeight: 600,
                 border: 'none',
                 borderRadius: 'var(--radius-sm)',
-                backgroundColor: graphMode === '3d' ? '#8b5cf6' : 'transparent',
+                backgroundColor: graphMode === '3d' ? 'var(--accent-color)' : 'transparent',
                 color: graphMode === '3d' ? '#ffffff' : 'var(--text-secondary)',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease'

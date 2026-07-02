@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { fetchPersonalityAnalysis, triggerPersonalityAnalysis } from './firebase';
+import { fetchPersonalityAnalysis, triggerPersonalityAnalysis, fetchFirebaseEntries } from './firebase';
 import { 
   Brain, 
   TrendingUp, 
@@ -20,18 +20,32 @@ export default function PersonalityAnalysisView({ uid }) {
   const [error, setError] = useState(null);
   const [analysisData, setAnalysisData] = useState(null);
   const [activeAgentTab, setActiveAgentTab] = useState('clinical');
+  const [newEntriesCount, setNewEntriesCount] = useState(0);
 
   const loadAnalysis = async () => {
     setLoading(true);
     setError(null);
     try {
       const results = await fetchPersonalityAnalysis(uid);
+      let lastAnalysisTime = 0;
       if (results && results.length > 0) {
-        setAnalysisData(results[0]); // Take the most recent analysis
+        const latest = results[0];
+        setAnalysisData(latest);
+        if (latest.timestamp) {
+          lastAnalysisTime = latest.timestamp.toDate ? latest.timestamp.toDate().getTime() : new Date(latest.timestamp).getTime();
+        }
       } else {
-        // Fallback mock data if none exists yet in Firestore
         setAnalysisData(getMockData());
       }
+
+      // Dynamically fetch entries and calculate new entries count
+      const entries = await fetchFirebaseEntries(uid);
+      const newEntries = entries.filter(entry => {
+        if (!entry.rawTimestamp) return false;
+        const entryTime = entry.rawTimestamp.toDate ? entry.rawTimestamp.toDate().getTime() : new Date(entry.rawTimestamp).getTime();
+        return entryTime > lastAnalysisTime;
+      });
+      setNewEntriesCount(newEntries.length);
     } catch (err) {
       console.error(err);
       setError('שגיאה בטעינת ניתוח האישיות: ' + err.message);
@@ -103,8 +117,7 @@ export default function PersonalityAnalysisView({ uid }) {
     psychodynamic: { title: 'סוכן פסיכודינמי', icon: Compass, desc: 'ניתוח מנגנוני הגנה (הדחקה, השלכה), ארכיטיפים יונגיאניים ויחסי אובייקט' },
     cbt: { title: 'סוכן קוגניטיבי (CBT)', icon: Brain, desc: 'זיהוי עיוותי חשיבה (שחור-לבן, קטסטרופיזציה), אמונות ליבה ומשולש CBT' },
     behavioral: { title: 'ניתוח התנהגות (BCBA)', icon: TrendingUp, desc: 'ניתוח פונקציונלי של תגובות, זיהוי טריגרים וחיזוקים משמרים' },
-    humanistic: { title: 'הומניסטי-אקזיסטנציאלי', icon: User, desc: 'בחינת שאלות קיומיות, משמעות בחיים, בדידות ורמת מימוש עצמי' },
-    boardroom: { title: '👥 ישיבת סוכנים', icon: Sparkles, desc: 'דיון פתוח בין הסוכנים השונים המנתחים יחד את המצב הרגשי וההתנהגותי' }
+    humanistic: { title: 'הומניסטי-אקזיסטנציאלי', icon: User, desc: 'בחינת שאלות קיומיות, משמעות בחיים, בדידות ורמת מימוש עצמי' }
   };
 
   const activeAgent = agentMetaData[activeAgentTab];
@@ -121,7 +134,7 @@ export default function PersonalityAnalysisView({ uid }) {
       {
         agent: 'clinical',
         name: 'ד"ר מילר (קליני)',
-        avatarColor: '#48bb78',
+        avatarColor: '#00355f',
         message: `שלום עמיתיי. בואו נפתח את ישיבת הניתוח השבועית לגבי גיא. מבחינה קלינית, סקרתי את מצב הרוח והסימפטומים העיקריים. הנה עיקרי הדברים:
         
         "${clinicalReport.split('.')[0] || 'מצב הרוח מראה תנודתיות תגובתית לעומס.'}."`
@@ -129,7 +142,7 @@ export default function PersonalityAnalysisView({ uid }) {
       {
         agent: 'cbt',
         name: 'פרופ\' כהן (CBT)',
-        avatarColor: '#8b5cf6',
+        avatarColor: '#005f9e',
         message: `תודה, ד"ר מילר. זה מתקשר ישירות לעיוותי החשיבה שזיהיתי ברשומות. גיא נוטה להכללת יתר ולקריאת מחשבות שמגבירות את החרדה הזו. מניתוח קוגניטיבי עולה כי:
         
         "${cbtReport.split('.')[0] || 'עולה נטייה לפרפקציוניזם המזין את עצמו.'}."
@@ -139,7 +152,7 @@ export default function PersonalityAnalysisView({ uid }) {
       {
         agent: 'psychodynamic',
         name: 'ד"ר יונג (פסיכודינמי)',
-        avatarColor: '#f59e0b',
+        avatarColor: '#2b78b0',
         message: `אני מסכים עם הניתוח, אך עלינו להסתכל עמוק יותר. הפרפקציוניזם הזה הוא מנגנון הגנה קלאסי של רציונליזציה והעתקה. הוא מעתיק את כעסיו כלפי דמויות סמכות פנימה בצורת סופר-אגו נוקשה. כפי שכתבתי בדוח הפסיכודינמי:
         
         "${dynamicReport.split('.')[0] || 'מנגנוני ההגנה הפעילים הם רציונליזציה והשלכה.'}."
@@ -149,7 +162,7 @@ export default function PersonalityAnalysisView({ uid }) {
       {
         agent: 'behavioral',
         name: 'פרופ\' סקינר (BCBA)',
-        avatarColor: '#ef4444',
+        avatarColor: '#5e98c8',
         message: `עמיתיי, עם כל הכבוד לתהליכים הפנימיים, בואו נסתכל על ההתנהגות בפועל ועל מה שמשמר אותה. הטריגר המרכזי הוא קבלת ביקורת או חוסר ודאות במשימות.
         
         מבחינה התנהגותית:
@@ -160,7 +173,7 @@ export default function PersonalityAnalysisView({ uid }) {
       {
         agent: 'humanistic',
         name: 'ד"ר רוג\'רס (הומניסטי)',
-        avatarColor: '#ec4899',
+        avatarColor: '#708a9f',
         message: `תודה לכולם. אני רוצה להזכיר שמעבר לסימפטומים ולהתנהגויות, גיא מנסה למצוא משמעות קיומית ואותנטיות. הוא שואף למימוש עצמי אך חווה קונפליקט מול הצורך בריצוי חברתי. בדוח שלי הדגשתי כי:
         
         "${humanisticReport.split('.')[0] || 'קיימת שאיפה חזקה לאותנטיות המתנגשת עם צרכי ריצוי.'}."
@@ -217,7 +230,7 @@ export default function PersonalityAnalysisView({ uid }) {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
         <div>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <Brain style={{ color: '#8b5cf6' }} />
+            <Brain style={{ color: 'var(--accent-color)' }} />
             ניתוח אישיות רב-סוכני (MAS)
           </h1>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -232,9 +245,9 @@ export default function PersonalityAnalysisView({ uid }) {
             <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>רשומות מאז הניתוח האחרון</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
               <div style={{ width: '120px', height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min((new_entries_since_last_analysis / 30) * 100, 100)}%`, height: '100%', backgroundColor: '#8b5cf6' }} />
+                <div style={{ width: `${Math.min((newEntriesCount / 30) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-color)' }} />
               </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{new_entries_since_last_analysis} / 30</span>
+              <span style={{ fontSize: '0.75rem', fontWeight: 700, direction: 'ltr', display: 'inline-block' }}>{newEntriesCount} / 30</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -244,8 +257,8 @@ export default function PersonalityAnalysisView({ uid }) {
               disabled={isAnalyzing}
               style={{ 
                 backgroundColor: 'transparent', 
-                color: '#8b5cf6', 
-                border: '1px solid #8b5cf6', 
+                color: 'var(--accent-color)', 
+                border: '1px solid var(--accent-color)', 
                 borderRadius: 'var(--radius-md)', 
                 padding: '8px 14px', 
                 fontSize: '0.8rem', 
@@ -267,7 +280,7 @@ export default function PersonalityAnalysisView({ uid }) {
               onClick={() => handleTriggerAnalysis(true)} 
               disabled={isAnalyzing}
               style={{ 
-                backgroundColor: '#8b5cf6', 
+                backgroundColor: 'var(--accent-color)', 
                 color: 'white', 
                 border: 'none', 
                 borderRadius: 'var(--radius-md)', 
@@ -301,10 +314,10 @@ export default function PersonalityAnalysisView({ uid }) {
           
           {/* Executive Summary */}
           <section className="analysis-card" style={{ backgroundColor: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', boxShadow: 'var(--shadow-sm)' }}>
-            <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Sparkles size={18} style={{ color: '#eab308' }} />
-              סיכום אינטגרטיבי (Orchestrator)
-            </h2>
+             <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+               <Sparkles size={18} style={{ color: 'var(--accent-color)' }} />
+               סיכום אינטגרטיבי (Orchestrator)
+             </h2>
             <div style={{ fontSize: '0.9rem', lineHeight: '1.6', color: 'var(--text-secondary)', whiteSpace: 'pre-line' }}>
               {executive_summary}
             </div>
@@ -330,12 +343,12 @@ export default function PersonalityAnalysisView({ uid }) {
                       padding: '8px 12px',
                       border: 'none',
                       background: isActive ? 'var(--accent-light)' : 'transparent',
-                      color: isActive ? '#8b5cf6' : 'var(--text-secondary)',
+                      color: isActive ? 'var(--accent-color)' : 'var(--text-secondary)',
                       borderRadius: 'var(--radius-md)',
                       fontSize: '0.85rem',
                       fontWeight: isActive ? 600 : 400,
                       cursor: 'pointer',
-                      borderBottom: isActive ? '2px solid #8b5cf6' : '2px solid transparent',
+                      borderBottom: isActive ? '2px solid var(--accent-color)' : '2px solid transparent',
                       whiteSpace: 'nowrap'
                     }}
                   >

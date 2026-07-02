@@ -48,15 +48,15 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
     if (!mood) return 'rgba(148, 163, 184, 0.1)';
     const m = mood.toLowerCase();
     if (m.includes('שמח') || m.includes('טוב') || m.includes('אהב') || m.includes('רוגע') || m.includes('חיובי') || m.includes('joy') || m.includes('happy') || m.includes('calm') || m.includes('love') || m.includes('peace') || m.includes('בטוח')) {
-      return '#22c55e'; // Green
+      return '#005f9e'; // Medium Blue
     }
     if (m.includes('עצב') || m.includes('בדידות') || m.includes('דאגה') || m.includes('ספק') || m.includes('sad') || m.includes('worr') || m.includes('lonel')) {
-      return '#3b82f6'; // Blue
+      return '#2b78b0'; // Steel Blue
     }
     if (m.includes('לחץ') || m.includes('חרד') || m.includes('עומס') || m.includes('מתח') || m.includes('תסכול') || m.includes('כעס') || m.includes('פחד') || m.includes('stress') || m.includes('anxiety') || m.includes('frust') || m.includes('angr') || m.includes('fear')) {
-      return '#ef4444'; // Red
+      return '#00355f'; // Primary Blue
     }
-    return '#f59e0b'; // Amber (neutral/other)
+    return '#708a9f'; // Blue-Gray (neutral/other)
   };
 
   const formatDateString = (year, month, day) => {
@@ -181,7 +181,80 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
   return (
     <div style={{ display: 'flex', flexGrow: 1, height: '100%', overflow: 'hidden' }}>
       
-      {/* 1. Middle Column: Timeline Pane */}
+      {/* 1. Middle Column: Reader Pane (now in the center) */}
+      <main className="reader-pane">
+        {selectedEntry ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
+            {/* Header / Date */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={18} style={{ color: 'var(--text-muted)' }} />
+                <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+                  {selectedEntry.frontmatter.date}
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {selectedEntry.frontmatter.topics && selectedEntry.frontmatter.topics.map((topic, i) => (
+                  <span 
+                    key={i} 
+                    style={{ 
+                      fontSize: '0.75rem', 
+                      backgroundColor: 'var(--panel-bg)', 
+                      border: '1px solid var(--border-color)', 
+                      borderRadius: 'var(--radius-sm)', 
+                      padding: '4px 8px',
+                      color: 'var(--text-secondary)'
+                    }}
+                  >
+                    #{topic}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Entry Content Body */}
+            <article style={{ 
+              fontSize: '1rem', 
+              lineHeight: '1.75', 
+              color: 'var(--text-secondary)', 
+              whiteSpace: 'pre-wrap', 
+              fontFamily: 'var(--font-sans)'
+            }}>
+              {selectedEntry.content}
+            </article>
+
+            {/* Open Threads / Actions */}
+            {selectedEntry.frontmatter.open_threads && selectedEntry.frontmatter.open_threads.length > 0 && (
+              <div style={{ 
+                marginTop: '16px', 
+                backgroundColor: 'var(--panel-bg)', 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 'var(--radius-lg)', 
+                padding: '16px' 
+              }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
+                  נושאים פתוחים / משימות:
+                </div>
+                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {selectedEntry.frontmatter.open_threads.map((thread, idx) => (
+                    <li key={idx} style={{ display: 'flex', gap: '8px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>•</span>
+                      {thread}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px' }}>
+            <BookOpen size={48} style={{ color: 'var(--border-color)' }} />
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>בחר רשומה מציר הזמן כדי לצפות בפרטים ובקשרים שלה</div>
+          </div>
+        )}
+      </main>
+
+      {/* 2. Left Column: Timeline Pane */}
       <aside className="timeline-pane">
         {/* Header Section */}
         <div style={{ 
@@ -476,79 +549,6 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
           )}
         </div>
       </aside>
-
-      {/* 2. Left Column: Reader Pane */}
-      <main className="reader-pane">
-        {selectedEntry ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
-            {/* Header / Date */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calendar size={18} style={{ color: 'var(--text-muted)' }} />
-                <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
-                  {selectedEntry.frontmatter.date}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {selectedEntry.frontmatter.topics && selectedEntry.frontmatter.topics.map((topic, i) => (
-                  <span 
-                    key={i} 
-                    style={{ 
-                      fontSize: '0.75rem', 
-                      backgroundColor: 'var(--panel-bg)', 
-                      border: '1px solid var(--border-color)', 
-                      borderRadius: 'var(--radius-sm)', 
-                      padding: '4px 8px',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    #{topic}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Entry Content Body */}
-            <article style={{ 
-              fontSize: '1rem', 
-              lineHeight: '1.75', 
-              color: 'var(--text-secondary)', 
-              whiteSpace: 'pre-wrap', 
-              fontFamily: 'var(--font-sans)'
-            }}>
-              {selectedEntry.content}
-            </article>
-
-            {/* Open Threads / Actions */}
-            {selectedEntry.frontmatter.open_threads && selectedEntry.frontmatter.open_threads.length > 0 && (
-              <div style={{ 
-                marginTop: '16px', 
-                backgroundColor: 'var(--panel-bg)', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: 'var(--radius-lg)', 
-                padding: '16px' 
-              }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  נושאים פתוחים / משימות:
-                </div>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  {selectedEntry.frontmatter.open_threads.map((thread, idx) => (
-                    <li key={idx} style={{ display: 'flex', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>•</span>
-                      {thread}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px' }}>
-            <BookOpen size={48} style={{ color: 'var(--border-color)' }} />
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>בחר רשומה מציר הזמן כדי לצפות בפרטים ובקשרים שלה</div>
-          </div>
-        )}
-      </main>
     </div>
   );
 }

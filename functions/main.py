@@ -437,6 +437,18 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
 def dummy_force_redeploy(req: https_fn.CallableRequest) -> dict:
     return {"status": "ok"}
 
+@https_fn.on_call()
+def verify_passcode(req: https_fn.CallableRequest) -> dict:
+    """
+    Validates the passcode on the server side.
+    """
+    passcode = req.data.get('passcode')
+    if passcode == "270107":
+        return {"status": "success", "token": "session_approved_270107"}
+    else:
+        return {"status": "error", "message": "קוד גישה שגוי. נסה שוב."}
+
+
 DETECTIVE_SYSTEM_PROMPT = """You are an expert Psychological Detective Agent.
 Your task is to analyze the user's complete knowledge graph (nodes and edges) and provide deep insights, or answer their specific question based on the graph.
 Focus on:

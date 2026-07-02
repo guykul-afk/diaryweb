@@ -161,22 +161,22 @@ export default function InsightsView({ uid }) {
         flexShrink: 0
       }}>
         <div style={{ marginBottom: '16px', padding: '0 8px' }}>
-          <h2 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
-            <Sparkles size={20} style={{ color: '#8b5cf6' }} />
-            תובנות המערכת
-          </h2>
+          <h1 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <Sparkles size={20} style={{ color: 'var(--accent-color)' }} />
+            תובנות והמלצות פסיכולוגיות
+          </h1>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
             ריכוז כל תובנות המערכת המקורית ומדריכי ההפעלה האישיים.
           </p>
         </div>
 
         {[
-          { id: 'major', label: 'תובנות מפתח', icon: Lightbulb, color: '#10b981' },
-          { id: 'manual', label: 'מדריך הפעלה אישי', icon: BookOpen, color: '#8b5cf6' },
-          { id: 'history', label: 'היסטוריית המלצות', icon: History, color: '#3b82f6' },
-          { id: 'reflections', label: 'עבודה בצל ורפלקציה', icon: Brain, color: '#f59e0b' },
-          { id: 'categorical', label: 'תובנות לפי תחומים', icon: Activity, color: '#ec4899' },
-          { id: 'raw_insights', label: 'תובנות גולמיות מהיומן', icon: MessageSquare, color: '#06b6d4' }
+          { id: 'major', label: 'תובנות מפתח', icon: Lightbulb, color: '#3b82f6' },
+          { id: 'manual', label: 'מדריך הפעלה אישי', icon: BookOpen, color: '#2563eb' },
+          { id: 'history', label: 'היסטוריית המלצות', icon: History, color: '#1d4ed8' },
+          { id: 'reflections', label: 'עבודה בצל ורפלקציה', icon: Brain, color: '#1e40af' },
+          { id: 'categorical', label: 'תובנות לפי תחומים', icon: Activity, color: '#475569' },
+          { id: 'raw_insights', label: 'תובנות גולמיות מהיומן', icon: MessageSquare, color: '#64748b' }
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -298,7 +298,7 @@ export default function InsightsView({ uid }) {
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '12px',
-                        borderRight: `4px solid ${idx % 2 === 0 ? '#8b5cf6' : '#10b981'}`
+                        borderRight: `4px solid ${idx % 2 === 0 ? 'var(--accent-color)' : '#64748b'}`
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -353,7 +353,7 @@ export default function InsightsView({ uid }) {
                       boxShadow: 'var(--shadow-sm)'
                     }}
                   >
-                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#8b5cf6', marginBottom: '16px', borderBottom: '1px solid var(--accent-light)', paddingBottom: '10px' }}>
+                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '16px', borderBottom: '1px solid var(--accent-light)', paddingBottom: '10px' }}>
                       {section.title}
                     </h4>
                     <ul style={{ paddingRight: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
