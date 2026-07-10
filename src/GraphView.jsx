@@ -1,67 +1,163 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import ForceGraph3D from 'react-force-graph-3d';
-import { Info, Search, Filter, Hash, Heart } from 'lucide-react';
-import { fetchFirebaseGraph, fetchFirebaseEntries, triggerGraphAnalysis } from './firebase';
+import { Info, Search, Filter, Hash, Heart, Brain, RefreshCw, Sparkles } from 'lucide-react';
+import { triggerGraphAnalysis, explainGraphLink } from './firebase';
 import { forceCollide } from 'd3-force';
+import { useDiaryData } from './hooks/useDiaryData';
 
-export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
-  const [rawGraphData, setRawGraphData] = useState({ nodes: [], links: [] });
-  const [entries, setEntries] = useState([]);
+export default function GraphView({ onNavigateToEntry }) {
+  const {
+    rawGraphData,
+    loading,
+    error,
+    uid,
+    uniqueTopics,
+    uniqueMoods,
+    allDatesSorted,
+    conceptMetadataMap,
+    getNodeType,
+    rawNodeDegrees,
+    searchQuery, setSearchQuery,
+    selectedTopics, setSelectedTopics,
+    selectedMoods, setSelectedMoods,
+    minWeight, setMinWeight,
+    visibleTypes, setVisibleTypes,
+    minDegree, setMinDegree,
+    minLinkWeight, setMinLinkWeight,
+    limitEntities, setLimitEntities,
+    selectedDateIndex, setSelectedDateIndex,
+    filteredNodes,
+    filteredLinks
+  } = useDiaryData();
+
   const [selectedNode, setSelectedNode] = useState(null);
   const [selectedLink, setSelectedLink] = useState(null);
   const [graphMode, setGraphMode] = useState('2d'); // '2d' or '3d'
-
-  const getLinkColor = (link) => {
-    if (selectedLink && link === selectedLink) return '#ff6b6b';
-    if (link.sentimentScore > 0) return 'rgba(72, 187, 120, 0.6)';
-    if (link.sentimentScore < 0) return 'rgba(229, 62, 62, 0.6)';
-    return '#E0E0E0';
-  };
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  
-  // Filters State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTopics, setSelectedTopics] = useState([]);
-  const [selectedMoods, setSelectedMoods] = useState([]);
-  const [minWeight, setMinWeight] = useState(1);
-  const [visibleTypes, setVisibleTypes] = useState(['Concept', 'Person', 'Topic', 'Emotion']);
-  const [minDegree, setMinDegree] = useState(0);
-  const [minLinkWeight, setMinLinkWeight] = useState(1);
   const [egoDepth, setEgoDepth] = useState(1);
-  const [selectedDateIndex, setSelectedDateIndex] = useState(0);
+
+  // AI Graph Analysis States
+  const [analyzingGraph, setAnalyzingGraph] = useState(false);
+  const [graphAnalysisResult, setGraphAnalysisResult] = useState(null);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+
+  // AI Link Explanation States
+  const [explainingLink, setExplainingLink] = useState(false);
+  const [linkExplanation, setLinkExplanation] = useState(null);
+  const [lastExplainedLink, setLastExplainedLink] = useState(null);
+
+  // Fetch link explanation when selectedLink changes
+  useEffect(() => {
+    if (!selectedLink || !uid) {
+      setLinkExplanation(null);
+      setLastExplainedLink(null);
+      return;
+    }
+    
+    const sourceId = typeof selectedLink.source === 'object' ? selectedLink.source.id : selectedLink.source;
+    const targetId = typeof selectedLink.target === 'object' ? selectedLink.target.id : selectedLink.target;
+    const relation = selectedLink.label || selectedLink.relation || '';
+    
+    const linkKey = `${sourceId}-${targetId}-${relation}`;
+    if (lastExplainedLink === linkKey) return;
+    
+    const fetchExplanation = async () => {
+      setExplainingLink(true);
+      setLinkExplanation(null);
+      try {
+        const response = await explainGraphLink(uid, sourceId, targetId, relation);
+        if (response.status === 'success') {
+          setLinkExplanation(response.explanation);
+          setLastExplainedLink(linkKey);
+        } else {
+          setLinkExplanation('שגיאה בטעינת ההסבר מהשרת.');
+        }
+      } catch (err) {
+        console.error(err);
+        setLinkExplanation('לא ניתן היה לטעון הסבר קשר באמצעות AI.');
+      } finally {
+        setExplainingLink(false);
+      }
+    };
+    
+    fetchExplanation();
+  }, [selectedLink, uid]);
+
+  const handleAnalyzeGraph = async () => {
+    if (analyzingGraph || !uid) return;
+    setAnalyzingGraph(true);
+    setGraphAnalysisResult(null);
+    setShowAnalysisModal(true);
+    try {
+      const response = await triggerGraphAnalysis(uid);
+      if (response.status === 'success') {
+        setGraphAnalysisResult(response.result + '\n\n*(ניתוח זה נשמר אוטומטית במאגר הידע)*');
+      } else {
+        setGraphAnalysisResult('שגיאה בקבלת הניתוח מהשרת.');
+      }
+    } catch (err) {
+      console.error(err);
+      setGraphAnalysisResult('לא ניתן היה להריץ ניתוח גרף באמצעות AI.');
+    } finally {
+      setAnalyzingGraph(false);
+    }
+  };
+
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    return text.split('\n').map((line, idx) => {
+      if (line.startsWith('### ')) {
+        return <h5 key={idx} style={{ fontSize: '1rem', fontWeight: 700, margin: '14px 0 8px 0', color: 'var(--text-primary)' }}>{line.replace('### ', '')}</h5>;
+      }
+      if (line.startsWith('## ')) {
+        return <h4 key={idx} style={{ fontSize: '1.15rem', fontWeight: 700, margin: '16px 0 10px 0', color: 'var(--accent-color)' }}>{line.replace('## ', '')}</h4>;
+      }
+      if (line.startsWith('# ')) {
+        return <h3 key={idx} style={{ fontSize: '1.3rem', fontWeight: 700, margin: '18px 0 12px 0', color: 'var(--text-primary)' }}>{line.replace('# ', '')}</h3>;
+      }
+      
+      let isListItem = false;
+      let listContent = line;
+      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+        isListItem = true;
+        listContent = line.trim().substring(2);
+      }
+      
+      const parts = [];
+      let lastIndex = 0;
+      const regex = /\*\*(.*?)\*\*/g;
+      let match;
+      while ((match = regex.exec(listContent)) !== null) {
+        if (match.index > lastIndex) {
+          parts.push(listContent.substring(lastIndex, match.index));
+        }
+        parts.push(<strong key={match.index}>{match[1]}</strong>);
+        lastIndex = regex.lastIndex;
+      }
+      if (lastIndex < listContent.length) {
+        parts.push(listContent.substring(lastIndex));
+      }
+      
+      if (isListItem) {
+        return (
+          <li key={idx} style={{ marginRight: '16px', marginBottom: '6px', fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', listStyleType: 'disc' }}>
+            {parts}
+          </li>
+        );
+      }
+      
+      return (
+        <p key={idx} style={{ margin: '0 0 10px 0', fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+          {parts}
+        </p>
+      );
+    });
+  };
 
   const containerRef = useRef(null);
   const fgRef = useRef();
   const [dimensions, setDimensions] = useState({ width: 600, height: 600 });
 
-  const fetchData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!uid) {
-        throw new Error('אנא הגדר מזהה משתמש (UID) כדי להתחבר לפיירבייס.');
-      }
-      const [graphData, entriesData] = await Promise.all([
-        fetchFirebaseGraph(uid),
-        fetchFirebaseEntries(uid)
-      ]);
-      
-      setRawGraphData(graphData);
-      setEntries(entriesData);
-    } catch (err) {
-      setError(err.message);
-      setRawGraphData({ nodes: [], links: [] });
-      setEntries([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [dataSource, uid]);
 
   // Handle resizing of the graph canvas
   useEffect(() => {
@@ -85,232 +181,15 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
     }
   }, [loading]);
 
-  // Extract unique topics and moods for filter options
-  const uniqueTopics = useMemo(() => {
-    const topics = new Set();
-    entries.forEach(e => {
-      if (e.frontmatter.topics) {
-        e.frontmatter.topics.forEach(t => topics.add(t));
-      }
-    });
-    return Array.from(topics);
-  }, [entries]);
-
-  const uniqueMoods = useMemo(() => {
-    const moods = new Set();
-    entries.forEach(e => {
-      if (e.frontmatter.mood) moods.add(e.frontmatter.mood);
-    });
-    return Array.from(moods);
-  }, [entries]);
-
-  const allDatesSorted = useMemo(() => {
-    const dates = entries
-      .map(e => e.frontmatter.date)
-      .filter(d => d && d !== 'תאריך לא ידוע')
-      .sort();
-    return Array.from(new Set(dates));
-  }, [entries]);
-
-  useEffect(() => {
-    if (allDatesSorted.length > 0) {
-      setSelectedDateIndex(allDatesSorted.length - 1);
-    }
-  }, [allDatesSorted]);
-
-  const rawNodeDegrees = useMemo(() => {
-    const degrees = {};
-    rawGraphData.nodes.forEach(n => { degrees[n.id] = 0; });
-    rawGraphData.links.forEach(l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source;
-      const t = typeof l.target === 'object' ? l.target.id : l.target;
-      if (degrees[s] !== undefined) degrees[s]++;
-      if (degrees[t] !== undefined) degrees[t]++;
-    });
-    return degrees;
-  }, [rawGraphData]);
-
   const hasLinkWeight = useMemo(() => {
     return rawGraphData.links.some(l => l.weight !== undefined || l.val !== undefined || l.strength !== undefined || l.value !== undefined);
   }, [rawGraphData]);
 
-  // Dynamic helper to identify node types
-  const getNodeType = (node) => {
-    const type = (node.type || '').toLowerCase();
-    if (type === 'person' || type === 'people' || type === 'name' || node.id.match(/^[A-Z][a-z]+ [A-Z][a-z]+$/)) return 'Person';
-    if (type === 'emotion' || type === 'mood' || type === 'feeling') return 'Emotion';
-    if (type === 'topic' || type === 'hashtag') return 'Topic';
+  // Ego Network filter - applied locally over hook's filtered data
+  const finalGraphData = useMemo(() => {
+    let nodes = filteredNodes;
+    let links = filteredLinks;
 
-    const nodeIdLower = node.id.toLowerCase();
-    const nodeLabelLower = (node.name || node.id).toLowerCase();
-    const HEBREW_PERSON_NAMES = ['גיא', 'טלי', 'גיל', 'איתן', 'יוגב', 'שמואל', 'נוה', 'נווה', 'אבא', 'אמא', 'אימא', 'אסף', 'ילדים', 'הילדים', 'בן של'];
-    const HEBREW_EMOTION_KEYWORDS = ['לחץ', 'חרדה', 'עצב', 'כעס', 'שמחה', 'פחד', 'דאגה', 'אהבה', 'תסכול', 'עומס', 'מתח', 'רגש'];
-
-    if (HEBREW_PERSON_NAMES.some(name => nodeIdLower.includes(name) || nodeLabelLower.includes(name))) return 'Person';
-    if (HEBREW_EMOTION_KEYWORDS.some(keyword => nodeIdLower.includes(keyword) || nodeLabelLower.includes(keyword))) return 'Emotion';
-    
-    // Check if node is listed in entry topics or moods
-    if (uniqueTopics.some(t => t.toLowerCase() === node.id.toLowerCase())) return 'Topic';
-    if (uniqueMoods.some(m => m.toLowerCase() === node.id.toLowerCase())) return 'Emotion';
-    
-    return 'Concept';
-  };
-
-  const conceptMetadataMap = useMemo(() => {
-    const map = {};
-    
-    rawGraphData.nodes.forEach(node => {
-      map[node.id.toLowerCase()] = {
-        topics: new Set(),
-        moods: new Set(),
-        entries: []
-      };
-    });
-
-    // Helper for entry timestamps
-    const entryTimeMsList = entries.map(entry => {
-      let timeMs = null;
-      if (entry.rawTimestamp) {
-        timeMs = entry.rawTimestamp.toDate 
-          ? entry.rawTimestamp.toDate().getTime() 
-          : new Date(entry.rawTimestamp).getTime();
-      }
-      return { entry, timeMs };
-    });
-
-    // 1. Text-based mention mapping (fallback/supplementary)
-    entries.forEach(entry => {
-      const entryText = (entry.content || '').toLowerCase();
-      const entryTopics = entry.frontmatter.topics || [];
-      const entryMood = entry.frontmatter.mood || 'ניטרלי';
-
-      rawGraphData.nodes.forEach(node => {
-        const nodeIdLower = node.id.toLowerCase();
-        const nodeNameLower = node.name.toLowerCase();
-        
-        const isMentioned = entryText.includes(nodeNameLower) || 
-                            entryText.includes(nodeIdLower);
-
-        if (isMentioned) {
-          entryTopics.forEach(t => map[nodeIdLower]?.topics.add(t));
-          map[nodeIdLower]?.moods.add(entryMood);
-          if (!map[nodeIdLower]?.entries.some(e => e.id === entry.id)) {
-            map[nodeIdLower]?.entries.push({ id: entry.id, date: entry.frontmatter.date });
-          }
-        }
-      });
-    });
-
-    // 2. Edge timestamp based mapping
-    rawGraphData.links.forEach(link => {
-      if (!link.timestamp) return;
-      const linkTime = Number(link.timestamp);
-      
-      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-      
-      const matched = entryTimeMsList.find(item => item.timeMs && Math.abs(item.timeMs - linkTime) < 5000);
-      if (matched) {
-        const entry = matched.entry;
-        const entryTopics = entry.frontmatter.topics || [];
-        const entryMood = entry.frontmatter.mood || 'ניטרלי';
-
-        [sourceId, targetId].forEach(nodeId => {
-          if (!nodeId) return;
-          const nodeIdLower = nodeId.toLowerCase();
-          const nodeMeta = map[nodeIdLower];
-          if (nodeMeta) {
-            entryTopics.forEach(t => nodeMeta.topics.add(t));
-            nodeMeta.moods.add(entryMood);
-            if (!nodeMeta.entries.some(e => e.id === entry.id)) {
-              nodeMeta.entries.push({ id: entry.id, date: entry.frontmatter.date });
-            }
-          }
-        });
-      }
-    });
-
-    return map;
-  }, [rawGraphData.nodes, rawGraphData.links, entries]);
-
-  // Apply filters to graph data
-  const filteredGraphData = useMemo(() => {
-    const maxDateStr = allDatesSorted[selectedDateIndex];
-
-    // 1. Filter nodes by base filters (type, weight, topics, moods, date range, degree)
-    const baseFilteredNodes = rawGraphData.nodes.filter(node => {
-      const type = getNodeType(node);
-      
-      // Node Type Filter
-      if (!visibleTypes.includes(type)) return false;
-
-      const nodeIdLower = node.id.toLowerCase();
-      const metadata = conceptMetadataMap[nodeIdLower] || { topics: new Set(), moods: new Set(), entries: [] };
-
-      // Weight Filter
-      if (node.weight < minWeight) return false;
-
-      // Degree Filter
-      const degree = rawNodeDegrees[node.id] || 0;
-      if (degree < minDegree) return false;
-
-      // Date Range Filter (timeline slider) - only filter if the user has moved the slider away from the maximum/latest date
-      if (allDatesSorted.length > 0 && maxDateStr && selectedDateIndex < allDatesSorted.length - 1) {
-        const nodeEntries = metadata.entries || [];
-        const hasEntryInVal = nodeEntries.some(e => e.date && e.date <= maxDateStr);
-        if (!hasEntryInVal) return false;
-      }
-
-      // Topics Filter
-      if (selectedTopics.length > 0) {
-        const hasMatchingTopic = selectedTopics.some(t => metadata.topics.has(t));
-        if (!hasMatchingTopic) return false;
-      }
-
-      // Moods Filter
-      if (selectedMoods.length > 0) {
-        const hasMatchingMood = selectedMoods.some(m => metadata.moods.has(m));
-        if (!hasMatchingMood) return false;
-      }
-
-      return true;
-    });
-
-    const baseFilteredNodeIds = new Set(baseFilteredNodes.map(n => n.id));
-    let finalActiveNodeIds = new Set();
-
-    // 2. If searching, find primary matches and also keep their direct neighbors
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      const primaryMatchingNodes = baseFilteredNodes.filter(node => 
-        node.name.toLowerCase().includes(query) || 
-        (node.content && node.content.toLowerCase().includes(query))
-      );
-      
-      const primaryIds = new Set(primaryMatchingNodes.map(n => n.id));
-      
-      // Look at all links to add direct neighbors of primary nodes
-      rawGraphData.links.forEach(link => {
-        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-        
-        if (primaryIds.has(sourceId) && baseFilteredNodeIds.has(targetId)) {
-          finalActiveNodeIds.add(sourceId);
-          finalActiveNodeIds.add(targetId);
-        }
-        if (primaryIds.has(targetId) && baseFilteredNodeIds.has(sourceId)) {
-          finalActiveNodeIds.add(sourceId);
-          finalActiveNodeIds.add(targetId);
-        }
-      });
-
-      // Always include matching primary nodes even if they have no links
-      primaryIds.forEach(id => finalActiveNodeIds.add(id));
-    } else {
-      finalActiveNodeIds = baseFilteredNodeIds;
-    }
-
-    // 2.5 Ego Network filter - if a node is selected, keep only it and its neighbors up to egoDepth
     if (selectedNode) {
       const selectedId = selectedNode.id;
       const egoIds = new Set([selectedId]);
@@ -318,7 +197,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       
       for (let i = 0; i < egoDepth; i++) {
         const nextLevel = new Set();
-        rawGraphData.links.forEach(link => {
+        filteredLinks.forEach(link => {
           const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
           const targetId = typeof link.target === 'object' ? link.target.id : link.target;
           
@@ -334,46 +213,26 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
         currentLevel = nextLevel;
       }
 
-      const intersectedIds = new Set();
-      finalActiveNodeIds.forEach(id => {
-        if (egoIds.has(id)) intersectedIds.add(id);
+      nodes = filteredNodes.filter(node => egoIds.has(node.id));
+      links = filteredLinks.filter(link => {
+        const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+        const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+        return egoIds.has(sourceId) && egoIds.has(targetId);
       });
-      finalActiveNodeIds = intersectedIds;
     }
 
-    const filteredNodes = rawGraphData.nodes.filter(node => finalActiveNodeIds.has(node.id));
-
-    // 3. Filter links (keep links between active nodes)
-    const filteredLinks = rawGraphData.links.filter(link => {
-      const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-      const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-      
-      // If searching, only keep links where at least one endpoint is a primary search match
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase().trim();
-        const sourceNode = rawGraphData.nodes.find(n => n.id === sourceId);
-        const targetNode = rawGraphData.nodes.find(n => n.id === targetId);
-        
-        const sourceMatches = sourceNode && (sourceNode.name.toLowerCase().includes(query) || (sourceNode.content && sourceNode.content.toLowerCase().includes(query)));
-        const targetMatches = targetNode && (targetNode.name.toLowerCase().includes(query) || (targetNode.content && targetNode.content.toLowerCase().includes(query)));
-        
-        if (!sourceMatches && !targetMatches) return false;
-      }
-
-      // Link weight filter
-      if (hasLinkWeight) {
-        const w = link.weight || link.val || link.strength || link.value || 1;
-        if (w < minLinkWeight) return false;
-      }
-      
-      return finalActiveNodeIds.has(sourceId) && finalActiveNodeIds.has(targetId);
-    });
-
     return {
-      nodes: filteredNodes,
-      links: filteredLinks
+      nodes,
+      links
     };
-  }, [rawGraphData, searchQuery, selectedTopics, selectedMoods, minWeight, visibleTypes, conceptMetadataMap, selectedNode, minDegree, minLinkWeight, egoDepth, selectedDateIndex, allDatesSorted, rawNodeDegrees, hasLinkWeight]);
+  }, [filteredNodes, filteredLinks, selectedNode, egoDepth]);
+
+  const getLinkColor = (link) => {
+    if (selectedLink && link === selectedLink) return '#ff6b6b';
+    if (link.sentimentScore > 0) return 'rgba(72, 187, 120, 0.6)';
+    if (link.sentimentScore < 0) return 'rgba(229, 62, 62, 0.6)';
+    return '#E0E0E0';
+  };
 
   // Helper to calculate node radius based on weight with high variance
   const getNodeRadius = (node) => {
@@ -392,7 +251,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
       // Dynamic collision detection to match the new size variance
       fgRef.current.d3Force('collision', forceCollide(node => getNodeRadius(node) + 20));
     }
-  }, [filteredGraphData]);
+  }, [finalGraphData]);
 
   const handleNodeClick = (node) => {
     const nodeIdLower = node.id.toLowerCase();
@@ -441,6 +300,38 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
     <div className="graph-container">
       {/* Sidebar Controls & Inspector */}
       <div className="graph-sidebar">
+        {/* AI Detective Analysis Trigger */}
+        <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button
+            onClick={handleAnalyzeGraph}
+            disabled={analyzingGraph}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 14px',
+              backgroundColor: 'var(--accent-color)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+              transition: 'background-color 0.2s'
+            }}
+          >
+            {analyzingGraph ? (
+              <RefreshCw className="spin" size={16} />
+            ) : (
+              <Brain size={16} />
+            )}
+            <span>ניתוח פערים ותבניות בגרף (AI)</span>
+          </button>
+        </div>
+
         {/* Filters Panel */}
         <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -610,6 +501,23 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
             />
           </div>
 
+          {/* Entity Limit Slider */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '0.8rem', display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
+              <span>כמות ישויות מקסימלית להצגה:</span>
+              <strong>{limitEntities}</strong>
+            </label>
+            <input
+              type="range"
+              min="5"
+              max="150"
+              step="5"
+              value={limitEntities}
+              onChange={(e) => setLimitEntities(parseInt(e.target.value))}
+              style={{ width: '100%', accentColor: 'var(--accent-color)' }}
+            />
+          </div>
+
           {/* Connection Strength (Edge Weight) Filter - rendered conditionally if weight data is available */}
           {hasLinkWeight && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -775,7 +683,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
             <div>
               <h4 style={{ fontSize: '0.8rem', fontWeight: 700, marginBottom: '4px', color: 'var(--text-secondary)' }}>קשרים בגרף:</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '80px', overflowY: 'auto' }}>
-                {filteredGraphData.links
+                {finalGraphData.links
                   .filter(link => {
                     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
                     return sourceId === selectedNode.id;
@@ -823,6 +731,33 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
                   ))}
                 </div>
               )}
+
+              {/* AI Connection Explanation */}
+              <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Sparkles size={14} style={{ color: 'var(--accent-color)' }} />
+                  משמעות הקשר (AI):
+                </h4>
+                {explainingLink ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px', background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    <RefreshCw className="spin" size={12} style={{ color: 'var(--accent-color)' }} />
+                    <span>מנתח את הקשר הפסיכולוגי...</span>
+                  </div>
+                ) : linkExplanation ? (
+                  <div>
+                    <div style={{ padding: '10px', background: 'var(--accent-light)', borderRadius: 'var(--radius-sm)', borderRight: '3px solid var(--accent-color)', fontSize: '0.82rem', lineHeight: 1.5, color: 'var(--text-primary)' }}>
+                      {linkExplanation}
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '4px', fontStyle: 'italic', display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <Sparkles size={10} /> התובנה עודכנה בבסיס הידע באופן אוטומטי
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                    לא ניתן לקבל הסבר ברגע זה
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         ) : (
@@ -902,7 +837,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
         {!loading && !error && graphMode === '2d' && (
           <ForceGraph2D
             ref={fgRef}
-            graphData={filteredGraphData}
+            graphData={finalGraphData}
             width={dimensions.width}
             height={dimensions.height}
             nodeLabel="name"
@@ -1001,7 +936,7 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
         {!loading && !error && graphMode === '3d' && (
           <ForceGraph3D
             ref={fgRef}
-            graphData={filteredGraphData}
+            graphData={finalGraphData}
             width={dimensions.width}
             height={dimensions.height}
             nodeLabel="name"
@@ -1015,6 +950,115 @@ export default function GraphView({ dataSource, uid, onNavigateToEntry }) {
           />
         )}
       </div>
+
+      {/* Analysis Modal Overlay */}
+      {showAnalysisModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '20px',
+          direction: 'rtl'
+        }}>
+          <div style={{
+            backgroundColor: 'var(--panel-bg)',
+            borderRadius: 'var(--radius-lg)',
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.2)',
+            border: '1px solid var(--border-color)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 20px',
+              borderBottom: '1px solid var(--border-color)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              backgroundColor: 'var(--accent-light)'
+            }}>
+              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-color)' }}>
+                <Sparkles size={20} />
+                ניתוח פערים פסיכולוגי בגרף הידע
+              </h3>
+              <button
+                onClick={() => setShowAnalysisModal(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            {/* Modal Content */}
+            <div style={{
+              padding: '20px',
+              overflowY: 'auto',
+              flex: 1,
+              backgroundColor: 'var(--bg-primary)'
+            }}>
+              {analyzingGraph ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '16px' }}>
+                  <RefreshCw className="spin" size={32} style={{ color: 'var(--accent-color)' }} />
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', fontWeight: 500, textAlign: 'center' }}>
+                    הבלש הדיגיטלי סורק את גרף המושגים שלך ומחפש תבניות, קשרים חסרים וקונפליקטים...
+                  </div>
+                </div>
+              ) : graphAnalysisResult ? (
+                <div style={{ textAlign: 'right' }}>
+                  {renderMarkdown(graphAnalysisResult)}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                  אין תוצאות להצגה.
+                </div>
+              )}
+            </div>
+            
+            {/* Modal Footer */}
+            <div style={{
+              padding: '12px 20px',
+              borderTop: '1px solid var(--border-color)',
+              display: 'flex',
+              justifyContent: 'flex-end',
+              backgroundColor: 'var(--panel-bg)'
+            }}>
+              <button
+                onClick={() => setShowAnalysisModal(false)}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: 'var(--accent-color)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 'var(--radius-sm)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  fontSize: '0.85rem'
+                }}
+              >
+                סגור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

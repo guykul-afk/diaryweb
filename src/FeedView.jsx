@@ -10,7 +10,6 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sliderValue, setSliderValue] = useState(0);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'heatmap'
 
   // Map of entries by YYYY-MM-DD
   const entriesByDate = useMemo(() => {
@@ -150,6 +149,16 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
     onSelectEntry(closestEntry.id);
   };
 
+  // Scroll active entry into view in the main pane
+  useEffect(() => {
+    if (selectedEntryId) {
+      const element = document.getElementById(`entry-card-${selectedEntryId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [selectedEntryId]);
+
   const formatSliderDate = (time) => {
     if (!time) return '';
     return new Date(time).toISOString().split('T')[0];
@@ -181,77 +190,96 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
   return (
     <div style={{ display: 'flex', flexGrow: 1, height: '100%', overflow: 'hidden' }}>
       
-      {/* 1. Middle Column: Reader Pane (now in the center) */}
-      <main className="reader-pane">
-        {selectedEntry ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
-            {/* Header / Date */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Calendar size={18} style={{ color: 'var(--text-muted)' }} />
-                <span style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
-                  {selectedEntry.frontmatter.date}
-                </span>
-              </div>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {selectedEntry.frontmatter.topics && selectedEntry.frontmatter.topics.map((topic, i) => (
-                  <span 
-                    key={i} 
-                    style={{ 
-                      fontSize: '0.75rem', 
-                      backgroundColor: 'var(--panel-bg)', 
-                      border: '1px solid var(--border-color)', 
-                      borderRadius: 'var(--radius-sm)', 
-                      padding: '4px 8px',
-                      color: 'var(--text-secondary)'
-                    }}
-                  >
-                    #{topic}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Entry Content Body */}
-            <article style={{ 
-              fontSize: '1rem', 
-              lineHeight: '1.75', 
-              color: 'var(--text-secondary)', 
-              whiteSpace: 'pre-wrap', 
-              fontFamily: 'var(--font-sans)'
-            }}>
-              {selectedEntry.content}
-            </article>
-
-            {/* Open Threads / Actions */}
-            {selectedEntry.frontmatter.open_threads && selectedEntry.frontmatter.open_threads.length > 0 && (
-              <div style={{ 
-                marginTop: '16px', 
-                backgroundColor: 'var(--panel-bg)', 
-                border: '1px solid var(--border-color)', 
-                borderRadius: 'var(--radius-lg)', 
-                padding: '16px' 
-              }}>
-                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px' }}>
-                  נושאים פתוחים / משימות:
+      <main className="reader-pane" style={{ overflowY: 'auto', flexGrow: 1, padding: '24px 32px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
+          {filteredEntries.map(entry => {
+            const isSelected = entry.id === selectedEntryId;
+            return (
+              <div 
+                key={entry.id} 
+                id={`entry-card-${entry.id}`}
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '16px', 
+                  padding: '24px',
+                  borderRadius: 'var(--radius-lg)',
+                  backgroundColor: 'var(--panel-bg)',
+                  border: isSelected ? '2px solid var(--accent-color)' : '1px solid var(--border-color)',
+                  boxShadow: isSelected ? '0 4px 20px rgba(0, 53, 95, 0.08)' : '0 2px 8px rgba(0,0,0,0.01)',
+                  transition: 'all 0.2s ease-in-out'
+                }}
+              >
+                {/* Header / Date */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px', flexWrap: 'wrap', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={16} style={{ color: 'var(--text-muted)' }} />
+                    <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                      {entry.frontmatter.date}
+                    </span>
+                    {entry.frontmatter.mood && (
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--accent-light)', padding: '2px 8px', borderRadius: '10px' }}>
+                        רגש: {entry.frontmatter.mood}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+                    {entry.frontmatter.topics && entry.frontmatter.topics.map((topic, i) => (
+                      <span 
+                        key={i} 
+                        style={{ 
+                          fontSize: '0.7rem', 
+                          backgroundColor: 'var(--bg-color)', 
+                          border: '1px solid var(--border-color)', 
+                          borderRadius: 'var(--radius-sm)', 
+                          padding: '2px 6px',
+                          color: 'var(--text-secondary)',
+                          whiteSpace: 'nowrap'
+                        }}
+                      >
+                        #{topic}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                  {selectedEntry.frontmatter.open_threads.map((thread, idx) => (
-                    <li key={idx} style={{ display: 'flex', gap: '8px' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>•</span>
-                      {thread}
-                    </li>
-                  ))}
-                </ul>
+
+                {/* Entry Content Body */}
+                <article style={{ 
+                  fontSize: '0.95rem', 
+                  lineHeight: '1.7', 
+                  color: 'var(--text-secondary)', 
+                  whiteSpace: 'pre-wrap', 
+                  fontFamily: 'var(--font-sans)'
+                }}>
+                  {entry.content}
+                </article>
+
+                {/* Open Threads / Actions */}
+                {entry.frontmatter.open_threads && entry.frontmatter.open_threads.length > 0 && (
+                  <div style={{ 
+                    marginTop: '8px', 
+                    backgroundColor: 'var(--bg-color)', 
+                    border: '1px solid var(--border-color)', 
+                    borderRadius: 'var(--radius-md)', 
+                    padding: '12px 16px' 
+                  }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '6px' }}>
+                      נושאים פתוחים / משימות:
+                    </div>
+                    <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, padding: 0 }}>
+                      {entry.frontmatter.open_threads.map((thread, idx) => (
+                        <li key={idx} style={{ display: 'flex', gap: '6px' }}>
+                          <span style={{ color: 'var(--text-muted)' }}>•</span>
+                          {thread}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '12px' }}>
-            <BookOpen size={48} style={{ color: 'var(--border-color)' }} />
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>בחר רשומה מציר הזמן כדי לצפות בפרטים ובקשרים שלה</div>
-          </div>
-        )}
+            );
+          })}
+        </div>
       </main>
 
       {/* 2. Left Column: Timeline Pane */}
@@ -311,52 +339,8 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
           <Search size={14} style={{ position: 'absolute', right: '26px', top: '20px', color: 'var(--text-muted)' }} />
         </div>
 
-        {/* View Mode Toggle */}
-        <div style={{ 
-          padding: '8px 16px', 
-          borderBottom: '1px solid var(--border-color)', 
-          display: 'flex', 
-          gap: '8px',
-          backgroundColor: 'var(--panel-bg)'
-        }}>
-          <button
-            onClick={() => setViewMode('list')}
-            style={{
-              flex: 1,
-              padding: '6px 12px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-color)',
-              backgroundColor: viewMode === 'list' ? 'var(--accent-light)' : 'transparent',
-              color: viewMode === 'list' ? 'var(--accent-color)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            רשימה כרונולוגית
-          </button>
-          <button
-            onClick={() => setViewMode('heatmap')}
-            style={{
-              flex: 1,
-              padding: '6px 12px',
-              fontSize: '0.8rem',
-              fontWeight: 600,
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid var(--border-color)',
-              backgroundColor: viewMode === 'heatmap' ? 'var(--accent-light)' : 'transparent',
-              color: viewMode === 'heatmap' ? 'var(--accent-color)' : 'var(--text-secondary)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease'
-            }}
-          >
-            מפת חום שנתית
-          </button>
-        </div>
-
         {/* Slider Section */}
-        {viewMode === 'list' && !loading && !error && dateRange.list.length > 1 && (
+        {!loading && !error && dateRange.list.length > 1 && (
           <div style={{ 
             padding: '12px 16px', 
             borderBottom: '1px solid var(--border-color)', 
@@ -390,11 +374,11 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
           {loading && <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>טוען רשומות...</div>}
           {error && <div style={{ padding: '12px', color: '#ef4444', fontSize: '0.8rem' }}>{error}</div>}
           
-          {!loading && !error && viewMode === 'list' && filteredEntries.length === 0 && (
+          {!loading && !error && filteredEntries.length === 0 && (
             <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>לא נמצאו רשומות.</div>
           )}
 
-          {!loading && !error && viewMode === 'list' && filteredEntries.map((entry) => {
+          {!loading && !error && filteredEntries.map((entry) => {
             const isSelected = entry.id === selectedEntryId;
             return (
               <div
@@ -454,99 +438,6 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
               </div>
             );
           })}
-
-          {!loading && !error && viewMode === 'heatmap' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', direction: 'rtl', padding: '4px' }}>
-              {heatmapMonths.map((m) => {
-                const cells = [];
-                const weekdays = ['א', 'ב', 'ג', 'ד', 'ה', 'ו', 'ש'];
-                
-                // Add empty padding days for offset
-                for (let i = 0; i < m.firstDayOfWeek; i++) {
-                  cells.push(<div key={`empty-${i}`} style={{ aspectRatio: '1/1' }} />);
-                }
-                
-                // Add actual days
-                for (let day = 1; day <= m.daysInMonth; day++) {
-                  const dateStr = formatDateString(m.year, m.month, day);
-                  const entry = entriesByDate[dateStr];
-                  const isSelected = entry && entry.id === selectedEntryId;
-                  
-                  // Check if entry matches search query (if any)
-                  let isMatchingSearch = true;
-                  if (searchQuery.trim() && entry) {
-                    const query = searchQuery.toLowerCase().trim();
-                    const contentMatch = (entry.content || '').toLowerCase().includes(query);
-                    const topicsMatch = entry.frontmatter.topics && 
-                      entry.frontmatter.topics.some(topic => topic.toLowerCase().includes(query));
-                    const moodMatch = entry.frontmatter.mood && 
-                      entry.frontmatter.mood.toLowerCase().includes(query);
-                    isMatchingSearch = contentMatch || topicsMatch || moodMatch;
-                  }
-                  
-                  cells.push(
-                    <div
-                      key={`day-${day}`}
-                      onClick={() => entry && onSelectEntry(entry.id)}
-                      title={entry ? `${dateStr} - רגש: ${entry.frontmatter.mood || 'לא מוגדר'}\n${entry.content.substring(0, 80)}...` : dateStr}
-                      style={{
-                        aspectRatio: '1/1',
-                        borderRadius: '4px',
-                        backgroundColor: entry 
-                          ? (isMatchingSearch ? getMoodColor(entry.frontmatter.mood) : 'rgba(148, 163, 184, 0.15)') 
-                          : 'rgba(148, 163, 184, 0.05)',
-                        border: isSelected 
-                          ? '2px solid var(--text-primary)' 
-                          : entry 
-                            ? '1px solid rgba(0,0,0,0.05)' 
-                            : '1px solid transparent',
-                        cursor: entry ? 'pointer' : 'default',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '9px',
-                        fontWeight: entry ? '700' : '400',
-                        color: entry ? '#ffffff' : 'var(--text-muted)',
-                        position: 'relative',
-                        opacity: searchQuery.trim() && entry && !isMatchingSearch ? 0.3 : 1,
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {day}
-                      {entry && (
-                        <span style={{
-                          position: 'absolute',
-                          bottom: '2px',
-                          width: '3px',
-                          height: '3px',
-                          borderRadius: '50%',
-                          backgroundColor: '#ffffff'
-                        }} />
-                      )}
-                    </div>
-                  );
-                }
-                
-                return (
-                  <div key={`${m.year}-${m.month}`} style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
-                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', textAlign: 'right' }}>
-                      {m.name}
-                    </div>
-                    {/* Weekday headers */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', marginBottom: '4px', textAlign: 'center' }}>
-                      {weekdays.map((w, idx) => (
-                        <div key={idx} style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 600 }}>{w}</div>
-                      ))}
-                    </div>
-                    {/* Days grid */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
-                      {cells}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       </aside>
     </div>

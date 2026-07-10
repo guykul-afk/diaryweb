@@ -131,6 +131,45 @@ body {
   border-radius: var(--radius-md);
 }
 
+.sidebar-submenu {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 16px;
+  margin-top: -4px;
+  margin-bottom: 8px;
+  direction: rtl;
+}
+
+.submenu-btn {
+  width: 100%;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.submenu-btn:hover {
+  background-color: rgba(0, 53, 95, 0.03);
+  color: var(--accent-color);
+}
+
+.submenu-btn.active {
+  background-color: rgba(0, 53, 95, 0.05);
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
 .timeline-pane {
   width: 380px;
   background-color: var(--panel-bg);

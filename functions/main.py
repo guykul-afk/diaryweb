@@ -449,6 +449,182 @@ def verify_passcode(req: https_fn.CallableRequest) -> dict:
         return {"status": "error", "message": "קוד גישה שגוי. נסה שוב."}
 
 
+@https_fn.on_call(timeout_sec=120)
+def sync_insights_to_graph(req: https_fn.CallableRequest) -> dict:
+    """
+    Reads existing insights from users/{uid}/insights/current and synchronizes them
+    as Insight nodes in the users/{uid}/knowledge_graph_nodes collection.
+    """
+    uid = req.data.get('uid')
+    if not uid and req.auth:
+        uid = req.auth.uid
+    if not uid:
+        return {"status": "error", "message": "Missing UID"}
+
+    db_conn = get_db()
+    
+    # 1. Fetch current insights
+    insights_ref = db_conn.collection('users').document(uid).collection('insights').document('current')
+    insights_snap = insights_ref.get()
+    if not insights_snap.exists:
+        return {"status": "error", "message": "לא נמצא מסמך תובנות פעיל לסנכרון."}
+        
+    insights_data = insights_snap.to_dict()
+    
+    # 2. Fetch existing graph nodes to map relationships and compare content
+    nodes_ref = db_conn.collection('users').document(uid).collection('knowledge_graph_nodes')
+    nodes_snapshot = nodes_ref.stream()
+    existing_nodes = []
+    existing_content_map = {}
+    
+    for doc in nodes_snapshot:
+        data = doc.to_dict()
+        node_id = data.get('id') or doc.id
+        label = data.get('label') or node_id
+        content = data.get('content', '')
+        existing_nodes.append({"id": node_id, "label": label})
+        existing_content_map[node_id] = content
+        
+    existing_nodes_context = "\n".join([f"- {n['id']} (Label: {n['label']})" for n in existing_nodes])
+
+    # 3. Parse all insights into a flat dictionary of items to sync
+    sync_items = {}
+    
+    # Major Insights
+    major_list = insights_data.get('majorInsights', [])
+    for i, ins in enumerate(major_list):
+        sync_items[f"insight_major_{i}"] = {
+            "label": f"תובנת מפתח {i+1}",
+            "content": ins,
+            "type": "Insight"
+        }
+        
+    # Operating Manual Sections
+    manual_sections = insights_data.get('operatingManual', {}).get('insight', {}).get('sections', [])
+    for i, sec in enumerate(manual_sections):
+        title = sec.get('title', f"סעיף מדריך {i+1}")
+        bullets = "\n".join([f"- {b}" for b in sec.get('bullets', [])])
+        sync_items[f"insight_manual_{i}"] = {
+            "label": f"הנחיית מדריך: {title}",
+            "content": bullets,
+            "type": "Insight"
+        }
+        
+    # Weekly Insight
+    weekly = insights_data.get('weeklyInsight')
+    if weekly:
+        sync_items["insight_weekly"] = {
+            "label": "תובנה שבועית מרוכזת",
+            "content": weekly,
+            "type": "Insight"
+        }
+        
+    # Shadow Work
+    shadow = insights_data.get('shadowWork', {}).get('insight')
+    if shadow:
+        sync_items["insight_shadow"] = {
+            "label": "עבודת צללים",
+            "content": shadow,
+            "type": "Insight"
+        }
+        
+    # Categorical Insights
+    cat = insights_data.get('categoricalInsights', {})
+    for key in ['work', 'personal', 'family']:
+        val = cat.get(key)
+        if val:
+            cat_labels = {"work": "קריירה ועבודה", "personal": "אישי ומנטלי", "family": "משפחה וזוגיות"}
+            sync_items[f"insight_category_{key}"] = {
+                "label": f"תובנת תחום: {cat_labels.get(key, key)}",
+                "content": val,
+                "type": "Insight"
+            }
+            
+    # Daily GTD
+    daily = insights_data.get('dailyGtd', {}).get('insight')
+    if daily:
+        sync_items["insight_daily"] = {
+            "label": "רפלקציה יומית (GTD)",
+            "content": daily,
+            "type": "Insight"
+        }
+
+    # Filter out insights that have already been synced and whose content has not changed
+    sync_items_to_process = {}
+    for key, item in sync_items.items():
+        if key in existing_content_map and existing_content_map[key] == item["content"]:
+            # Content matches exactly, skip mapping and writing
+            continue
+        sync_items_to_process[key] = item
+
+    if not sync_items_to_process:
+        return {"status": "success", "nodes_added": 0, "message": "כל התובנות כבר מסונכרנות ומעודכנות בגרף."}
+
+    # 4. Run bulk AI extraction to link ONLY the new/changed insights to existing nodes
+    insights_list_str = "\n\n".join([f"Key: {k}\nContent: {v['content']}" for k, v in sync_items_to_process.items()])
+    
+    mapping_prompt = f"""
+For each of the following new insights (identified by Key), determine which 1-3 of the existing nodes in the knowledge graph they are most strongly related to.
+Only select nodes from the list of Existing Nodes below. Do not create new node IDs.
+If an insight does not relate to any existing node, map it to an empty list.
+
+Existing Nodes:
+{existing_nodes_context}
+
+Insights to Map:
+{insights_list_str}
+
+Output strictly valid JSON mapping each Key to a list of related Node IDs:
+{{
+  "key_name": ["node_id1", "node_id2"]
+}}
+"""
+    
+    mapping_response = run_agent("Mapper", "You output only valid JSON without markdown formatting.", mapping_prompt)
+    
+    relations_map = {}
+    try:
+        import json
+        clean_json = mapping_response.strip().strip('`').replace('json\n', '')
+        relations_map = json.loads(clean_json)
+    except Exception as e:
+        logger.error(f"Failed to parse bulk relationship mapping JSON: {e}")
+        
+    # 5. Write each new/changed insight to Firestore as a Node
+    nodes_added = 0
+    for key, item in sync_items_to_process.items():
+        node_ref = db_conn.collection('users').document(uid).collection('knowledge_graph_nodes').document(key)
+        
+        # Build related edges
+        related_ids = relations_map.get(key, [])
+        edges = []
+        for rid in related_ids:
+            edges.append({
+                "source": key,
+                "target": rid.strip().replace(" ", "_"),
+                "relation": "קשור לתובנה",
+                "sentimentScore": 0,
+                "sourceQuotes": []
+            })
+            
+        node_ref.set({
+            "id": key,
+            "label": item["label"],
+            "type": item["type"],
+            "val": 3,
+            "content": item["content"],
+            "relatedEdges": edges,
+            "timestamp": firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        nodes_added += 1
+        
+    return {
+        "status": "success",
+        "nodes_added": nodes_added
+    }
+
+
+
 DETECTIVE_SYSTEM_PROMPT = """You are an expert Psychological Detective Agent.
 Your task is to analyze the user's complete knowledge graph (nodes and edges) and provide deep insights, or answer their specific question based on the graph.
 Focus on:
@@ -490,7 +666,216 @@ def analyze_knowledge_graph(req: https_fn.CallableRequest) -> dict:
     
     response = run_agent("Detective", DETECTIVE_SYSTEM_PROMPT, prompt)
     
+    # Auto-save insight to the knowledge graph
+    import uuid
+    insight_id = f"graph_insight_{uuid.uuid4().hex[:8]}"
+    
+    extraction_prompt = f"Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the user's query/graph that it strongly discusses. Output strictly valid JSON like: {{\n  \"label\": \"...\",\n  \"related_nodes\": [\"node1\", \"node2\"]\n}}\n\nInsight:\n{response}"
+    extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt)
+    
+    label = "תובנת בלש (AI)"
+    related_nodes = []
+    try:
+        import json
+        clean_json = extraction_response.strip().strip('`').replace('json\n', '')
+        extracted = json.loads(clean_json)
+        label = extracted.get('label', label)
+        related_nodes = extracted.get('related_nodes', [])
+    except Exception as e:
+        logger.error(f"Failed to extract JSON for insight node: {e}")
+        pass
+        
+    edges_list = []
+    for rn in related_nodes:
+        edges_list.append({
+            "source": insight_id,
+            "target": rn.strip().replace(" ", "_"),
+            "relation": "ניתוח בלש",
+            "sentimentScore": 0,
+            "sourceQuotes": []
+        })
+        
+    get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(insight_id).set({
+        "id": insight_id,
+        "label": label,
+        "type": "Insight",
+        "val": 3,
+        "content": response,
+        "relatedEdges": edges_list,
+        "timestamp": firestore.SERVER_TIMESTAMP
+    }, merge=True)
+    
     return {
         "status": "success",
         "result": response
     }
+
+
+INVESTIGATOR_SYSTEM_PROMPT = """You are an expert Psychological Investigator and Diary Analyst.
+Your task is to answer the user's question by thoroughly researching and analyzing:
+1. Their raw journal entries (the personal texts and transcripts).
+2. Their structured insights (major insights, operating manual, categorical insights, weekly insights, shadow work).
+3. Their knowledge base (concepts and connections in the knowledge graph).
+
+Provide a deep, clear, empathetic, and organized answer in Hebrew.
+CRITICAL RULES:
+- Ground your answer strictly in the user's data. Do not make up events, topics, or relationships that are not in the provided texts or graph.
+- Cite specific dates or concept names when discussing patterns or events where possible.
+- If you cannot find relevant information to answer the question, state it clearly and suggest what is missing.
+"""
+
+@https_fn.on_call(timeout_sec=120)
+def query_diary_insights(req: https_fn.CallableRequest) -> dict:
+    uid = req.data.get('uid')
+    if not uid and req.auth:
+        uid = req.auth.uid
+    if not uid:
+        return {"status": "error", "message": "Missing UID"}
+        
+    query_text = req.data.get('query')
+    if not query_text:
+        return {"status": "error", "message": "Missing query"}
+
+    logger.info(f"Investigating diary/insights/graph for {uid} with query: {query_text}")
+
+    # 1. Fetch entries
+    entries_ref = get_db().collection('users').document(uid).collection('entries')
+    entries_snapshot = entries_ref.stream()
+    entries_data = []
+    for doc in entries_snapshot:
+        data = doc.to_dict()
+        date_str = data.get('date') or str(data.get('timestamp'))
+        topics = ", ".join(data.get('topics', []))
+        content = data.get('content') or data.get('transcript') or ""
+        entries_data.append(f"- Date: {date_str} | Topics: {topics}\n  Content: {content}")
+    entries_context = "\n\n".join(entries_data)
+
+    # 2. Fetch original insights
+    insights_ref = get_db().collection('users').document(uid).collection('insights').document('current')
+    insights_snap = insights_ref.get()
+    insights_context = "No structured insights found."
+    if insights_snap.exists:
+        insights_data = insights_snap.to_dict()
+        major = "\n".join([f"- {ins}" for ins in insights_data.get('majorInsights', [])])
+        weekly = insights_data.get('weeklyInsight', 'None')
+        shadow = insights_data.get('shadowWork', {}).get('insight', 'None')
+        manual_sections = []
+        for s in insights_data.get('operatingManual', {}).get('insight', {}).get('sections', []):
+            bullets_str = "\n  ".join([f"* {b}" for b in s.get('bullets', [])])
+            manual_sections.append(f"{s.get('title')}:\n  {bullets_str}")
+        manual_context = "\n".join(manual_sections)
+        insights_context = f"Major Insights:\n{major}\n\nWeekly Insight:\n{weekly}\n\nShadow Work:\n{shadow}\n\nOperating Manual:\n{manual_context}"
+
+    # 3. Fetch graph nodes
+    nodes_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
+    nodes_snapshot = nodes_ref.stream()
+    graph_data = []
+    for doc in nodes_snapshot:
+        data = doc.to_dict()
+        node_id = data.get('id', doc.id)
+        label = data.get('label', node_id)
+        content = data.get('content', '')
+        edges = data.get('relatedEdges', [])
+        edges_str = ", ".join([f"[{e.get('relation')}] -> {e.get('target')}" for e in edges])
+        graph_data.append(f"- Concept: {label} ({content})\n  Connections: {edges_str if edges_str else 'None'}")
+    graph_context = "\n".join(graph_data)
+
+    # 4. Construct prompt
+    prompt = f"User Question: {query_text}\n\n=== USER JOURNAL ENTRIES (TEXTS) ===\n{entries_context}\n\n=== USER STRUCTURED INSIGHTS ===\n{insights_context}\n\n=== USER KNOWLEDGE BASE (GRAPH CONCEPTS) ===\n{graph_context}"
+
+    response = run_agent("Investigator", INVESTIGATOR_SYSTEM_PROMPT, prompt)
+    
+    # Auto-save insight to the knowledge graph
+    import uuid
+    insight_id = f"investigator_{uuid.uuid4().hex[:8]}"
+    
+    extraction_prompt = f"Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the knowledge base that it discusses. Output strictly valid JSON like: {{\n  \"label\": \"...\",\n  \"related_nodes\": [\"node1\", \"node2\"]\n}}\n\nInsight:\n{response}"
+    extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt)
+    
+    label = "תשובת חוקר יומן (AI)"
+    related_nodes = []
+    try:
+        import json
+        clean_json = extraction_response.strip().strip('`').replace('json\n', '')
+        extracted = json.loads(clean_json)
+        label = extracted.get('label', label)
+        related_nodes = extracted.get('related_nodes', [])
+    except Exception as e:
+        logger.error(f"Failed to extract JSON for investigator node: {e}")
+        pass
+        
+    edges_list = []
+    for rn in related_nodes:
+        edges_list.append({
+            "source": insight_id,
+            "target": rn.strip().replace(" ", "_"),
+            "relation": "תשובת יומן",
+            "sentimentScore": 0,
+            "sourceQuotes": []
+        })
+        
+    get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(insight_id).set({
+        "id": insight_id,
+        "label": label,
+        "type": "Insight",
+        "val": 3,
+        "content": f"שאלה: {query_text}\n\n{response}",
+        "relatedEdges": edges_list,
+        "timestamp": firestore.SERVER_TIMESTAMP
+    }, merge=True)
+    
+    return {
+        "status": "success",
+        "result": response
+    }
+
+@https_fn.on_call(timeout_sec=60)
+def explain_graph_link(req: https_fn.CallableRequest) -> dict:
+    uid = req.data.get('uid')
+    if not uid and req.auth:
+        uid = req.auth.uid
+    if not uid:
+        return {"status": "error", "message": "Missing UID"}
+        
+    source = req.data.get('source')
+    target = req.data.get('target')
+    relation = req.data.get('relation', '')
+    
+    if not source or not target:
+        return {"status": "error", "message": "Missing source or target"}
+        
+    db_conn = get_db()
+    source_ref = db_conn.collection('users').document(uid).collection('knowledge_graph_nodes').document(source)
+    target_ref = db_conn.collection('users').document(uid).collection('knowledge_graph_nodes').document(target)
+    
+    source_snap = source_ref.get()
+    target_snap = target_ref.get()
+    
+    source_content = source_snap.to_dict().get('content', '') if source_snap.exists else ''
+    target_content = target_snap.to_dict().get('content', '') if target_snap.exists else ''
+    
+    system_prompt = "You are an empathetic, insightful psychological analyzer. Explain in Hebrew in 1-2 sentences how these two concepts in the user's mind are connected, based on the provided context. Keep it direct and personal (using 'אתה'/'את')."
+    prompt = f"Concept A: {source}\nDescription: {source_content}\n\nConcept B: {target}\nDescription: {target_content}\n\nRelation Label: {relation}\n\nExplain the connection:"
+    
+    response = run_agent("LinkExplainer", system_prompt, prompt)
+    
+    # Auto-save AI explanation to the edge
+    if source_snap.exists:
+        data = source_snap.to_dict()
+        edges = data.get('relatedEdges', [])
+        updated = False
+        for edge in edges:
+            # We match by target and relation (fallback to just target if relation missing)
+            if edge.get('target') == target and edge.get('relation', '') == relation:
+                edge['aiExplanation'] = response
+                updated = True
+        
+        if updated:
+            source_ref.update({'relatedEdges': edges})
+
+    return {
+        "status": "success",
+        "explanation": response
+    }
+
+

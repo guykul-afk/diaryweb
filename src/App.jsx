@@ -3,6 +3,10 @@ import FeedView from './FeedView';
 import GraphView from './GraphView';
 import PersonalityAnalysisView from './PersonalityAnalysisView';
 import InsightsView from './InsightsView';
+import { DiaryDataProvider } from './hooks/useDiaryData';
+import StorylineView from './StorylineView';
+import SankeyView from './SankeyView';
+import QuotesView from './QuotesView';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode } from './firebase';
 
@@ -167,10 +171,27 @@ function App() {
           />
         );
       case 'graph':
+      case 'graph-stars':
         return (
           <div style={{ flexGrow: 1, height: '100%' }}>
             <GraphView 
               {...props} 
+              onNavigateToEntry={handleNavigateToEntry} 
+            />
+          </div>
+        );
+      case 'graph-storyline':
+        return (
+          <div style={{ flexGrow: 1, height: '100%' }}>
+            <StorylineView 
+              onNavigateToEntry={handleNavigateToEntry} 
+            />
+          </div>
+        );
+      case 'graph-sankey':
+        return (
+          <div style={{ flexGrow: 1, height: '100%' }}>
+            <SankeyView 
               onNavigateToEntry={handleNavigateToEntry} 
             />
           </div>
@@ -187,6 +208,12 @@ function App() {
             <InsightsView {...props} />
           </div>
         );
+      case 'quotes':
+        return (
+          <QuotesView 
+            onNavigateToEntry={handleNavigateToEntry} 
+          />
+        );
       default:
         return null;
     }
@@ -197,61 +224,96 @@ function App() {
   }
 
   return (
-    <div className="three-column-layout">
-      {/* Right Navigation Sidebar (RTL) */}
-      <aside className="sidebar-right">
-        <div className="sidebar-logo">
-          <span>היומן של גיא</span>
-        </div>
+    <DiaryDataProvider uid={uid}>
+      <div className="three-column-layout">
+        {/* Right Navigation Sidebar (RTL) */}
+        <aside className="sidebar-right">
+          <div className="sidebar-logo">
+            <span>היומן של גיא</span>
+          </div>
 
-        <nav className="sidebar-nav">
-          <button
-            className={`sidebar-btn ${activeTab === 'feed' ? 'active' : ''}`}
-            onClick={() => setActiveTab('feed')}
-            title="יומן רשומות"
-          >
-            <span>יומן רשומות</span>
-          </button>
-          <button
-            className={`sidebar-btn ${activeTab === 'graph' ? 'active' : ''}`}
-            onClick={() => setActiveTab('graph')}
-            title="מפת קשרים מלאה"
-          >
-            <span>מפת קשרים</span>
-          </button>
-          <button
-            className={`sidebar-btn ${activeTab === 'analysis' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analysis')}
-            title="ניתוח אישיות רב-סוכני"
-          >
-            <span>ניתוח אישיות</span>
-          </button>
-          <button
-            className={`sidebar-btn ${activeTab === 'insights' ? 'active' : ''}`}
-            onClick={() => setActiveTab('insights')}
-            title="תובנות ומאגר ידע"
-          >
-            <span>תובנות ומאגר</span>
-          </button>
-        </nav>
+          <nav className="sidebar-nav">
+            <button
+              className={`sidebar-btn ${activeTab === 'feed' ? 'active' : ''}`}
+              onClick={() => setActiveTab('feed')}
+              title="יומן רשומות"
+            >
+              <span>יומן רשומות</span>
+            </button>
+            
+            <button
+              className={`sidebar-btn ${activeTab === 'quotes' ? 'active' : ''}`}
+              onClick={() => setActiveTab('quotes')}
+              title="ציטוטים נבחרים"
+            >
+              <span>ציטוטים</span>
+            </button>
+            
+            <button
+              className={`sidebar-btn ${activeTab.startsWith('graph') ? 'active' : ''}`}
+              onClick={() => setActiveTab('graph-stars')}
+              title="מפת קשרים ומבטים מורחבים"
+            >
+              <span>מפות וקשרים</span>
+            </button>
 
-        {/* Mini Database Connection Status Indicator */}
-        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-          <div 
-            style={{ 
-              width: '8px', 
-              height: '8px', 
-              borderRadius: '50%', 
-              backgroundColor: authLoading ? 'var(--text-muted)' : 'var(--accent-color)' 
-              }} 
-            title={authLoading ? "מתחבר..." : "מחובר ל-Firebase"}
-          />
-        </div>
-      </aside>
+            {activeTab.startsWith('graph') && (
+              <div className="sidebar-submenu">
+                <button 
+                  className={`submenu-btn ${activeTab === 'graph' || activeTab === 'graph-stars' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('graph-stars')}
+                >
+                  מפת כוכבים
+                </button>
+                <button 
+                  className={`submenu-btn ${activeTab === 'graph-storyline' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('graph-storyline')}
+                >
+                  תרשים עלילה
+                </button>
+                <button 
+                  className={`submenu-btn ${activeTab === 'graph-sankey' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('graph-sankey')}
+                >
+                  תרשים סנקי
+                </button>
+              </div>
+            )}
 
-      {/* Main View Area */}
-      {renderContent()}
-    </div>
+            <button
+              className={`sidebar-btn ${activeTab === 'analysis' ? 'active' : ''}`}
+              onClick={() => setActiveTab('analysis')}
+              title="ניתוח אישיות רב-סוכני"
+            >
+              <span>ניתוח אישיות</span>
+            </button>
+            <button
+              className={`sidebar-btn ${activeTab === 'insights' ? 'active' : ''}`}
+              onClick={() => setActiveTab('insights')}
+              title="תובנות ומאגר ידע"
+            >
+              <span>תובנות ומאגר</span>
+            </button>
+          </nav>
+
+          {/* Mini Database Connection Status Indicator */}
+          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+            <div 
+              style={{ 
+                width: '8px', 
+                height: '8px', 
+                borderRadius: '50%', 
+                backgroundColor: authLoading ? 'var(--text-muted)' : 'var(--accent-color)' 
+                }} 
+              title={authLoading ? "מתחבר..." : "מחובר ל-Firebase"}
+            />
+          </div>
+        </aside>
+
+        {/* Main View Area */}
+        {renderContent()}
+      </div>
+    </DiaryDataProvider>
   );
 }
 

@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, getDocs, query, orderBy, doc, getDoc, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, collection, query, orderBy, doc, connectFirestoreEmulator, getDocsFromServer, getDocFromServer } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
@@ -74,7 +74,7 @@ export { db, auth };
 export async function fetchOriginalInsights(uid) {
   if (!uid) throw new Error("Missing User ID (UID)");
   const docRef = doc(db, `users/${uid}/insights`, 'current');
-  const docSnap = await getDoc(docRef);
+  const docSnap = await getDocFromServer(docRef);
   if (docSnap.exists()) {
     return docSnap.data();
   }
@@ -88,7 +88,7 @@ export async function fetchFirebaseEntries(uid) {
   if (!uid) throw new Error("Missing User ID (UID)");
   const entriesRef = collection(db, `users/${uid}/entries`);
   const q = query(entriesRef, orderBy('timestamp', 'desc'));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await getDocsFromServer(q);
   
   const entries = [];
   querySnapshot.forEach((doc) => {
@@ -100,7 +100,8 @@ export async function fetchFirebaseEntries(uid) {
       frontmatter: {
         date: data.timestamp ? new Date(data.timestamp).toISOString().split('T')[0] : 'תאריך לא ידוע',
         topics: data.topics || [],
-        open_threads: (data.openThreads || data.open_threads || []).map(t => typeof t === 'string' ? t : t.text || '')
+        open_threads: (data.openThreads || data.open_threads || []).map(t => typeof t === 'string' ? t : t.text || ''),
+        mood: data.mood || data.sentiment || 'ניטרלי'
       },
       content: data.transcript || data.content || '',
       rawTimestamp: data.timestamp
@@ -114,7 +115,7 @@ export async function fetchPersonalityAnalysis(uid) {
   if (!uid) throw new Error("Missing User ID (UID)");
   const analysisRef = collection(db, `users/${uid}/personality_analysis`);
   const q = query(analysisRef, orderBy('timestamp', 'desc'));
-  const querySnapshot = await getDocs(q);
+  const querySnapshot = await getDocsFromServer(q);
   
   const analyses = [];
   querySnapshot.forEach((doc) => {
@@ -135,7 +136,7 @@ export async function fetchPersonalityAnalysis(uid) {
 export async function fetchFirebaseGraph(uid) {
   if (!uid) throw new Error("Missing User ID (UID)");
   const nodesRef = collection(db, `users/${uid}/knowledge_graph_nodes`);
-  const querySnapshot = await getDocs(nodesRef);
+  const querySnapshot = await getDocsFromServer(nodesRef);
   
   const nodes = [];
   const links = [];
@@ -165,7 +166,8 @@ export async function fetchFirebaseGraph(uid) {
             target: edge.target,
             label: edge.relation || 'relates',
             sentimentScore: edge.sentimentScore !== undefined ? edge.sentimentScore : 0,
-            sourceQuotes: edge.sourceQuotes || []
+            sourceQuotes: edge.sourceQuotes || [],
+            timestamp: edge.timestamp
           });
         }
       });
@@ -203,3 +205,32 @@ export async function fetchFirebaseGraph(uid) {
 
   return { nodes, links };
 }
+
+// Helper to trigger the diary investigator Q&A cloud function
+export async function queryDiaryInsights(uid, query) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  if (!query) throw new Error("Missing query");
+  const queryFunc = httpsCallable(functions, 'query_diary_insights', { timeout: 120000 });
+  const result = await queryFunc({ uid, query });
+  return result.data;
+}
+
+// Helper to trigger explanation of a relationship/link
+export async function explainGraphLink(uid, source, target, relation = '') {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  if (!source || !target) throw new Error("Missing source or target");
+  const explainFunc = httpsCallable(functions, 'explain_graph_link', { timeout: 60000 });
+  const result = await explainFunc({ uid, source, target, relation });
+  return result.data;
+}
+
+// Trigger bulk synchronization of insights to knowledge graph
+export async function syncInsightsToGraph(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const syncFunc = httpsCallable(functions, 'sync_insights_to_graph', { timeout: 120000 });
+  const result = await syncFunc({ uid });
+  return result.data;
+}
+
+
+

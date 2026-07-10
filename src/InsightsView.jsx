@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchOriginalInsights, fetchFirebaseEntries } from './firebase';
+import { fetchOriginalInsights, fetchFirebaseEntries, queryDiaryInsights, syncInsightsToGraph } from './firebase';
 import { 
   Lightbulb, 
   Brain, 
@@ -18,8 +18,12 @@ import {
   BookOpen,
   Calendar,
   Search,
-  MessageSquare
+  MessageSquare,
+  HelpCircle,
+  Send,
+  Bot
 } from 'lucide-react';
+
 
 export default function InsightsView({ uid }) {
   const [loading, setLoading] = useState(true);
@@ -41,8 +45,48 @@ export default function InsightsView({ uid }) {
   // Toggle to show all history advices expanded in a scrollable format
   const [showAllExpanded, setShowAllExpanded] = useState(false);
 
+  // Q&A Tab States
+  const [qaQuery, setQaQuery] = useState('');
+  const [qaAnswer, setQaAnswer] = useState('');
+  const [qaLoading, setQaLoading] = useState(false);
+  const [qaHistory, setQaHistory] = useState([
+    {
+      role: 'bot',
+      text: 'שלום! שאל אותי כל שאלה על היומנים, התובנות ומאגר הידע שלך (הגרף), ואני אחקור אותם כדי להשיב לך.'
+    }
+  ]);
+
+
   // Search filter for raw insights
   const [rawInsightsSearchQuery, setRawInsightsSearchQuery] = useState('');
+  
+  // Sync state
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+
+  const handleSyncToGraph = async () => {
+    if (!uid || syncing) return;
+    setSyncing(true);
+    setSyncMessage('');
+    try {
+      const res = await syncInsightsToGraph(uid);
+      if (res && res.status === 'success') {
+        if (res.nodes_added === 0) {
+          setSyncMessage(res.message || 'אין תובנות חדשות לסנכרון.');
+        } else {
+          setSyncMessage(`סונכרנו בהצלחה ${res.nodes_added} תובנות לגרף!`);
+        }
+        setTimeout(() => setSyncMessage(''), 5000);
+      } else {
+        throw new Error(res?.message || 'שגיאה בסנכרון התובנות');
+      }
+    } catch (err) {
+      console.error(err);
+      alert(`שגיאה בסנכרון: ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const fetchInsightsData = async () => {
     setLoading(true);
@@ -123,6 +167,84 @@ export default function InsightsView({ uid }) {
     });
   };
 
+  const handleQaSubmit = async (e) => {
+    e.preventDefault();
+    if (!qaQuery.trim() || qaLoading) return;
+
+    const userQuestion = qaQuery.trim();
+    setQaQuery('');
+    setQaHistory(prev => [...prev, { role: 'user', text: userQuestion }]);
+    setQaLoading(true);
+
+    try {
+      if (!uid) {
+        throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
+      }
+      const data = await queryDiaryInsights(uid, userQuestion);
+      if (data && data.status === 'success') {
+        setQaHistory(prev => [...prev, { role: 'bot', text: data.result + '\n\n*(התשובה נשמרה אוטומטית כצומת תובנה בבסיס הידע)*' }]);
+      } else {
+        throw new Error(data?.message || 'שגיאה בקבלת תשובה מהשרת');
+      }
+    } catch (err) {
+      console.error(err);
+      setQaHistory(prev => [...prev, { role: 'bot', text: `שגיאה: ${err.message}` }]);
+    } finally {
+      setQaLoading(false);
+    }
+  };
+
+  const renderMarkdown = (text) => {
+    if (!text) return null;
+    return text.split('\n').map((line, idx) => {
+      if (line.startsWith('### ')) {
+        return <h5 key={idx} style={{ fontSize: '1rem', fontWeight: 700, margin: '14px 0 8px 0', color: 'var(--text-primary)' }}>{line.replace('### ', '')}</h5>;
+      }
+      if (line.startsWith('## ')) {
+        return <h4 key={idx} style={{ fontSize: '1.15rem', fontWeight: 700, margin: '16px 0 10px 0', color: 'var(--accent-color)' }}>{line.replace('## ', '')}</h4>;
+      }
+      if (line.startsWith('# ')) {
+        return <h3 key={idx} style={{ fontSize: '1.3rem', fontWeight: 700, margin: '18px 0 12px 0', color: 'var(--text-primary)' }}>{line.replace('# ', '')}</h3>;
+      }
+      
+      let isListItem = false;
+      let listContent = line;
+      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
+        isListItem = true;
+        listContent = line.trim().substring(2);
+      }
+      
+      const parts = [];
+      let lastIndex = 0;
+      const regex = /\*\*(.*?)\*\*/g;
+      let match;
+      while ((match = regex.exec(listContent)) !== null) {
+        if (match.index > lastIndex) {
+          parts.push(listContent.substring(lastIndex, match.index));
+        }
+        parts.push(<strong key={match.index}>{match[1]}</strong>);
+        lastIndex = regex.lastIndex;
+      }
+      if (lastIndex < listContent.length) {
+        parts.push(listContent.substring(lastIndex));
+      }
+      
+      if (isListItem) {
+        return (
+          <li key={idx} style={{ marginRight: '16px', marginBottom: '6px', fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', listStyleType: 'disc' }}>
+            {parts}
+          </li>
+        );
+      }
+      
+      return (
+        <p key={idx} style={{ margin: '0 0 10px 0', fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
+          {parts}
+        </p>
+      );
+    });
+  };
+
   // Helper to count total raw insights
   const totalRawInsightsCount = useMemo(() => {
     return entries.reduce((acc, entry) => acc + (entry.insights?.length || 0), 0);
@@ -176,7 +298,8 @@ export default function InsightsView({ uid }) {
           { id: 'history', label: 'היסטוריית המלצות', icon: History, color: '#1d4ed8' },
           { id: 'reflections', label: 'עבודה בצל ורפלקציה', icon: Brain, color: '#1e40af' },
           { id: 'categorical', label: 'תובנות לפי תחומים', icon: Activity, color: '#475569' },
-          { id: 'raw_insights', label: 'תובנות גולמיות מהיומן', icon: MessageSquare, color: '#64748b' }
+          { id: 'raw_insights', label: 'תובנות גולמיות מהיומן', icon: MessageSquare, color: '#64748b' },
+          { id: 'qa', label: 'שאל את היומן (AI)', icon: HelpCircle, color: '#8b5cf6' }
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -241,6 +364,7 @@ export default function InsightsView({ uid }) {
               {activeTab === 'reflections' && 'עבודת צללים ורפלקציה עצמית'}
               {activeTab === 'categorical' && 'תובנות ממוקדות לפי תחומי חיים'}
               {activeTab === 'raw_insights' && 'תובנות גולמיות מכל כניסת יומן'}
+              {activeTab === 'qa' && 'שאלות ותשובות מבוססות ידע (AI)'}
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
               {activeTab === 'major' && 'עקרונות, קונפליקטים ותמות מובילות שזוהו לאורך כתיבת היומן.'}
@@ -249,27 +373,59 @@ export default function InsightsView({ uid }) {
               {activeTab === 'reflections' && 'ניתוחים שבועיים, יומיים ועבודת מעמקים עם החלקים הנסתרים.'}
               {activeTab === 'categorical' && 'ניתוח מרוכז של דפוסים בעבודה, ביחסים וברמה האישית.'}
               {activeTab === 'raw_insights' && 'כל התובנות הנקודתיות שנוצרו אוטומטית מתוך התמלולים והטקסטים שכתבת.'}
+              {activeTab === 'qa' && 'חקר מעמיק ושאילת שאלות על גבי הרשומות, התובנות השונות וגרף המושגים שלך.'}
             </p>
           </div>
 
-          <button 
-            onClick={fetchInsightsData}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              border: '1px solid var(--border-color)',
-              background: 'var(--panel-bg)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.8rem',
-              cursor: 'pointer',
-              fontWeight: 500
-            }}
-          >
-            <RefreshCw size={14} />
-            רענן נתונים
-          </button>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            {syncMessage && (
+              <span style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: 600, background: 'rgba(16, 185, 129, 0.1)', padding: '6px 12px', borderRadius: 'var(--radius-sm)' }}>
+                {syncMessage}
+              </span>
+            )}
+            
+            <button 
+              onClick={handleSyncToGraph}
+              disabled={syncing}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--accent-color)',
+                color: '#fff',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                fontWeight: 600,
+                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
+              }}
+            >
+              {syncing ? <RefreshCw className="spin" size={14} /> : <Brain size={14} />}
+              סנכרן תובנות לגרף
+            </button>
+
+            <button 
+              onClick={fetchInsightsData}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '8px 16px',
+                border: '1px solid var(--border-color)',
+                background: 'var(--panel-bg)',
+                color: 'var(--text-secondary)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                fontWeight: 500
+              }}
+            >
+              <RefreshCw size={14} />
+              רענן נתונים
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content Pane */}
@@ -661,8 +817,143 @@ export default function InsightsView({ uid }) {
             </div>
           )}
 
+          {/* TAB 7: AI Q&A */}
+          {activeTab === 'qa' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '850px', height: 'calc(100vh - 250px)' }}>
+              
+              {/* Chat Messages Panel */}
+              <div style={{ 
+                flexGrow: 1, 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 'var(--radius-lg)', 
+                background: 'var(--panel-bg)', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                overflow: 'hidden',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ 
+                  flexGrow: 1, 
+                  padding: '24px', 
+                  overflowY: 'auto', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: '16px' 
+                }}>
+                  {qaHistory.map((msg, index) => (
+                    <div 
+                      key={index} 
+                      style={{ 
+                        alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
+                        width: '100%',
+                        maxWidth: '90%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '6px',
+                        background: msg.role === 'user' ? 'var(--accent-light)' : 'var(--bg-color)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '16px 20px',
+                        boxShadow: 'var(--shadow-xs)',
+                        direction: 'rtl'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                        {msg.role === 'bot' ? (
+                          <>
+                            <Bot size={14} style={{ color: 'var(--accent-color)' }} />
+                            <span>חוקר יומנים ותובנות</span>
+                          </>
+                        ) : (
+                          <>
+                            <User size={14} />
+                            <span>אתה</span>
+                          </>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
+                        {msg.role === 'bot' ? renderMarkdown(msg.text) : msg.text}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {qaLoading && (
+                    <div style={{ 
+                      alignSelf: 'flex-end',
+                      width: '100%',
+                      maxWidth: '90%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      background: 'var(--bg-color)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-lg)',
+                      padding: '16px 20px',
+                      boxShadow: 'var(--shadow-xs)',
+                      opacity: 0.8
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                        <RefreshCw size={14} className="spin" style={{ color: 'var(--accent-color)' }} />
+                        <span>חוקר היומנים מעיין ברשומות, בתובנות ובמושגים...</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Input Bar */}
+                <form 
+                  onSubmit={handleQaSubmit} 
+                  style={{ 
+                    display: 'flex', 
+                    gap: '12px', 
+                    padding: '18px 24px', 
+                    borderTop: '1px solid var(--border-color)',
+                    background: 'var(--panel-bg)'
+                  }}
+                >
+                  <input 
+                    type="text" 
+                    placeholder="שאל משהו על היומנים או התובנות שלך... (למשל: מהם הקונפליקטים המרכזיים שלי?)"
+                    value={qaQuery}
+                    onChange={(e) => setQaQuery(e.target.value)}
+                    disabled={qaLoading}
+                    style={{
+                      flexGrow: 1,
+                      padding: '12px 16px',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: '0.9rem',
+                      outline: 'none',
+                      background: 'var(--bg-color)',
+                      color: 'var(--text-primary)'
+                    }}
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={qaLoading || !qaQuery.trim()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: 'var(--radius-md)',
+                      background: qaLoading || !qaQuery.trim() ? 'var(--border-color)' : 'var(--accent-color)',
+                      color: '#fff',
+                      border: 'none',
+                      cursor: qaLoading || !qaQuery.trim() ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    <Send size={18} style={{ transform: 'scaleX(-1)' }} />
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
         </div>
+
       </div>
     </div>
   );
 }
+
