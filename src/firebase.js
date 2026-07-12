@@ -206,12 +206,37 @@ export async function fetchFirebaseGraph(uid) {
   return { nodes, links };
 }
 
+import { addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+
+// Save a chat message to Firestore history
+export async function saveChatMessage(uid, role, text) {
+  if (!uid) return;
+  const colRef = collection(db, 'users', uid, 'qa_chat_history');
+  await addDoc(colRef, {
+    role,
+    text,
+    timestamp: serverTimestamp()
+  });
+}
+
+// Retrieve chat history from Firestore
+export async function getChatHistory(uid) {
+  if (!uid) return [];
+  const colRef = collection(db, 'users', uid, 'qa_chat_history');
+  const q = query(colRef, orderBy('timestamp', 'asc'));
+  const snap = await getDocs(q);
+  return snap.docs.map(doc => ({
+    role: doc.data().role,
+    text: doc.data().text
+  }));
+}
+
 // Helper to trigger the diary investigator Q&A cloud function
-export async function queryDiaryInsights(uid, query) {
+export async function queryDiaryInsights(uid, query, history = []) {
   if (!uid) throw new Error("Missing User ID (UID)");
   if (!query) throw new Error("Missing query");
   const queryFunc = httpsCallable(functions, 'query_diary_insights', { timeout: 120000 });
-  const result = await queryFunc({ uid, query });
+  const result = await queryFunc({ uid, query, history });
   return result.data;
 }
 
@@ -231,6 +256,10 @@ export async function syncInsightsToGraph(uid) {
   const result = await syncFunc({ uid });
   return result.data;
 }
-
-
-
+// Trigger Entity Resolution and Clustering optimization on the knowledge graph
+export async function resolveAndClusterEntities(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const resolveFunc = httpsCallable(functions, 'resolve_and_cluster_entities', { timeout: 300000 });
+  const result = await resolveFunc({ uid });
+  return result.data;
+}

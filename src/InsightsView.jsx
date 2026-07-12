@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchOriginalInsights, fetchFirebaseEntries, queryDiaryInsights, syncInsightsToGraph } from './firebase';
+import { fetchOriginalInsights, fetchFirebaseEntries, queryDiaryInsights, syncInsightsToGraph, saveChatMessage, getChatHistory } from './firebase';
 import { 
   Lightbulb, 
   Brain, 
@@ -123,9 +123,27 @@ export default function InsightsView({ uid }) {
     }
   };
 
+  const loadChatHistory = async () => {
+    try {
+      const history = await getChatHistory(uid);
+      if (history && history.length > 0) {
+        setQaHistory([
+          {
+            role: 'bot',
+            text: 'שלום! שאל אותי כל שאלה על היומנים, התובנות ומאגר הידע שלך (הגרף), ואני אחקור אותם כדי להשיב לך.'
+          },
+          ...history
+        ]);
+      }
+    } catch (err) {
+      console.error("Failed to load chat history:", err);
+    }
+  };
+
   useEffect(() => {
     if (uid) {
       fetchInsightsData();
+      loadChatHistory();
     }
   }, [uid]);
 
@@ -173,6 +191,10 @@ export default function InsightsView({ uid }) {
 
     const userQuestion = qaQuery.trim();
     setQaQuery('');
+    
+    // Construct local history list including the current question to pass to backend immediately
+    const historyToSend = [...qaHistory.slice(1), { role: 'user', text: userQuestion }]; // skip greeting
+    
     setQaHistory(prev => [...prev, { role: 'user', text: userQuestion }]);
     setQaLoading(true);
 
@@ -180,8 +202,16 @@ export default function InsightsView({ uid }) {
       if (!uid) {
         throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
       }
-      const data = await queryDiaryInsights(uid, userQuestion);
+      
+      // Save user question to Firestore
+      await saveChatMessage(uid, 'user', userQuestion);
+      
+      // Send question with session history to the backend Cloud Function
+      const data = await queryDiaryInsights(uid, userQuestion, historyToSend);
       if (data && data.status === 'success') {
+        // Save AI response to Firestore
+        await saveChatMessage(uid, 'bot', data.result);
+        
         setQaHistory(prev => [...prev, { role: 'bot', text: data.result + '\n\n*(התשובה נשמרה אוטומטית כצומת תובנה בבסיס הידע)*' }]);
       } else {
         throw new Error(data?.message || 'שגיאה בקבלת תשובה מהשרת');

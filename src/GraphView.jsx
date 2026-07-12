@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useMemo } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import ForceGraph3D from 'react-force-graph-3d';
 import { Info, Search, Filter, Hash, Heart, Brain, RefreshCw, Sparkles } from 'lucide-react';
-import { triggerGraphAnalysis, explainGraphLink } from './firebase';
+import { triggerGraphAnalysis, explainGraphLink, resolveAndClusterEntities } from './firebase';
 import { forceCollide } from 'd3-force';
 import { useDiaryData } from './hooks/useDiaryData';
 
@@ -28,7 +28,8 @@ export default function GraphView({ onNavigateToEntry }) {
     limitEntities, setLimitEntities,
     selectedDateIndex, setSelectedDateIndex,
     filteredNodes,
-    filteredLinks
+    filteredLinks,
+    fetchData
   } = useDiaryData();
 
   const [selectedNode, setSelectedNode] = useState(null);
@@ -40,6 +41,10 @@ export default function GraphView({ onNavigateToEntry }) {
   const [analyzingGraph, setAnalyzingGraph] = useState(false);
   const [graphAnalysisResult, setGraphAnalysisResult] = useState(null);
   const [showAnalysisModal, setShowAnalysisModal] = useState(false);
+
+  // AI Graph Optimization States
+  const [optimizingGraph, setOptimizingGraph] = useState(false);
+  const [optimizationMessage, setOptimizationMessage] = useState('');
 
   // AI Link Explanation States
   const [explainingLink, setExplainingLink] = useState(false);
@@ -100,6 +105,26 @@ export default function GraphView({ onNavigateToEntry }) {
       setGraphAnalysisResult('לא ניתן היה להריץ ניתוח גרף באמצעות AI.');
     } finally {
       setAnalyzingGraph(false);
+    }
+  };
+
+  const handleOptimizeGraph = async () => {
+    if (optimizingGraph || !uid) return;
+    setOptimizingGraph(true);
+    setOptimizationMessage('');
+    try {
+      const response = await resolveAndClusterEntities(uid);
+      if (response.status === 'success') {
+        setOptimizationMessage(response.message || 'האופטימיזציה הושלמה בהצלחה!');
+        await fetchData(); // Refresh graph data
+      } else {
+        setOptimizationMessage(response.message || 'שגיאה באופטימיזציית הגרף.');
+      }
+    } catch (err) {
+      console.error(err);
+      setOptimizationMessage('לא ניתן היה לבצע אופטימיזציה לגרף.');
+    } finally {
+      setOptimizingGraph(false);
     }
   };
 
@@ -300,11 +325,11 @@ export default function GraphView({ onNavigateToEntry }) {
     <div className="graph-container">
       {/* Sidebar Controls & Inspector */}
       <div className="graph-sidebar">
-        {/* AI Detective Analysis Trigger */}
+        {/* AI Detective Analysis & Graph Optimization */}
         <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <button
             onClick={handleAnalyzeGraph}
-            disabled={analyzingGraph}
+            disabled={analyzingGraph || optimizingGraph}
             style={{
               width: '100%',
               display: 'flex',
@@ -318,9 +343,10 @@ export default function GraphView({ onNavigateToEntry }) {
               borderRadius: 'var(--radius-md)',
               fontSize: '0.85rem',
               fontWeight: 600,
-              cursor: 'pointer',
+              cursor: (analyzingGraph || optimizingGraph) ? 'not-allowed' : 'pointer',
               boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-              transition: 'background-color 0.2s'
+              transition: 'background-color 0.2s',
+              opacity: (analyzingGraph || optimizingGraph) ? 0.7 : 1
             }}
           >
             {analyzingGraph ? (
@@ -330,6 +356,52 @@ export default function GraphView({ onNavigateToEntry }) {
             )}
             <span>ניתוח פערים ותבניות בגרף (AI)</span>
           </button>
+
+          <button
+            onClick={handleOptimizeGraph}
+            disabled={analyzingGraph || optimizingGraph}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              padding: '10px 14px',
+              backgroundColor: '#3182ce',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 'var(--radius-md)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: (analyzingGraph || optimizingGraph) ? 'not-allowed' : 'pointer',
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+              transition: 'background-color 0.2s',
+              opacity: (analyzingGraph || optimizingGraph) ? 0.7 : 1
+            }}
+          >
+            {optimizingGraph ? (
+              <RefreshCw className="spin" size={16} />
+            ) : (
+              <Sparkles size={16} />
+            )}
+            <span>ייעול ואיחוד ישויות בגרף (AI)</span>
+          </button>
+
+          {optimizationMessage && (
+            <div style={{
+              fontSize: '0.8rem',
+              color: optimizationMessage.includes('שגיאה') || optimizationMessage.includes('לא ניתן') ? '#e53e3e' : '#38a169',
+              marginTop: '4px',
+              padding: '6px 8px',
+              backgroundColor: 'var(--bg-secondary)',
+              borderRadius: 'var(--radius-sm)',
+              textAlign: 'center',
+              border: '1px solid var(--border-color)',
+              direction: 'rtl'
+            }}>
+              {optimizationMessage}
+            </div>
+          )}
         </div>
 
         {/* Filters Panel */}

@@ -51,7 +51,7 @@ class Metrics(BaseModel):
 class GraphEdge(BaseModel):
     source: str = Field(..., description="Source node ID")
     target: str = Field(..., description="Target node ID")
-    relation: str = Field(..., description="Relationship label in Hebrew, e.g., 'קשור ל', 'מעורר', 'משפיע על'")
+    relation: str = Field(..., description="Relationship type from a strict vocabulary: 'גורם_ל' (CAUSES), 'מרגיש' (FEELS), 'רוצה' (DESIRES), 'מפחד_מ' (FEARS), 'חוסם' (BLOCKS), 'פתר' (RESOLVES), 'קשור_ל' (RELATED_TO)")
     sentimentScore: int = Field(..., description="Sentiment score of the relationship: -1 (negative/stressful), 0 (neutral), or 1 (positive/healing).")
     sourceQuotes: List[str] = Field(..., description="List of 1-2 direct quotes from the user's journal entries that prove this relationship.")
 
@@ -158,7 +158,16 @@ Your output must be structured exactly as requested, containing:
    - Linguistic metrics (emotional density, self-focus, stress level, scores from 0 to 100).
 3. A list of NEW psychological insight nodes to add to the knowledge graph.
    - For each new node, define an ID, label (Hebrew), type (Insight, Trait, Pattern, Defense, etc.), value/weight, and description (content in Hebrew).
-   - Define relatedEdges to connect this new node to existing nodes or other new nodes. In relatedEdges, specify source, target, the relation, sentimentScore (-1 to 1), and sourceQuotes (actual quotes from text). Ensure you link the insights to the existing graph concepts where appropriate.
+   - Define relatedEdges to connect this new node to existing nodes or other new nodes. 
+   - CRITICAL ONTOLOGY RULE: In relatedEdges, the `relation` field MUST be exactly one of the following Hebrew strings:
+     * 'גורם_ל' (CAUSES) - if A causes/triggers B
+     * 'מרגיש' (FEELS) - if A feels B (e.g. A feels anxiety)
+     * 'רוצה' (DESIRES) - if A desires/aims for B
+     * 'מפחד_מ' (FEARS) - if A fears/avoids B
+     * 'חוסם' (BLOCKS) - if A blocks/prevents/restricts B
+     * 'פתר' (RESOLVES) - if A resolves/solves/relieves B
+     * 'קשור_ל' (RELATED_TO) - general fallback relationship
+   - In relatedEdges, specify source, target, the relation, sentimentScore (-1 to 1), and sourceQuotes (actual quotes from text). Ensure you link the insights to the existing graph concepts where appropriate.
 
 CRITICAL RULES:
 - DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
@@ -172,7 +181,7 @@ Write all summaries, node labels, and descriptions in HEBREW.
 # API Execution Helpers
 # =====================================================================
 
-def run_agent(agent_name: str, system_prompt: str, prompt_content: str) -> str:
+def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_tokens: int = None, is_json: bool = False) -> str:
     """Helper function to call Gemini model for an individual agent."""
     try:
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -184,16 +193,143 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str) -> str:
             model_name="gemini-2.5-flash",
             system_instruction=system_prompt
         )
+        generation_config = {"temperature": 0.2}
+        if max_tokens:
+            generation_config["max_output_tokens"] = max_tokens
+        if is_json:
+            generation_config["response_mime_type"] = "application/json"
+            
+        safety_settings = [
+            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
+        ]
+            
         response = model.generate_content(
             prompt_content,
-            generation_config=genai.GenerationConfig(
-                temperature=0.2  # Lower temperature to prevent hallucination
-            )
+            generation_config=generation_config,
+            safety_settings=safety_settings
         )
+        try:
+            if response.candidates:
+                candidate = response.candidates[0]
+                finish_reason = candidate.finish_reason
+                logger.info(f"Gemini agent {agent_name} finish reason: {finish_reason}")
+                # In google-generativeai, finish_reason can be an enum or int. STOP is typically represented as STOP or 1
+                if str(finish_reason) not in ("FinishReason.STOP", "STOP", "1", "FinishReason.1"):
+                    logger.warning(f"Gemini agent {agent_name} finished abnormally! Full candidate info: {candidate}")
+        except Exception as le:
+            logger.error(f"Failed to log Gemini candidate details: {le}")
+            
         return response.text
     except Exception as e:
         logger.error(f"Error running agent {agent_name}: {e}")
         return f"שגיאה בניתוח סוכן {agent_name}: {str(e)}"
+
+
+def extract_entities_from_text(text: str) -> List[str]:
+    """
+    Extracts key psychological or personal entities/concepts from a given text (Hebrew)
+    using Gemini, to use as seed nodes for Graph-RAG traversal.
+    """
+    system_prompt = (
+        "You are an expert NLP Entity Extractor. Extract the 3-7 core psychological concepts, "
+        "personalities, projects, topics, or emotional terms from the user's text in Hebrew. "
+        "Output strictly a JSON list of strings. Do not include markdown formatting or explanations."
+    )
+    prompt = f"Text to extract entities from:\n{text}\n\nOutput JSON list:"
+    
+    response = run_agent("EntityExtractor", system_prompt, prompt)
+    
+    entities = []
+    try:
+        clean_json = response.strip().strip('`').replace('json\n', '')
+        entities = json.loads(clean_json)
+        if not isinstance(entities, list):
+            entities = []
+    except Exception as e:
+        logger.error(f"Failed to parse entities JSON: {e}. Raw response: {response}")
+        pass
+    
+    cleaned_entities = []
+    for ent in entities:
+        if isinstance(ent, str):
+            cleaned = ent.strip().lower()
+            if cleaned:
+                cleaned_entities.append(cleaned)
+    return cleaned_entities
+
+
+def get_subgraph_by_entities(nodes_data: list, entities: list, max_hops: int = 2) -> dict:
+    """
+    Traverses the graph starting from nodes matching the extracted entities.
+    Returns a dictionary with 'nodes' list and 'edges' list representing the subgraph.
+    """
+    adj_list = {}
+    nodes_by_id = {}
+    
+    for n in nodes_data:
+        node_id = n.get('id')
+        if not node_id:
+            continue
+        normalized_id = node_id.strip().lower().replace(" ", "_")
+        nodes_by_id[normalized_id] = n
+        adj_list[normalized_id] = []
+        
+    for normalized_id, n in nodes_by_id.items():
+        edges = n.get('relatedEdges', [])
+        for edge in edges:
+            source = edge.get('source', '').strip().lower().replace(" ", "_")
+            target = edge.get('target', '').strip().lower().replace(" ", "_")
+            if source and target:
+                # Undirected graph traversal for contextual completeness
+                if source in adj_list:
+                    adj_list[source].append((target, edge))
+                if target in adj_list:
+                    adj_list[target].append((source, edge))
+
+    # Find starting seed nodes
+    seed_nodes = set()
+    for ent in entities:
+        ent_norm = ent.strip().lower().replace(" ", "_")
+        for normalized_id, node in nodes_by_id.items():
+            label_norm = node.get('label', '').strip().lower().replace(" ", "_")
+            if ent_norm in normalized_id or normalized_id in ent_norm or ent_norm in label_norm or label_norm in ent_norm:
+                seed_nodes.add(normalized_id)
+
+    visited_nodes = set(seed_nodes)
+    visited_edges = []
+    edge_ids_added = set()
+    
+    current_level = list(seed_nodes)
+    
+    for hop in range(max_hops):
+        next_level = []
+        for u in current_level:
+            if u not in adj_list:
+                continue
+            for v, edge in adj_list[u]:
+                edge_key = f"{edge.get('source')}-{edge.get('target')}-{edge.get('relation')}"
+                if edge_key not in edge_ids_added:
+                    visited_edges.append(edge)
+                    edge_ids_added.add(edge_key)
+                
+                if v not in visited_nodes:
+                    visited_nodes.add(v)
+                    next_level.append(v)
+        current_level = next_level
+
+    subgraph_nodes = []
+    for node_id in visited_nodes:
+        if node_id in nodes_by_id:
+            subgraph_nodes.append(nodes_by_id[node_id])
+            
+    return {
+        "nodes": subgraph_nodes,
+        "edges": visited_edges
+    }
+
 
 # =====================================================================
 # Cloud Function Definition
@@ -253,17 +389,8 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
 
     entries = sorted(entries, key=get_timestamp_val)
 
-    # 4. Fetch Existing Graph Nodes (OKF)
-    graph_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
-    graph_snapshot = graph_ref.stream()
-    existing_nodes = []
-    for doc in graph_snapshot:
-        data = doc.to_dict()
-        node_id = data.get('id') or doc.id
-        label = data.get('label') or node_id
-        existing_nodes.append({"id": node_id, "label": label})
-
-    existing_nodes_context = "\n".join([f"- {n['id']} (Label: {n['label']})" for n in existing_nodes])
+    # 4. Fetch Existing Graph Nodes (OKF) - Will be resolved below using target entries (Graph-RAG)
+    # (We defer this step until target_entries is defined)
 
     # 5. Fetch Previous Analysis to decide if it's baseline or delta
     analysis_ref = get_db().collection('users').document(uid).collection('personality_analysis')
@@ -295,6 +422,31 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             target_entries = entries[-max(1, new_entries_since_last):]
     else:
         target_entries = entries
+
+    # 4. Fetch and Filter Existing Graph Nodes (OKF) using Graph-RAG
+    combined_target_text = "\n".join([
+        f"Topics: {', '.join(e.get('topics', []))}\nContent: {e.get('content') or e.get('transcript') or ''}"
+        for e in target_entries
+    ])
+    new_entry_entities = extract_entities_from_text(combined_target_text)
+    logger.info(f"Extracted entities for entry analysis: {new_entry_entities}")
+    
+    graph_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
+    graph_snapshot = graph_ref.stream()
+    all_nodes = []
+    for doc in graph_snapshot:
+        data = doc.to_dict()
+        data['id'] = data.get('id') or doc.id
+        all_nodes.append(data)
+        
+    subgraph = get_subgraph_by_entities(all_nodes, new_entry_entities, max_hops=2)
+    
+    existing_nodes_context = "\n".join([
+        f"- {n.get('id')} (Label: {n.get('label')})" 
+        for n in subgraph['nodes']
+    ])
+
+    logger.info(f"Filtered to {len(subgraph['nodes'])} relevant existing nodes for context.")
 
     logger.info(f"Running {'delta' if is_delta else 'baseline'} analysis on {len(target_entries)} entries.")
 
@@ -735,8 +887,22 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
     query_text = req.data.get('query')
     if not query_text:
         return {"status": "error", "message": "Missing query"}
+        
+    history = req.data.get('history', [])
+    history_lines = []
+    for msg in history:
+        role = msg.get('role')
+        # Skip the default greeting
+        text = msg.get('text') or msg.get('content') or ""
+        if "שאל אותי כל שאלה על היומנים" in text:
+            continue
+        text = text.replace('\n\n*(התשובה נשמרה אוטומטית כצומת תובנה בבסיס הידע)*', '')
+        role_label = "User" if role == 'user' else "AI"
+        history_lines.append(f"{role_label}: {text}")
+        
+    history_context = "\n".join(history_lines) if history_lines else ""
 
-    logger.info(f"Investigating diary/insights/graph for {uid} with query: {query_text}")
+    logger.info(f"Investigating diary/insights/graph for {uid} with query: {query_text}. History length: {len(history)}")
 
     # 1. Fetch entries
     entries_ref = get_db().collection('users').document(uid).collection('entries')
@@ -766,22 +932,38 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
         manual_context = "\n".join(manual_sections)
         insights_context = f"Major Insights:\n{major}\n\nWeekly Insight:\n{weekly}\n\nShadow Work:\n{shadow}\n\nOperating Manual:\n{manual_context}"
 
-    # 3. Fetch graph nodes
+    # 3. Fetch and filter graph nodes (Graph-RAG)
+    # Extract entities from the user's question to locate seed nodes
+    question_entities = extract_entities_from_text(query_text)
+    logger.info(f"Extracted entities for Q&A: {question_entities}")
+
     nodes_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
     nodes_snapshot = nodes_ref.stream()
-    graph_data = []
+    all_nodes = []
     for doc in nodes_snapshot:
         data = doc.to_dict()
-        node_id = data.get('id', doc.id)
-        label = data.get('label', node_id)
-        content = data.get('content', '')
-        edges = data.get('relatedEdges', [])
+        data['id'] = data.get('id') or doc.id
+        all_nodes.append(data)
+        
+    subgraph = get_subgraph_by_entities(all_nodes, question_entities, max_hops=2)
+    logger.info(f"Graph-RAG traversal retrieved {len(subgraph['nodes'])} relevant nodes.")
+    
+    graph_data = []
+    for n in subgraph['nodes']:
+        node_id = n.get('id')
+        label = n.get('label', node_id)
+        content = n.get('content', '')
+        edges = n.get('relatedEdges', [])
         edges_str = ", ".join([f"[{e.get('relation')}] -> {e.get('target')}" for e in edges])
         graph_data.append(f"- Concept: {label} ({content})\n  Connections: {edges_str if edges_str else 'None'}")
-    graph_context = "\n".join(graph_data)
+        
+    graph_context = "\n".join(graph_data) if graph_data else "No relevant knowledge graph context found."
 
     # 4. Construct prompt
-    prompt = f"User Question: {query_text}\n\n=== USER JOURNAL ENTRIES (TEXTS) ===\n{entries_context}\n\n=== USER STRUCTURED INSIGHTS ===\n{insights_context}\n\n=== USER KNOWLEDGE BASE (GRAPH CONCEPTS) ===\n{graph_context}"
+    prompt = f"User Question: {query_text}\n\n"
+    if history_context:
+        prompt += f"=== CONVERSATION HISTORY ===\n{history_context}\n\n"
+    prompt += f"=== USER JOURNAL ENTRIES (TEXTS) ===\n{entries_context}\n\n=== USER STRUCTURED INSIGHTS ===\n{insights_context}\n\n=== USER KNOWLEDGE BASE (GRAPH CONCEPTS) ===\n{graph_context}"
 
     response = run_agent("Investigator", INVESTIGATOR_SYSTEM_PROMPT, prompt)
     
@@ -877,5 +1059,332 @@ def explain_graph_link(req: https_fn.CallableRequest) -> dict:
         "status": "success",
         "explanation": response
     }
+
+
+@https_fn.on_call(timeout_sec=300)
+def resolve_and_cluster_entities(req: https_fn.CallableRequest) -> dict:
+    """
+    1. Fetch all nodes in the knowledge graph.
+    2. Call Gemini to identify duplicates (to merge) and related groups (to cluster under meta-concepts).
+    3. Update the database:
+       - Merges duplicates (redirecting edges, merging descriptions, deleting redundant nodes).
+       - Creates meta-concepts (parent nodes) and links children nodes to them.
+    """
+    import traceback
+    try:
+        uid = req.data.get('uid')
+        if not uid and req.auth:
+            uid = req.auth.uid
+        if not uid:
+            return {"status": "error", "message": "Missing UID"}
+            
+        db_conn = get_db()
+        nodes_ref = db_conn.collection('users').document(uid).collection('knowledge_graph_nodes')
+        nodes_snapshot = nodes_ref.stream()
+        
+        nodes_data = []
+        for doc in nodes_snapshot:
+            data = doc.to_dict()
+            data['id'] = data.get('id') or doc.id
+            nodes_data.append(data)
+            
+        if not nodes_data:
+            return {"status": "success", "message": "הגרף ריק, אין מה לאחד."}
+
+        # Calculate degrees and detect lexical duplicate candidates in Python
+        node_degrees = {}
+        for n in nodes_data:
+            node_id = n.get('id')
+            if node_id:
+                edges = n.get('relatedEdges', [])
+                node_degrees[node_id] = len(edges)
+                
+        import difflib
+        lexical_groups = []
+        seen_lexical = set()
+        
+        for i in range(len(nodes_data)):
+            n1 = nodes_data[i]
+            id1 = n1.get('id')
+            if not id1 or not isinstance(id1, str):
+                continue
+            lbl1 = n1.get('label') or id1
+            
+            group = [n1]
+            for j in range(i + 1, len(nodes_data)):
+                n2 = nodes_data[j]
+                id2 = n2.get('id')
+                if not id2 or not isinstance(id2, str):
+                    continue
+                lbl2 = n2.get('label') or id2
+                
+                # Check lexical similarity
+                ratio = difflib.SequenceMatcher(None, lbl1, lbl2).ratio()
+                is_similar = False
+                if ratio > 0.8:
+                    is_similar = True
+                elif lbl1.startswith(lbl2) or lbl2.startswith(lbl1):
+                    if abs(len(lbl1) - len(lbl2)) <= 3:
+                        is_similar = True
+                elif len(lbl1) > 3 and len(lbl2) > 3:
+                    w1 = set(lbl1.split())
+                    w2 = set(lbl2.split())
+                    common = w1.intersection(w2)
+                    if common and any(len(w) >= 3 for w in common):
+                        is_similar = True
+                        
+                if is_similar:
+                    group.append(n2)
+                    
+            if len(group) > 1:
+                group_ids = [x.get('id') for x in group if x.get('id')]
+                if not any(gid in seen_lexical for gid in group_ids):
+                    lexical_groups.append(group)
+                    for gid in group_ids:
+                        seen_lexical.add(gid)
+
+        # Select nodes to send: lexical candidates + active nodes (degree >= 2)
+        selected_node_ids = set()
+        for grp in lexical_groups:
+            for x in grp:
+                x_id = x.get('id')
+                if x_id:
+                    selected_node_ids.add(x_id)
+                
+        for n in nodes_data:
+            node_id = n.get('id')
+            if node_id and node_degrees.get(node_id, 0) >= 2:
+                selected_node_ids.add(node_id)
+                
+        # Compile summary of selected nodes
+        nodes_summary = []
+        for n in nodes_data:
+            node_id = n.get('id')
+            if node_id in selected_node_ids:
+                nodes_summary.append({
+                    "id": node_id,
+                    "label": n.get('label'),
+                    "type": n.get('type'),
+                    "content": n.get('content', '')
+                })
+                
+        # Sort by degree descending and keep at most 150 nodes to avoid token limits
+        if len(nodes_summary) > 150:
+            nodes_summary = sorted(nodes_summary, key=lambda x: node_degrees.get(x['id'], 0), reverse=True)[:150]
+            
+        logger.info(f"Total nodes in database: {len(nodes_data)}. Filtered nodes sent to Gemini: {len(nodes_summary)}")
+            
+        prompt = f"""
+You are an expert Knowledge Graph Optimizer and Semantic Analyzer.
+Review the following list of nodes from the user's psychological knowledge graph.
+
+Your task is to identify:
+1. Duplicate / Near-Duplicate Entities: Nodes that refer to the exact same concept or person (e.g. 'עבודה', 'מקום_העבודה', 'העבודה' or 'אמא שלי', 'אמי'). Choose one 'canonical' ID and list the duplicate IDs to merge into it.
+2. Groupings for Meta-Concepts: Semantically related nodes (e.g., 'חובות', 'אוברדראפט', 'חוסר_כסף') that should be grouped under a new parent concept (e.g., 'ביטחון_כלכלי'). Provide a clean ID, Hebrew label, an extremely concise content description (why these are grouped - at most 1-2 short sentences, under 20 words), and the list of child IDs.
+
+Nodes List:
+{json.dumps(nodes_summary, ensure_ascii=False, indent=2)}
+
+Output strictly valid JSON with the following schema:
+{{
+  "merges": [
+    {{
+      "canonical_id": "canonical_node_id",
+      "canonical_label": "שם הצומת הראשי בעברית",
+      "duplicate_ids": ["dup_id1", "dup_id2"]
+    }}
+  ],
+  "meta_concepts": [
+    {{
+      "id": "new_meta_concept_id",
+      "label": "שם מושג העל בעברית",
+      "content": "הסבר קצר ותמציתי בעברית (עד 20 מילים, 1-2 משפטים) על מושג העל ואיך הוא מחבר את תתי המושגים",
+      "child_ids": ["child_id1", "child_id2"]
+    }}
+  ]
+}}
+
+Ensure all ID strings contain only letters, numbers, and underscores (no spaces).
+Only suggest merges/clusters that are highly relevant. Do not force them if not needed.
+"""
+
+        system_prompt = "You are a psychological knowledge graph optimizer. Output your analysis as a JSON object matching the requested schema. You may use markdown json code blocks."
+        try:
+            db_conn.collection('users').document(uid).collection('temp_logs').document('last_optimizer_prompt').set({
+                "prompt": prompt,
+                "system_prompt": system_prompt
+            })
+        except Exception as pe:
+            logger.error(f"Failed to log prompt: {pe}")
+            
+        response = run_agent("GraphOptimizer", system_prompt, prompt, max_tokens=None, is_json=False)
+        
+        try:
+            clean_json = response.strip().strip('`').replace('json\n', '')
+            instructions = json.loads(clean_json)
+        except Exception as e:
+            logger.error(f"Failed to parse optimization JSON response: {e}. Raw response: {response}")
+            try:
+                db_conn.collection('users').document(uid).collection('temp_logs').document('last_optimizer_run').set({
+                    "raw_response": response,
+                    "clean_json": clean_json,
+                    "error": str(e)
+                })
+            except Exception as fe:
+                logger.error(f"Failed to write temp log to Firestore: {fe}")
+            return {"status": "error", "message": "שגיאה בעיבוד תשובת ה-AI."}
+            
+        merges = instructions.get('merges', [])
+        meta_concepts = instructions.get('meta_concepts', [])
+        
+        logger.info(f"Gemini raw response: {response}")
+        logger.info(f"Parsed merges: {merges}")
+        logger.info(f"Parsed meta_concepts: {meta_concepts}")
+        
+        # Track actions taken
+        merges_count = 0
+        clusters_count = 0
+        
+        # 3. Perform Merges in Firestore
+        duplicate_to_canonical = {}
+        for merge in merges:
+            canon_id = merge.get('canonical_id')
+            if not canon_id or not isinstance(canon_id, str) or not canon_id.strip():
+                continue
+            canon_id = canon_id.strip()
+            dups = merge.get('duplicate_ids', [])
+            for d in dups:
+                if d and isinstance(d, str) and d.strip():
+                    duplicate_to_canonical[d.strip()] = canon_id
+
+        updated_nodes = {}
+        nodes_to_delete = set()
+        
+        for n in nodes_data:
+            node_id = n.get('id')
+            if not node_id or not isinstance(node_id, str) or not node_id.strip():
+                continue
+            node_id = node_id.strip()
+            if node_id in duplicate_to_canonical:
+                nodes_to_delete.add(node_id)
+                continue
+            updated_nodes[node_id] = n
+
+        for merge in merges:
+            canon_id = merge.get('canonical_id')
+            if not canon_id or not isinstance(canon_id, str) or not canon_id.strip():
+                continue
+            canon_id = canon_id.strip()
+            canon_label = merge.get('canonical_label') or canon_id
+            dups = merge.get('duplicate_ids', [])
+            
+            if canon_id in updated_nodes:
+                canon_node = updated_nodes[canon_id]
+                content_pieces = [canon_node.get('content', '')]
+                for dup_id in dups:
+                    if dup_id and isinstance(dup_id, str) and dup_id.strip():
+                        dup_id = dup_id.strip()
+                        dup_node = next((x for x in nodes_data if x.get('id') == dup_id), None)
+                        if dup_node and dup_node.get('content'):
+                            content_pieces.append(dup_node.get('content'))
+                
+                unique_contents = list(set([c.strip() for c in content_pieces if c.strip()]))
+                canon_node['content'] = "\n\n".join(unique_contents)
+                canon_node['label'] = canon_label
+                updated_nodes[canon_id] = canon_node
+                merges_count += len([d for d in dups if d and isinstance(d, str) and d.strip()])
+
+        # Redirect all edges in updated_nodes
+        for node_id, n in updated_nodes.items():
+            edges = n.get('relatedEdges', [])
+            new_edges = []
+            seen_edges = set()
+            
+            for edge in edges:
+                source = edge.get('source')
+                target = edge.get('target')
+                
+                if source in duplicate_to_canonical:
+                    source = duplicate_to_canonical[source]
+                if target in duplicate_to_canonical:
+                    target = duplicate_to_canonical[target]
+                    
+                if not source or not target or source == target:
+                    continue
+                    
+                edge_key = f"{source}-{target}-{edge.get('relation')}"
+                if edge_key not in seen_edges:
+                    edge['source'] = source
+                    edge['target'] = target
+                    new_edges.append(edge)
+                    seen_edges.add(edge_key)
+                    
+            n['relatedEdges'] = new_edges
+            updated_nodes[node_id] = n
+
+        # 4. Create Meta-Concepts and link children
+        for meta in meta_concepts:
+            raw_meta_id = meta.get('id')
+            if not raw_meta_id or not isinstance(raw_meta_id, str) or not raw_meta_id.strip():
+                logger.warning(f"Skipping meta concept due to invalid ID: {meta}")
+                continue
+                
+            meta_id = raw_meta_id.strip().replace(" ", "_")
+            meta_label = meta.get('label') or meta_id
+            meta_content = meta.get('content', '')
+            child_ids = meta.get('child_ids', [])
+            
+            meta_edges = []
+            for child_id in child_ids:
+                if child_id and isinstance(child_id, str) and child_id.strip():
+                    child_id = child_id.strip()
+                    actual_child_id = duplicate_to_canonical.get(child_id, child_id)
+                    if actual_child_id in updated_nodes or actual_child_id == meta_id:
+                        if actual_child_id != meta_id:
+                            meta_edges.append({
+                                "source": meta_id,
+                                "target": actual_child_id,
+                                "relation": "קשור_ל",
+                                "sentimentScore": 0,
+                                "sourceQuotes": []
+                            })
+                        
+            new_meta_node = {
+                "id": meta_id,
+                "label": meta_label,
+                "type": "Concept",
+                "val": 2,
+                "content": meta_content,
+                "relatedEdges": meta_edges
+            }
+            updated_nodes[meta_id] = new_meta_node
+            clusters_count += 1
+
+        # 5. Write everything back to Firestore
+        logger.info(f"Deleting {len(nodes_to_delete)} duplicate documents: {nodes_to_delete}")
+        for dup_id in nodes_to_delete:
+            if dup_id and isinstance(dup_id, str) and dup_id.strip():
+                doc_id = dup_id.strip().replace('/', '%2F')
+                logger.info(f"Attempting to delete document: '{doc_id}'")
+                nodes_ref.document(doc_id).delete()
+            
+        logger.info(f"Updating/Creating {len(updated_nodes)} documents: {list(updated_nodes.keys())}")
+        for node_id, n in updated_nodes.items():
+            if node_id and isinstance(node_id, str) and node_id.strip():
+                doc_id = node_id.strip().replace('/', '%2F')
+                logger.info(f"Attempting to set document: '{doc_id}'")
+                nodes_ref.document(doc_id).set(n)
+            
+        return {
+            "status": "success",
+            "merges_count": merges_count,
+            "meta_concepts_created": clusters_count,
+            "message": f"הושלמה אופטימיזציה בהצלחה: {merges_count} ישויות אוחדו, ונוצרו {clusters_count} מושגי-על חדשים."
+        }
+    except Exception as e:
+        tb = traceback.format_exc()
+        logger.error(f"Error in resolve_and_cluster_entities:\n{tb}")
+        # Return the traceback in result to make it accessible to client
+        return {"status": "error", "message": f"שגיאת שרת פנימית: {str(e)}", "traceback": tb}
 
 
