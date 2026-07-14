@@ -14,18 +14,18 @@
       <stop offset="100%" stop-color="#ff7e40" />
     </linearGradient>
 
-    <!-- Deep Sea Gradient -->
+    <!-- Deep Sea Gradient - Vibrant Ocean Blue -->
     <linearGradient id="seaGrad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1a2639" />
-      <stop offset="50%" stop-color="#111823" />
-      <stop offset="100%" stop-color="#0a0f18" />
+      <stop offset="0%" stop-color="#1e3c72" />
+      <stop offset="50%" stop-color="#1b2f55" />
+      <stop offset="100%" stop-color="#0f1b30" />
     </linearGradient>
 
     <!-- Sun Reflection on Water Gradient -->
     <linearGradient id="reflectGrad" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0%" stop-color="#fffa65" stop-opacity="0.8" />
-      <stop offset="50%" stop-color="#ff7e40" stop-opacity="0.3" />
-      <stop offset="100%" stop-color="#ff3e6c" stop-opacity="0" />
+      <stop offset="50%" stop-color="#ff7e40" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#1e3c72" stop-opacity="0" />
     </linearGradient>
 
     <!-- Sun Glow Filter -->
@@ -53,8 +53,8 @@
   <!-- Sun reflection on water surface -->
   <polygon points="17,26 31,26 35,46 13,46" fill="url(#reflectGrad)" style="mix-blend-mode: color-dodge;" />
 
-  <!-- Stylish Sea Waves (Visual representation of sea ripples) -->
+  <!-- Stylish Sea Waves (Visual representation of sea ripples with brighter ocean blue highlights) -->
   <path d="M 2 30 Q 13 28.5 24 30.5 T 46 30" stroke="#ffd97d" stroke-width="1.2" stroke-linecap="round" opacity="0.65" />
-  <path d="M 6 35 Q 17 33.5 28 35.5 T 42 35" stroke="#ff7e40" stroke-width="1.0" stroke-linecap="round" opacity="0.5" />
-  <path d="M 12 40 Q 21 38.5 30 40.5 T 38 40" stroke="#38bdf8" stroke-width="0.8" stroke-linecap="round" opacity="0.4" />
+  <path d="M 6 35 Q 17 33.5 28 35.5 T 42 35" stroke="#38bdf8" stroke-width="1.2" stroke-linecap="round" opacity="0.7" />
+  <path d="M 12 40 Q 21 38.5 30 40.5 T 38 40" stroke="#00d2ff" stroke-width="0.8" stroke-linecap="round" opacity="0.5" />
 </svg>
