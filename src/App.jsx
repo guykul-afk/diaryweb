@@ -4,9 +4,8 @@ import GraphView from './GraphView';
 import PersonalityAnalysisView from './PersonalityAnalysisView';
 import InsightsView from './InsightsView';
 import { DiaryDataProvider } from './hooks/useDiaryData';
-import StorylineView from './StorylineView';
-import SankeyView from './SankeyView';
 import QuotesView from './QuotesView';
+import MindMapBuilderView from './MindMapBuilderView';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode } from './firebase';
 
@@ -180,20 +179,10 @@ function App() {
             />
           </div>
         );
-      case 'graph-storyline':
+      case 'graph-mindmap':
         return (
           <div style={{ flexGrow: 1, height: '100%' }}>
-            <StorylineView 
-              onNavigateToEntry={handleNavigateToEntry} 
-            />
-          </div>
-        );
-      case 'graph-sankey':
-        return (
-          <div style={{ flexGrow: 1, height: '100%' }}>
-            <SankeyView 
-              onNavigateToEntry={handleNavigateToEntry} 
-            />
+            <MindMapBuilderView />
           </div>
         );
       case 'analysis':
@@ -266,16 +255,10 @@ function App() {
                   מפת כוכבים
                 </button>
                 <button 
-                  className={`submenu-btn ${activeTab === 'graph-storyline' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('graph-storyline')}
+                  className={`submenu-btn ${activeTab === 'graph-mindmap' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('graph-mindmap')}
                 >
-                  תרשים עלילה
-                </button>
-                <button 
-                  className={`submenu-btn ${activeTab === 'graph-sankey' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('graph-sankey')}
-                >
-                  תרשים סנקי
+                  עורך מפת מוח (GRIND)
                 </button>
               </div>
             )}
