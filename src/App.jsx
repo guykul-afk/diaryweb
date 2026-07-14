@@ -72,7 +72,7 @@ function PasscodeGate({ onVerified }) {
           <div className="lockscreen-logo-icon" style={{ background: 'transparent', boxShadow: 'none', width: 'auto', height: 'auto', padding: 0 }}>
             <img src="/favicon.svg" alt="לוגו זריחה בים" style={{ width: '64px', height: '64px', borderRadius: '14px', boxShadow: '0 8px 30px rgba(255, 126, 64, 0.25)' }} />
           </div>
-          <h1 className="lockscreen-title">היומן של גיא</h1>
+          <h1 className="lockscreen-title">צלילה עמוקה</h1>
           <p className="lockscreen-subtitle">מערכת מוגנת. אנא הזן קוד גישה לכניסה.</p>
         </div>
 
@@ -235,7 +235,7 @@ function App() {
         <aside className="sidebar-right">
           <div className="sidebar-logo" style={{ gap: '10px' }}>
             <img src="/favicon.svg" alt="לוגו זריחה בים" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
-            <span>היומן של גיא</span>
+            <span>צלילה עמוקה</span>
           </div>
 
           <nav className="sidebar-nav">
