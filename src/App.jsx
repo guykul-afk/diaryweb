@@ -7,7 +7,7 @@ import { DiaryDataProvider } from './hooks/useDiaryData';
 import QuotesView from './QuotesView';
 import MindMapBuilderView from './MindMapBuilderView';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
-import { getFirebaseUid, verifyPasscode } from './firebase';
+import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 
 const FIREBASE_UID_FALLBACK = 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
 
@@ -131,6 +131,22 @@ function App() {
   const uid = FIREBASE_UID_FALLBACK;
   const dataSource = 'firebase';
 
+  const [isaData, setIsaData] = useState(null);
+  const [isaLoading, setIsaLoading] = useState(false);
+
+  useEffect(() => {
+    if (authLoading || !uid) return;
+    setIsaLoading(true);
+    fetchSyncedIsaData(uid)
+      .then(data => {
+        setIsaData(data);
+        setIsaLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch synced ISA data:", err);
+        setIsaLoading(false);
+      });
+  }, [uid, authLoading]);
 
   useEffect(() => {
     getFirebaseUid()
@@ -158,7 +174,7 @@ function App() {
       );
     }
 
-    const props = { dataSource, uid };
+    const props = { dataSource, uid, isaData };
 
     switch (activeTab) {
       case 'feed':
@@ -279,19 +295,32 @@ function App() {
             </button>
           </nav>
 
-          {/* Mini Database Connection Status Indicator */}
-          <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-            <div 
-              style={{ 
-                width: '8px', 
-                height: '8px', 
-                borderRadius: '50%', 
-                backgroundColor: authLoading ? 'var(--text-muted)' : 'var(--accent-color)' 
-                }} 
-              title={authLoading ? "מתחבר..." : "מחובר ל-Firebase"}
-            />
+          {/* Connection status */}
+          <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div 
+                  style={{ 
+                    width: '8px', 
+                    height: '8px', 
+                    borderRadius: '50%', 
+                    backgroundColor: authLoading ? 'var(--text-muted)' : 'var(--accent-color)' 
+                    }} 
+                  title={authLoading ? "מתחבר..." : "מחובר ל-Firebase"}
+                />
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>פיירבייס</span>
+              </div>
+              {isaLoading ? (
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>סנכרון ISA...</span>
+              ) : isaData ? (
+                <span style={{ fontSize: '0.7rem', color: '#10b981' }} title="נתוני ISA מסונכרנים אוטומטית בכל יום ב-23:59">ISA מסונכרן ✓</span>
+              ) : (
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ללא נתוני ISA</span>
+              )}
+            </div>
           </div>
         </aside>
+
 
         {/* Main View Area */}
         {renderContent()}

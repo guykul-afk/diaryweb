@@ -8,8 +8,9 @@ from typing import List, Dict, Any, Optional
 import google.generativeai as genai
 from pydantic import BaseModel, Field
 
-from firebase_functions import https_fn
+from firebase_functions import https_fn, scheduler_fn
 from firebase_admin import initialize_app, firestore
+import urllib.request
 
 # Configure logging - Force redeployment v2
 logging.basicConfig(level=logging.INFO)
@@ -150,6 +151,7 @@ Here are your inputs:
 1. The user's recent journal entries.
 2. The individual reports written by the 5 specialized agents.
 3. The names/labels of existing concepts/nodes in the user's knowledge graph.
+4. The user's physiological health metrics for the specific dates, represented as existing HealthMetric nodes.
 
 Your output must be structured exactly as requested, containing:
 1. An executive summary (integrative overview of the user's current psychological state, conflicts, coping mechanisms, and growth paths).
@@ -166,6 +168,8 @@ Your output must be structured exactly as requested, containing:
      * 'מפחד_מ' (FEARS) - if A fears/avoids B
      * 'חוסם' (BLOCKS) - if A blocks/prevents/restricts B
      * 'פתר' (RESOLVES) - if A resolves/solves/relieves B
+     * 'מושפע_מ' (AFFECTED_BY) - if mental state is affected by physiological state (HealthMetric)
+     * 'משפיע_על' (AFFECTS) - if mental state affects physiological state
      * 'קשור_ל' (RELATED_TO) - general fallback relationship
    - In relatedEdges, specify source, target, the relation, sentimentScore (-1 to 1), and sourceQuotes (actual quotes from text). Ensure you link the insights to the existing graph concepts where appropriate.
 
@@ -398,11 +402,34 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     prev_analyses = list(prev_analysis_query)
     
     is_full = req.data.get('is_full', False)
+    health_only = req.data.get('health_only', False)
     is_delta = len(prev_analyses) > 0 and new_entries_since_last > 0 and not is_full
     prev_analysis = prev_analyses[0].to_dict() if prev_analyses else None
 
     # Filter target entries depending on run type
-    if is_delta and prev_analysis:
+    if health_only:
+        # User requested to only analyze entries that have corresponding health data
+        # Fetch all health metrics dates first
+        graph_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
+        health_nodes_snap = graph_ref.where(filter=firestore.FieldFilter("type", "==", "HealthMetric")).stream()
+        health_dates = set([doc.to_dict().get('date') for doc in health_nodes_snap])
+        
+        target_entries = []
+        for e in entries:
+            date_str = e.get('date') or str(e.get('timestamp'))
+            if hasattr(e.get('timestamp'), 'timestamp'):
+                date_str = datetime.datetime.fromtimestamp(e.get('timestamp').timestamp()).strftime('%Y-%m-%d')
+            elif 'frontmatter' in e and 'date' in e['frontmatter']:
+                date_str = e['frontmatter']['date']
+            elif isinstance(date_str, str) and 'T' in date_str:
+                date_str = date_str.split('T')[0]
+            if date_str in health_dates:
+                target_entries.append(e)
+        
+        # Override delta flag since we are doing a specific historical analysis
+        is_delta = False
+        
+    elif is_delta and prev_analysis:
         prev_time = prev_analysis.get('timestamp')
         prev_time_val = 0
         if prev_time:
@@ -446,7 +473,27 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         for n in subgraph['nodes']
     ])
 
-    logger.info(f"Filtered to {len(subgraph['nodes'])} relevant existing nodes for context.")
+    # Inject Health Metrics Nodes for the dates of the target entries
+    target_dates = set()
+    for e in target_entries:
+        date_str = e.get('date') or str(e.get('timestamp'))
+        if hasattr(e.get('timestamp'), 'timestamp'):
+            date_str = datetime.datetime.fromtimestamp(e.get('timestamp').timestamp()).strftime('%Y-%m-%d')
+        elif 'frontmatter' in e and 'date' in e['frontmatter']:
+            date_str = e['frontmatter']['date']
+        elif isinstance(date_str, str) and 'T' in date_str:
+            date_str = date_str.split('T')[0]
+        target_dates.add(date_str)
+
+    health_nodes = [n for n in all_nodes if n.get('type') == 'HealthMetric' and n.get('date') in target_dates]
+    if health_nodes:
+        existing_nodes_context += "\n\n=== HEALTH METRICS FOR RELEVANT DATES ===\n"
+        existing_nodes_context += "\n".join([
+            f"- {n.get('id')} (Label: {n.get('label')}):\n  Content: {n.get('content')}" 
+            for n in health_nodes
+        ])
+
+    logger.info(f"Filtered to {len(subgraph['nodes'])} relevant existing nodes and {len(health_nodes)} health nodes for context.")
 
     logger.info(f"Running {'delta' if is_delta else 'baseline'} analysis on {len(target_entries)} entries.")
 
@@ -1386,5 +1433,56 @@ Only suggest merges/clusters that are highly relevant. Do not force them if not 
         logger.error(f"Error in resolve_and_cluster_entities:\n{tb}")
         # Return the traceback in result to make it accessible to client
         return {"status": "error", "message": f"שגיאת שרת פנימית: {str(e)}", "traceback": tb}
+
+
+@scheduler_fn.on_schedule(schedule="59 23 * * *")
+def scheduled_sync_isa_data(event: scheduler_fn.ScheduledEvent) -> None:
+    logger.info("Starting scheduled sync of ISA data...")
+    isa_uid = "yxF7bHYMpWTayDjTfoYPEyfVTVd2"
+    diary_uid = "K9j4Nx0WK7NKYJs6iDUz35LXFai1"
+    
+    url = f"https://firestore.googleapis.com/v1/projects/lifetracker-guy-2026/databases/(default)/documents/users/{isa_uid}"
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'FirebaseFunction'})
+        with urllib.request.urlopen(req) as response:
+            html = response.read()
+            doc_data = json.loads(html.decode('utf-8'))
+            
+            # Extract fields
+            fields = doc_data.get('fields', {})
+            life_tracker_data_field = fields.get('lifeTrackerData', {})
+            
+            parsed_data = {}
+            map_val = life_tracker_data_field.get('mapValue', {})
+            map_fields = map_val.get('fields', {})
+            
+            for date_key, date_val in map_fields.items():
+                day_map = date_val.get('mapValue', {})
+                day_fields = day_map.get('fields', {})
+                
+                day_dict = {}
+                for param_key, param_val in day_fields.items():
+                    if 'stringValue' in param_val:
+                        day_dict[param_key] = param_val['stringValue']
+                    elif 'integerValue' in param_val:
+                        day_dict[param_key] = int(param_val['integerValue'])
+                    elif 'doubleValue' in param_val:
+                        day_dict[param_key] = float(param_val['doubleValue'])
+                    elif 'booleanValue' in param_val:
+                        day_dict[param_key] = param_val['booleanValue']
+                    elif 'nullValue' in param_val:
+                        day_dict[param_key] = None
+                        
+                parsed_data[date_key] = day_dict
+            
+            db = get_db()
+            user_ref = db.collection('users').document(diary_uid)
+            user_ref.set({"lifeTrackerData": parsed_data}, merge=True)
+            
+            logger.info(f"Successfully synchronized {len(parsed_data)} dates from ISA to Diary database.")
+            
+    except Exception as e:
+        logger.error(f"Failed to synchronize ISA data: {e}")
+
 
 

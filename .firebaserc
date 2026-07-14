@@ -1,5 +1,15 @@
 {
   "projects": {
     "default": "mindcloud-8ccc6"
-  }
+  },
+  "targets": {
+    "mindcloud-8ccc6": {
+      "hosting": {
+        "viewer": [
+          "mindcloud-viewer-guy"
+        ]
+      }
+    }
+  },
+  "etags": {}
 }

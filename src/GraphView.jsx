@@ -6,7 +6,7 @@ import { triggerGraphAnalysis, explainGraphLink, resolveAndClusterEntities } fro
 import { forceCollide } from 'd3-force';
 import { useDiaryData } from './hooks/useDiaryData';
 
-export default function GraphView({ onNavigateToEntry }) {
+export default function GraphView({ onNavigateToEntry, isaData }) {
   const {
     rawGraphData,
     loading,
@@ -36,6 +36,7 @@ export default function GraphView({ onNavigateToEntry }) {
   const [selectedLink, setSelectedLink] = useState(null);
   const [graphMode, setGraphMode] = useState('2d'); // '2d' or '3d'
   const [egoDepth, setEgoDepth] = useState(1);
+  const [colorByIsa, setColorByIsa] = useState(false);
 
   // AI Graph Analysis States
   const [analyzingGraph, setAnalyzingGraph] = useState(false);
@@ -312,6 +313,51 @@ export default function GraphView({ onNavigateToEntry }) {
   // Node Color scheme helper
   const getNodeColor = (node, isSelected) => {
     if (isSelected) return '#ff6b6b';
+    
+    if (colorByIsa && isaData) {
+      const nodeIdLower = node.id.toLowerCase();
+      const meta = conceptMetadataMap[nodeIdLower];
+      if (meta && meta.entries && meta.entries.length > 0) {
+        let totalScore = 0;
+        let count = 0;
+        
+        meta.entries.forEach(e => {
+          if (e.date && isaData[e.date]) {
+            const dayData = isaData[e.date];
+            let score = 0;
+            const qualityScore = (val) => {
+              if (val === 'good') return 10;
+              if (val === 'medium') return 5;
+              return 0;
+            };
+            score += qualityScore(dayData.sportsSets);
+            score += qualityScore(dayData.cardio);
+            score += qualityScore(dayData.meditation);
+            score += qualityScore(dayData.journal);
+            score += qualityScore(dayData.book);
+            score += qualityScore(dayData.efficacy);
+            score += qualityScore(dayData.nutrition);
+            score += qualityScore(dayData.sleep);
+            score += qualityScore(dayData.work);
+            score += qualityScore(dayData.family);
+            score += qualityScore(dayData.social);
+            
+            const dayScore = Math.round((score / 110) * 100);
+            totalScore += dayScore;
+            count++;
+          }
+        });
+        
+        if (count > 0) {
+          const avgScore = totalScore / count;
+          // Interpolate HSL color: 0% is Red (0 deg), 100% is Green (120 deg)
+          const hue = Math.min(120, Math.max(0, (avgScore / 100) * 120));
+          return `hsl(${hue}, 80%, 45%)`;
+        }
+      }
+      return '#708a9f'; // Neutral slate blue if no entries with ISA data
+    }
+
     const type = getNodeType(node);
     switch (type) {
       case 'Person': return '#48bb78';  // Green
@@ -403,6 +449,35 @@ export default function GraphView({ onNavigateToEntry }) {
             </div>
           )}
         </div>
+
+        {/* ISA Color Coding Toggle */}
+        {isaData && (
+          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>קידוד צבע מיוחד:</span>
+            <button
+              onClick={() => setColorByIsa(!colorByIsa)}
+              style={{
+                width: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 14px',
+                backgroundColor: colorByIsa ? '#059669' : 'rgba(255, 255, 255, 0.05)',
+                color: colorByIsa ? '#fff' : 'var(--text-primary)',
+                border: '1px solid',
+                borderColor: colorByIsa ? '#059669' : 'var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                fontSize: '0.85rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              🎨 {colorByIsa ? 'צובע לפי ציון ISA (פעילות יומית)' : 'צבע לפי ציון ISA'}
+            </button>
+          </div>
+        )}
 
         {/* Filters Panel */}
         <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>

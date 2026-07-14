@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, query, orderBy, doc, connectFirestoreEmulator, getDocsFromServer, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, collection, query, orderBy, doc, connectFirestoreEmulator, getDocsFromServer, getDocFromServer, updateDoc, setDoc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
@@ -18,6 +18,18 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
 const functions = getFunctions(app);
+
+export async function fetchSyncedIsaData(uid) {
+  if (!uid) return null;
+  const docRef = doc(db, `users/${uid}`);
+  const docSnap = await getDocFromServer(docRef);
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    return data.lifeTrackerData || null;
+  }
+  return null;
+}
+
 
 if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.search.includes('useEmulator=true')) {
   console.log("Connecting to local Firebase Emulators...");
@@ -152,7 +164,11 @@ export async function fetchFirebaseGraph(uid) {
       name: data.label || nodeId,
       type: data.type || 'Concept',
       weight: data.val || 1,
-      content: data.content || ''
+      content: data.content || '',
+      fx: data.fx !== undefined ? data.fx : null,
+      fy: data.fy !== undefined ? data.fy : null,
+      metrics: data.metrics || null,
+      date: data.date || null
     });
     nodeIds.add(nodeId.toLowerCase());
 
@@ -167,7 +183,8 @@ export async function fetchFirebaseGraph(uid) {
             label: edge.relation || 'relates',
             sentimentScore: edge.sentimentScore !== undefined ? edge.sentimentScore : 0,
             sourceQuotes: edge.sourceQuotes || [],
-            timestamp: edge.timestamp
+            timestamp: edge.timestamp,
+            isManual: edge.isManual || false
           });
         }
       });
@@ -186,7 +203,9 @@ export async function fetchFirebaseGraph(uid) {
         name: targetName,
         type: 'Concept',
         weight: 1,
-        content: ''
+        content: '',
+        fx: null,
+        fy: null
       });
       nodeIds.add(targetLower);
     }
@@ -197,7 +216,9 @@ export async function fetchFirebaseGraph(uid) {
         name: sourceName,
         type: 'Concept',
         weight: 1,
-        content: ''
+        content: '',
+        fx: null,
+        fy: null
       });
       nodeIds.add(sourceLower);
     }
@@ -262,4 +283,73 @@ export async function resolveAndClusterEntities(uid) {
   const resolveFunc = httpsCallable(functions, 'resolve_and_cluster_entities', { timeout: 300000 });
   const result = await resolveFunc({ uid });
   return result.data;
+}
+
+// Save a single node's fixed coordinates for spatial memory
+export async function saveNodeCoordinates(uid, nodeId, fx, fy) {
+  if (!uid || !nodeId) return;
+  const nodeDocRef = doc(db, `users/${uid}/knowledge_graph_nodes`, nodeId);
+  await setDoc(nodeDocRef, { fx, fy }, { merge: true });
+}
+
+// Clear fx and fy coordinates for all specified node IDs to release pinning
+export async function clearAllNodeCoordinates(uid, nodeIds) {
+  if (!uid || !nodeIds || nodeIds.length === 0) return;
+  const batch = writeBatch(db);
+  nodeIds.forEach(nodeId => {
+    const nodeDocRef = doc(db, `users/${uid}/knowledge_graph_nodes`, nodeId);
+    batch.update(nodeDocRef, { fx: null, fy: null });
+  });
+  await batch.commit();
+}
+
+// Add a manual edge between two nodes
+export async function addManualEdge(uid, source, target, relation) {
+  if (!uid || !source || !target) return;
+  const sourceDocRef = doc(db, `users/${uid}/knowledge_graph_nodes`, source);
+  const targetDocRef = doc(db, `users/${uid}/knowledge_graph_nodes`, target);
+  
+  // Ensure source exists, and union the relation
+  await setDoc(sourceDocRef, {
+    id: source,
+    label: source,
+    type: 'Concept',
+    val: 1,
+    relatedEdges: arrayUnion({
+      source,
+      target,
+      relation,
+      sentimentScore: 0,
+      timestamp: Date.now(),
+      isManual: true
+    })
+  }, { merge: true });
+
+  // Ensure target exists
+  const targetDocSnap = await getDocFromServer(targetDocRef);
+  if (!targetDocSnap.exists()) {
+    await setDoc(targetDocRef, {
+      id: target,
+      label: target,
+      type: 'Concept',
+      val: 1,
+      relatedEdges: []
+    });
+  }
+}
+
+// Remove an edge from database
+export async function removeEdge(uid, source, target, relation) {
+  if (!uid || !source || !target) return;
+  const sourceDocRef = doc(db, `users/${uid}/knowledge_graph_nodes`, source);
+  const docSnap = await getDocFromServer(sourceDocRef);
+  if (docSnap.exists()) {
+    const data = docSnap.data();
+    if (data.relatedEdges) {
+      const updatedEdges = data.relatedEdges.filter(edge => 
+        !(edge.source === source && edge.target === target && (edge.relation || '') === relation)
+      );
+      await updateDoc(sourceDocRef, { relatedEdges: updatedEdges });
+    }
+  }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchOriginalInsights, fetchFirebaseEntries, queryDiaryInsights, syncInsightsToGraph, saveChatMessage, getChatHistory } from './firebase';
+import { fetchOriginalInsights, fetchFirebaseEntries, fetchFirebaseGraph, queryDiaryInsights, syncInsightsToGraph, saveChatMessage, getChatHistory } from './firebase';
 import { 
   Lightbulb, 
   Brain, 
@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 
-export default function InsightsView({ uid }) {
+export default function InsightsView({ uid, isaData }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -35,6 +35,9 @@ export default function InsightsView({ uid }) {
   
   // Raw Journal Entries containing insights
   const [entries, setEntries] = useState([]);
+
+  // Google Health metrics by date
+  const [healthMetricsByDate, setHealthMetricsByDate] = useState({});
   
   // Active Sidebar Tab: 'major', 'manual', 'history', 'reflections', 'categorical', 'raw_insights'
   const [activeTab, setActiveTab] = useState('major');
@@ -63,6 +66,356 @@ export default function InsightsView({ uid }) {
   // Sync state
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+
+  const isaStats = useMemo(() => {
+    if (!isaData || entries.length === 0) return null;
+    
+    const entriesByDate = {};
+    entries.forEach(e => {
+      if (e.frontmatter && e.frontmatter.date) {
+        entriesByDate[e.frontmatter.date] = e;
+      }
+    });
+
+    let totalMatchDays = 0;
+    let goodSleepCount = 0;
+    let badSleepCount = 0;
+    let goodSleepPositiveMood = 0;
+    let badSleepPositiveMood = 0;
+    
+    let workoutDays = 0;
+    let noWorkoutDays = 0;
+    let workoutPositiveMood = 0;
+    let noWorkoutPositiveMood = 0;
+
+    let goodEfficacyDays = 0;
+    let badEfficacyDays = 0;
+    let goodEfficacyPositiveMood = 0;
+    let badEfficacyPositiveMood = 0;
+
+    const isPositiveMood = (mood) => {
+      if (!mood) return false;
+      const m = mood.toLowerCase();
+      return m.includes('שמח') || m.includes('טוב') || m.includes('רוגע') || m.includes('חיובי') || m.includes('אהב') || m.includes('joy') || m.includes('happy') || m.includes('calm') || m.includes('love');
+    };
+
+    Object.entries(isaData).forEach(([dateStr, dayData]) => {
+      const entry = entriesByDate[dateStr];
+      if (entry) {
+        totalMatchDays++;
+        const mood = entry.frontmatter.mood;
+        const isPos = isPositiveMood(mood);
+
+        if (dayData.sleep === 'good') {
+          goodSleepCount++;
+          if (isPos) goodSleepPositiveMood++;
+        } else if (dayData.sleep === 'bad') {
+          badSleepCount++;
+          if (isPos) badSleepPositiveMood++;
+        }
+
+        const hasWorkout = dayData.sportsSets === 'good' || dayData.cardio === 'good';
+        if (hasWorkout) {
+          workoutDays++;
+          if (isPos) workoutPositiveMood++;
+        } else {
+          noWorkoutDays++;
+          if (isPos) noWorkoutPositiveMood++;
+        }
+
+        if (dayData.efficacy === 'good') {
+          goodEfficacyDays++;
+          if (isPos) goodEfficacyPositiveMood++;
+        } else if (dayData.efficacy === 'bad') {
+          badEfficacyDays++;
+          if (isPos) badEfficacyPositiveMood++;
+        }
+      }
+    });
+
+    return {
+      totalMatchDays,
+      sleep: {
+        goodPct: goodSleepCount > 0 ? Math.round((goodSleepPositiveMood / goodSleepCount) * 100) : 0,
+        badPct: badSleepCount > 0 ? Math.round((badSleepPositiveMood / badSleepCount) * 100) : 0,
+        goodCount: goodSleepCount,
+        badCount: badSleepCount
+      },
+      workout: {
+        yesPct: workoutDays > 0 ? Math.round((workoutPositiveMood / workoutDays) * 100) : 0,
+        noPct: noWorkoutDays > 0 ? Math.round((noWorkoutPositiveMood / noWorkoutDays) * 100) : 0,
+        yesCount: workoutDays,
+        noCount: noWorkoutDays
+      },
+      efficacy: {
+        goodPct: goodEfficacyDays > 0 ? Math.round((goodEfficacyPositiveMood / goodEfficacyDays) * 100) : 0,
+        badPct: badEfficacyDays > 0 ? Math.round((badEfficacyPositiveMood / badEfficacyDays) * 100) : 0,
+        goodCount: goodEfficacyDays,
+        badCount: badEfficacyDays
+      }
+    };
+  }, [isaData, entries]);
+
+  // ---- Google Health Stats useMemo ----
+  const healthStats = useMemo(() => {
+    const dates = Object.keys(healthMetricsByDate);
+    if (dates.length === 0) return null;
+
+    let sleepTotal = 0, sleepCount = 0;
+    let stepsTotal = 0, stepsCount = 0;
+    let hrTotal = 0, hrCount = 0;
+    let hrvTotal = 0, hrvCount = 0;
+
+    let sleepGood = 0, sleepMed = 0, sleepBad = 0;
+    let stepsGood = 0, stepsMed = 0, stepsBad = 0;
+    let hrGood = 0, hrMed = 0, hrBad = 0;
+    let hrvGood = 0, hrvMed = 0, hrvBad = 0;
+
+    dates.forEach(d => {
+      const m = healthMetricsByDate[d];
+
+      if (m.sleep_score != null && m.sleep_score !== '') {
+        const v = parseFloat(m.sleep_score);
+        if (!isNaN(v)) {
+          sleepTotal += v; sleepCount++;
+          if (v > 85) sleepGood++;
+          else if (v >= 70) sleepMed++;
+          else sleepBad++;
+        }
+      }
+      if (m.steps != null && m.steps !== '') {
+        const v = parseInt(m.steps, 10);
+        if (!isNaN(v)) {
+          stepsTotal += v; stepsCount++;
+          if (v > 15000) stepsGood++;
+          else if (v >= 10000) stepsMed++;
+          else stepsBad++;
+        }
+      }
+      if (m.resting_hr != null && m.resting_hr !== '') {
+        const v = parseFloat(m.resting_hr);
+        if (!isNaN(v)) {
+          hrTotal += v; hrCount++;
+          if (v < 55) hrGood++;
+          else if (v <= 58) hrMed++;
+          else hrBad++;
+        }
+      }
+      if (m.hrv != null && m.hrv !== '') {
+        const v = parseFloat(m.hrv);
+        if (!isNaN(v)) {
+          hrvTotal += v; hrvCount++;
+          if (v > 34) hrvGood++;
+          else if (v >= 29) hrvMed++;
+          else hrvBad++;
+        }
+      }
+    });
+
+    const pct = (n, total) => total > 0 ? Math.round((n / total) * 100) : 0;
+
+    return {
+      totalDays: dates.length,
+      sleep: sleepCount > 0 ? {
+        avg: Math.round(sleepTotal / sleepCount),
+        good: pct(sleepGood, sleepCount),
+        med: pct(sleepMed, sleepCount),
+        bad: pct(sleepBad, sleepCount),
+        count: sleepCount
+      } : null,
+      steps: stepsCount > 0 ? {
+        avg: Math.round(stepsTotal / stepsCount),
+        good: pct(stepsGood, stepsCount),
+        med: pct(stepsMed, stepsCount),
+        bad: pct(stepsBad, stepsCount),
+        count: stepsCount
+      } : null,
+      hr: hrCount > 0 ? {
+        avg: Math.round(hrTotal / hrCount),
+        good: pct(hrGood, hrCount),
+        med: pct(hrMed, hrCount),
+        bad: pct(hrBad, hrCount),
+        count: hrCount
+      } : null,
+      hrv: hrvCount > 0 ? {
+        avg: Math.round(hrvTotal / hrvCount),
+        good: pct(hrvGood, hrvCount),
+        med: pct(hrvMed, hrvCount),
+        bad: pct(hrvBad, hrvCount),
+        count: hrvCount
+      } : null
+    };
+  }, [healthMetricsByDate]);
+
+  // ---- Google Health Correlations with Mood useMemo ----
+  const healthCorrelations = useMemo(() => {
+    if (!healthMetricsByDate || entries.length === 0) return null;
+    
+    const entriesByDate = {};
+    entries.forEach(e => {
+      if (e.frontmatter && e.frontmatter.date) {
+        entriesByDate[e.frontmatter.date] = e;
+      }
+    });
+
+    const isPositiveMood = (mood) => {
+      if (!mood) return false;
+      const m = mood.toLowerCase();
+      return m.includes('שמח') || m.includes('טוב') || m.includes('רוגע') || m.includes('חיובי') || m.includes('אהב') || m.includes('joy') || m.includes('happy') || m.includes('calm') || m.includes('love');
+    };
+
+    const getAdjacentDate = (dateStr, offset) => {
+      const d = new Date(dateStr);
+      d.setDate(d.getDate() + offset);
+      return d.toISOString().split('T')[0];
+    };
+
+    let totalMatchDays = 0;
+    
+    // Today Health -> Today Mood
+    let goodSleepCount = 0, badSleepCount = 0, goodSleepPosMood = 0, badSleepPosMood = 0;
+    let highStepsCount = 0, lowStepsCount = 0, highStepsPosMood = 0, lowStepsPosMood = 0;
+    let goodHrCount = 0, badHrCount = 0, goodHrPosMood = 0, badHrPosMood = 0;
+    let goodHrvCount = 0, badHrvCount = 0, goodHrvPosMood = 0, badHrvPosMood = 0;
+
+    // Prev Health -> Today Mood
+    let prevGoodSleepCount = 0, prevBadSleepCount = 0, prevGoodSleepPosMood = 0, prevBadSleepPosMood = 0;
+    let prevHighStepsCount = 0, prevLowStepsCount = 0, prevHighStepsPosMood = 0, prevLowStepsPosMood = 0;
+
+    // Today Mood -> Next Health
+    let posMoodNextSleepCount = 0, posMoodNextGoodSleep = 0;
+    let negMoodNextSleepCount = 0, negMoodNextGoodSleep = 0;
+    let posMoodNextStepsCount = 0, posMoodNextHighSteps = 0;
+    let negMoodNextStepsCount = 0, negMoodNextHighSteps = 0;
+
+    Object.keys(entriesByDate).forEach(dateStr => {
+      const entry = entriesByDate[dateStr];
+      const isPos = isPositiveMood(entry.frontmatter.mood);
+      
+      const todayHealth = healthMetricsByDate[dateStr];
+      const prevHealth = healthMetricsByDate[getAdjacentDate(dateStr, -1)];
+      const nextHealth = healthMetricsByDate[getAdjacentDate(dateStr, 1)];
+
+      // --- Today Health -> Today Mood ---
+      if (todayHealth) {
+        totalMatchDays++;
+        const m = todayHealth;
+        if (m.sleep_score != null) {
+          const v = parseFloat(m.sleep_score);
+          if (!isNaN(v)) {
+            if (v > 80) { goodSleepCount++; if (isPos) goodSleepPosMood++; }
+            else if (v < 75) { badSleepCount++; if (isPos) badSleepPosMood++; }
+          }
+        }
+        if (m.steps != null) {
+          const v = parseInt(m.steps, 10);
+          if (!isNaN(v)) {
+            if (v > 12000) { highStepsCount++; if (isPos) highStepsPosMood++; }
+            else if (v < 8000) { lowStepsCount++; if (isPos) lowStepsPosMood++; }
+          }
+        }
+        if (m.resting_hr != null) {
+          const v = parseFloat(m.resting_hr);
+          if (!isNaN(v)) {
+            if (v < 56) { goodHrCount++; if (isPos) goodHrPosMood++; }
+            else if (v > 58) { badHrCount++; if (isPos) badHrPosMood++; }
+          }
+        }
+        if (m.hrv != null) {
+          const v = parseFloat(m.hrv);
+          if (!isNaN(v)) {
+            if (v > 32) { goodHrvCount++; if (isPos) goodHrvPosMood++; }
+            else if (v < 29) { badHrvCount++; if (isPos) badHrvPosMood++; }
+          }
+        }
+      }
+
+      // --- Prev Health -> Today Mood ---
+      if (prevHealth) {
+        if (prevHealth.sleep_score != null) {
+          const v = parseFloat(prevHealth.sleep_score);
+          if (!isNaN(v)) {
+            if (v > 80) { prevGoodSleepCount++; if (isPos) prevGoodSleepPosMood++; }
+            else if (v < 75) { prevBadSleepCount++; if (isPos) prevBadSleepPosMood++; }
+          }
+        }
+        if (prevHealth.steps != null) {
+          const v = parseInt(prevHealth.steps, 10);
+          if (!isNaN(v)) {
+            if (v > 12000) { prevHighStepsCount++; if (isPos) prevHighStepsPosMood++; }
+            else if (v < 8000) { prevLowStepsCount++; if (isPos) prevLowStepsPosMood++; }
+          }
+        }
+      }
+
+      // --- Today Mood -> Next Health ---
+      if (nextHealth) {
+        if (isPos) {
+           if (nextHealth.sleep_score != null) {
+              const v = parseFloat(nextHealth.sleep_score);
+              if (!isNaN(v)) { posMoodNextSleepCount++; if (v > 80) posMoodNextGoodSleep++; }
+           }
+           if (nextHealth.steps != null) {
+              const v = parseInt(nextHealth.steps, 10);
+              if (!isNaN(v)) { posMoodNextStepsCount++; if (v > 12000) posMoodNextHighSteps++; }
+           }
+        } else {
+           if (nextHealth.sleep_score != null) {
+              const v = parseFloat(nextHealth.sleep_score);
+              if (!isNaN(v)) { negMoodNextSleepCount++; if (v > 80) negMoodNextGoodSleep++; }
+           }
+           if (nextHealth.steps != null) {
+              const v = parseInt(nextHealth.steps, 10);
+              if (!isNaN(v)) { negMoodNextStepsCount++; if (v > 12000) negMoodNextHighSteps++; }
+           }
+        }
+      }
+    });
+
+    const pct = (n, total) => total > 0 ? Math.round((n / total) * 100) : 0;
+
+    return {
+      totalMatchDays,
+      today: {
+        sleep: {
+          goodPct: pct(goodSleepPosMood, goodSleepCount), badPct: pct(badSleepPosMood, badSleepCount),
+          goodCount: goodSleepCount, badCount: badSleepCount
+        },
+        steps: {
+          goodPct: pct(highStepsPosMood, highStepsCount), badPct: pct(lowStepsPosMood, lowStepsCount),
+          goodCount: highStepsCount, badCount: lowStepsCount
+        },
+        hr: {
+          goodPct: pct(goodHrPosMood, goodHrCount), badPct: pct(badHrPosMood, badHrCount),
+          goodCount: goodHrCount, badCount: badHrCount
+        },
+        hrv: {
+          goodPct: pct(goodHrvPosMood, goodHrvCount), badPct: pct(badHrvPosMood, badHrvCount),
+          goodCount: goodHrvCount, badCount: badHrvCount
+        }
+      },
+      prev: {
+        sleep: {
+          goodPct: pct(prevGoodSleepPosMood, prevGoodSleepCount), badPct: pct(prevBadSleepPosMood, prevBadSleepCount),
+          goodCount: prevGoodSleepCount, badCount: prevBadSleepCount
+        },
+        steps: {
+          goodPct: pct(prevHighStepsPosMood, prevHighStepsCount), badPct: pct(prevLowStepsPosMood, prevLowStepsCount),
+          goodCount: prevHighStepsCount, badCount: prevLowStepsCount
+        }
+      },
+      next: {
+        sleep: {
+          goodPct: pct(posMoodNextGoodSleep, posMoodNextSleepCount), badPct: pct(negMoodNextGoodSleep, negMoodNextSleepCount),
+          posCount: posMoodNextSleepCount, negCount: negMoodNextSleepCount
+        },
+        steps: {
+          goodPct: pct(posMoodNextHighSteps, posMoodNextStepsCount), badPct: pct(negMoodNextHighSteps, negMoodNextStepsCount),
+          posCount: posMoodNextStepsCount, negCount: negMoodNextStepsCount
+        }
+      }
+    };
+  }, [healthMetricsByDate, entries]);
 
   const handleSyncToGraph = async () => {
     if (!uid || syncing) return;
@@ -96,13 +449,28 @@ export default function InsightsView({ uid }) {
         throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
       }
       
-      const [originalData, entriesData] = await Promise.all([
+      const [originalData, entriesData, graphData] = await Promise.all([
         fetchOriginalInsights(uid),
-        fetchFirebaseEntries(uid)
+        fetchFirebaseEntries(uid),
+        fetchFirebaseGraph(uid)
       ]);
       
       setOriginalInsights(originalData);
       setEntries(entriesData || []);
+
+      // Build healthMetricsByDate from graph nodes
+      const healthMap = {};
+      if (graphData && graphData.nodes) {
+        graphData.nodes.forEach(node => {
+          if (node.type === 'HealthMetric') {
+            const dateStr = node.date || (node.id && node.id.replace('Health_', '').replace(/_/g, '-'));
+            if (dateStr && node.metrics) {
+              healthMap[dateStr] = node.metrics;
+            }
+          }
+        });
+      }
+      setHealthMetricsByDate(healthMap);
 
       // Extract advice history
       let historyArray = [];
@@ -329,6 +697,7 @@ export default function InsightsView({ uid }) {
           { id: 'reflections', label: 'עבודה בצל ורפלקציה', icon: Brain, color: '#1e40af' },
           { id: 'categorical', label: 'תובנות לפי תחומים', icon: Activity, color: '#475569' },
           { id: 'raw_insights', label: 'תובנות גולמיות מהיומן', icon: MessageSquare, color: '#64748b' },
+          { id: 'isa_correlations', label: 'תובנות ממדדי בריאות ופעילות יומית', icon: TrendingUp, color: '#10b981' },
           { id: 'qa', label: 'שאל את היומן (AI)', icon: HelpCircle, color: '#8b5cf6' }
         ].map(tab => {
           const Icon = tab.icon;
@@ -394,6 +763,7 @@ export default function InsightsView({ uid }) {
               {activeTab === 'reflections' && 'עבודת צללים ורפלקציה עצמית'}
               {activeTab === 'categorical' && 'תובנות ממוקדות לפי תחומי חיים'}
               {activeTab === 'raw_insights' && 'תובנות גולמיות מכל כניסת יומן'}
+              {activeTab === 'isa_correlations' && 'תובנות ממדדי בריאות ופעילות יומית'}
               {activeTab === 'qa' && 'שאלות ותשובות מבוססות ידע (AI)'}
             </h1>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
@@ -403,6 +773,7 @@ export default function InsightsView({ uid }) {
               {activeTab === 'reflections' && 'ניתוחים שבועיים, יומיים ועבודת מעמקים עם החלקים הנסתרים.'}
               {activeTab === 'categorical' && 'ניתוח מרוכז של דפוסים בעבודה, ביחסים וברמה האישית.'}
               {activeTab === 'raw_insights' && 'כל התובנות הנקודתיות שנוצרו אוטומטית מתוך התמלולים והטקסטים שכתבת.'}
+              {activeTab === 'isa_correlations' && 'הצלבה סטטיסטית וניתוח קורלציות בין מדדי בריאות (Google Health), הרגלי פעילות (ISA) ואיכות חיים לבין מצב הרוח והתוכן ביומן.'}
               {activeTab === 'qa' && 'חקר מעמיק ושאילת שאלות על גבי הרשומות, התובנות השונות וגרף המושגים שלך.'}
             </p>
           </div>
@@ -844,6 +1215,417 @@ export default function InsightsView({ uid }) {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* TAB: ISA CORRELATIONS */}
+          {activeTab === 'isa_correlations' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '850px' }}>
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <TrendingUp size={20} style={{ color: '#10b981' }} />
+                  ניתוח קורלציות: הרגלי חיים (ISA) מול כתיבת יומן
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
+                  מערכת הצלבת הנתונים סרקה את ימי החפיפה בין דירוגי ה-ISA היומיים לבין רשומות היומן שלך (סה"כ {isaStats?.totalMatchDays || 0} ימי חפיפה).
+                </p>
+              </div>
+
+              {!isaStats || isaStats.totalMatchDays === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+                  לא נמצאו מספיק ימי חפיפה עם נתוני ISA. ודא שהכנסת UID תקין ושסונכרנו נתונים.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  
+                  {/* Card 1: Sleep */}
+                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                      <span>💤 השפעת איכות השינה על מצב הרוח ביומן</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {isaStats.sleep.goodCount + isaStats.sleep.badCount} ימים</span>
+                    </h4>
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                          <span>מצב רוח חיובי לאחר שינה טובה:</span>
+                          <strong>{isaStats.sleep.goodPct}%</strong>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${isaStats.sleep.goodPct}%`, height: '100%', background: '#10b981' }} />
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                          <span>מצב רוח חיובי לאחר שינה גרועה:</span>
+                          <strong>{isaStats.sleep.badPct}%</strong>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${isaStats.sleep.badPct}%`, height: '100%', background: '#ef4444' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Workouts */}
+                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                      <span>🏃 השפעת ספורט ואימון על מצב הרוח ביומן</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {isaStats.workout.yesCount + isaStats.workout.noCount} ימים</span>
+                    </h4>
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                          <span>מצב רוח חיובי בימים עם אימון גופני:</span>
+                          <strong>{isaStats.workout.yesPct}%</strong>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${isaStats.workout.yesPct}%`, height: '100%', background: '#10b981' }} />
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                          <span>מצב רוח חיובי בימים ללא אימון:</span>
+                          <strong>{isaStats.workout.noPct}%</strong>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${isaStats.workout.noPct}%`, height: '100%', background: '#6b7280' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Efficacy */}
+                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                      <span>⚡ קשר בין תחושת מסוגלות (חוללות) למצב רוח</span>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {isaStats.efficacy.goodCount + isaStats.efficacy.badCount} ימים</span>
+                    </h4>
+                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                          <span>מצב רוח חיובי כשתחושת החוללות גבוהה:</span>
+                          <strong>{isaStats.efficacy.goodPct}%</strong>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${isaStats.efficacy.goodPct}%`, height: '100%', background: '#10b981' }} />
+                        </div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: '200px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                          <span>מצב רוח חיובי כשתחושת החוללות נמוכה:</span>
+                          <strong>{isaStats.efficacy.badPct}%</strong>
+                        </div>
+                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                          <div style={{ width: `${isaStats.efficacy.badPct}%`, height: '100%', background: '#ef4444' }} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* === Google Health Metrics Insights === */}
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Heart size={18} style={{ color: '#ef4444' }} />
+                  תובנות ממדדי Google Health
+                </h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+                  ניתוח מדדי הבריאות האובייקטיביים לאורך {healthStats?.totalDays || 0} ימים עם נתונים.
+                </p>
+
+                {!healthStats ? (
+                  <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                    לא נמצאו נתוני בריאות מ-Google Health. ודא שהנתונים סונכרנו לגרף.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {[
+                      healthStats.sleep && {
+                        emoji: '🌙', label: 'שינה (ציון Google Health)',
+                        avg: `ממוצע: ${healthStats.sleep.avg}`,
+                        avgColor: healthStats.sleep.avg > 85 ? '#047857' : healthStats.sleep.avg >= 70 ? '#b45309' : '#b91c1c',
+                        rows: [
+                          { label: 'שינה מצוינת (>85)', pct: healthStats.sleep.good, color: '#10b981' },
+                          { label: 'שינה סבירה (70–85)', pct: healthStats.sleep.med, color: '#f59e0b' },
+                          { label: 'שינה ירודה (<70)', pct: healthStats.sleep.bad, color: '#ef4444' },
+                        ],
+                        insight: healthStats.sleep.avg > 85
+                          ? 'מצוין – רוב הלילות נחתמו כשינה איכותית.'
+                          : healthStats.sleep.avg >= 70
+                          ? 'סביר – יש מקום לשיפור בהיגיינת השינה.'
+                          : 'נמוך – שינה ירודה ממוצעת עשויה לפגוע באנרגיה ובמצב הרוח.',
+                        count: healthStats.sleep.count
+                      },
+                      healthStats.steps && {
+                        emoji: '👟', label: 'צעדים יומיים',
+                        avg: `ממוצע: ${healthStats.steps.avg.toLocaleString()} צעדים`,
+                        avgColor: healthStats.steps.avg > 15000 ? '#047857' : healthStats.steps.avg >= 10000 ? '#b45309' : '#b91c1c',
+                        rows: [
+                          { label: 'פעיל מאוד (>15,000)', pct: healthStats.steps.good, color: '#10b981' },
+                          { label: 'פעיל (10,000–15,000)', pct: healthStats.steps.med, color: '#f59e0b' },
+                          { label: 'יושבני (<10,000)', pct: healthStats.steps.bad, color: '#ef4444' },
+                        ],
+                        insight: healthStats.steps.avg > 15000
+                          ? 'מעולה – רמת פעילות יומית גבוהה.'
+                          : healthStats.steps.avg >= 10000
+                          ? 'טוב – עומד ביעד הפעילות הבסיסי.'
+                          : 'נמוך – מספר הצעדים הממוצע מעיד על אורח חיים יושבני.',
+                        count: healthStats.steps.count
+                      },
+                      healthStats.hr && {
+                        emoji: '❤️', label: 'דופק מנוחה (BPM)',
+                        avg: `ממוצע: ${healthStats.hr.avg} BPM`,
+                        avgColor: healthStats.hr.avg < 55 ? '#047857' : healthStats.hr.avg <= 58 ? '#b45309' : '#b91c1c',
+                        rows: [
+                          { label: 'מצוין (<55 BPM)', pct: healthStats.hr.good, color: '#10b981' },
+                          { label: 'תקין (55–58 BPM)', pct: healthStats.hr.med, color: '#f59e0b' },
+                          { label: 'גבוה (>58 BPM)', pct: healthStats.hr.bad, color: '#ef4444' },
+                        ],
+                        insight: healthStats.hr.avg < 55
+                          ? 'מצוין – דופק מנוחה נמוך מעיד על כושר לב-ריאה טוב.'
+                          : healthStats.hr.avg <= 58
+                          ? 'תקין – בטווח הנורמלי הרצוי.'
+                          : 'גבוה – דופק מנוחה מוגבר עשוי להעיד על עקה, חוסר שינה או עייפות.',
+                        count: healthStats.hr.count
+                      },
+                      healthStats.hrv && {
+                        emoji: '⚡', label: 'HRV – שונות קצב לב (ms)',
+                        avg: `ממוצע: ${healthStats.hrv.avg} ms`,
+                        avgColor: healthStats.hrv.avg > 34 ? '#047857' : healthStats.hrv.avg >= 29 ? '#b45309' : '#b91c1c',
+                        rows: [
+                          { label: 'גבוה – התאוששות טובה (>34)', pct: healthStats.hrv.good, color: '#10b981' },
+                          { label: 'בינוני (29–34)', pct: healthStats.hrv.med, color: '#f59e0b' },
+                          { label: 'נמוך – סטרס גופני (<29)', pct: healthStats.hrv.bad, color: '#ef4444' },
+                        ],
+                        insight: healthStats.hrv.avg > 34
+                          ? 'מצוין – מערכת עצבים אוטונומית מאוזנת, יכולת התאוששות גבוהה.'
+                          : healthStats.hrv.avg >= 29
+                          ? 'סביר – יכולת התאוששות ממוצעת, כדאי לשמור על שינה ומנוחה.'
+                          : 'נמוך – הגוף בעומס, שקול להפחית אימונים אינטנסיביים.',
+                        count: healthStats.hrv.count
+                      },
+                    ].filter(Boolean).map((card, ci) => (
+                      <div key={ci} style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {card.emoji} {card.label}
+                          </h4>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {card.count} ימים</span>
+                        </div>
+                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: card.avgColor }}>{card.avg}</div>
+                        {card.rows.map((row, ri) => (
+                          <div key={ri}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
+                              <span style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
+                              <strong style={{ color: row.color }}>{row.pct}%</strong>
+                            </div>
+                            <div style={{ height: '7px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                              <div style={{ width: `${row.pct}%`, height: '100%', background: row.color, transition: 'width 0.6s ease' }} />
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', borderRight: `3px solid ${card.avgColor}`, direction: 'rtl', textAlign: 'right' }}>
+                          💡 {card.insight}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* === Deep Mood & Health Correlations === */}
+              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
+                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Brain size={20} style={{ color: '#8b5cf6' }} />
+                  ניתוח עומק: השפעת מדדי הבריאות על מצב הרוח והאנרגיה
+                </h3>
+                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
+                  הצלבה חכמה בין מדדי Google Health לבין מצב הרוח שדווח ביומן לאורך זמן (סה"כ {healthCorrelations?.totalMatchDays || 0} ימי חפיפה).
+                </p>
+
+                {!healthCorrelations || healthCorrelations.totalMatchDays === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                    לא נמצאו מספיק ימי חפיפה בין דיווחי היומן למדדי הבריאות.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    
+                    {/* Sleep vs Mood */}
+                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                        <span>🌙 איך איכות השינה משפיעה עליך?</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.today.sleep.goodCount + healthCorrelations.today.sleep.badCount} ימים</span>
+                      </h4>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי לאחר שינה מצוינת (&gt;80):</span>
+                            <strong>{healthCorrelations.today.sleep.goodPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.today.sleep.goodPct}%`, height: '100%', background: '#8b5cf6' }} />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי לאחר שינה חסרה (&lt;75):</span>
+                            <strong>{healthCorrelations.today.sleep.badPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.today.sleep.badPct}%`, height: '100%', background: '#ef4444' }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #8b5cf6' }}>
+                        💡 <strong>תובנה מבוססת נתונים:</strong> 
+                        {healthCorrelations.today.sleep.goodPct - healthCorrelations.today.sleep.badPct > 20 
+                          ? " יש לך רגישות גבוהה מאוד לחוסר שינה. שינה איכותית מעלה את הסיכוי ליום חיובי באופן דרמטי." 
+                          : " נראה שאתה מצליח 'למשוך' גם בימים של שינה פחות טובה, אבל שינה טובה עדיין תורמת לאיזון."}
+                      </div>
+                    </div>
+
+                    {/* Steps vs Mood */}
+                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                        <span>👟 האם תנועה מייצרת שמחה?</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.today.steps.goodCount + healthCorrelations.today.steps.badCount} ימים</span>
+                      </h4>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי ביום פעיל מאוד (&gt;12k):</span>
+                            <strong>{healthCorrelations.today.steps.goodPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.today.steps.goodPct}%`, height: '100%', background: '#10b981' }} />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי ביום יושבני (&lt;8k):</span>
+                            <strong>{healthCorrelations.today.steps.badPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.today.steps.badPct}%`, height: '100%', background: '#6b7280' }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #10b981' }}>
+                        💡 <strong>תובנה מבוססת נתונים:</strong> 
+                        {healthCorrelations.today.steps.goodPct - healthCorrelations.today.steps.badPct > 15 
+                          ? " תנועה פיזית היא מנוע אנרגיה מרכזי עבורך. ימי קיפאון גובים מחיר נפשי ניכר." 
+                          : " רמת הפעילות שלך לא מהווה את הפקטור הבלעדי למצב הרוח, אך ימים פעילים יותר נוטים להיות מספקים יותר."}
+                      </div>
+                    </div>
+
+                    {/* HRV vs Mood */}
+                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                        <span>⚡ התאוששות עצבית (HRV) ומצב רוח</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.today.hrv.goodCount + healthCorrelations.today.hrv.badCount} ימים</span>
+                      </h4>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי כשה-HRV גבוה (&gt;32):</span>
+                            <strong>{healthCorrelations.today.hrv.goodPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.today.hrv.goodPct}%`, height: '100%', background: '#3b82f6' }} />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי כשה-HRV נמוך (&lt;29):</span>
+                            <strong>{healthCorrelations.today.hrv.badPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.today.hrv.badPct}%`, height: '100%', background: '#f59e0b' }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #3b82f6' }}>
+                        💡 <strong>תובנה מבוססת נתונים:</strong> 
+                        {healthCorrelations.today.hrv.goodPct - healthCorrelations.today.hrv.badPct > 15 
+                          ? " מדד ה-HRV שלך הוא סמן מדויק למצבך הנפשי. כשהגוף בסטרס פיזי, גם הנפש מגיבה בהתאם." 
+                          : " אין קשר מובהק וישיר בין ההתאוששות העצבית המיידית למצב הרוח ביומן, ייתכן שאתה מפצה מנטלית על עייפות גופנית."}
+                      </div>
+                    </div>
+
+                    {/* Prev Day Health vs Today Mood */}
+                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                        <span>⏪ אפקט הגרירה: פעילות אתמול לעומת מצב רוח היום</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.prev.steps.goodCount + healthCorrelations.prev.steps.badCount} ימים</span>
+                      </h4>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי היום, כשהייתה אתמול פעילות רבה (&gt;12k):</span>
+                            <strong>{healthCorrelations.prev.steps.goodPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.prev.steps.goodPct}%`, height: '100%', background: '#14b8a6' }} />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>מצב רוח חיובי היום, כשהייתה אתמול פעילות מועטה (&lt;8k):</span>
+                            <strong>{healthCorrelations.prev.steps.badPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.prev.steps.badPct}%`, height: '100%', background: '#94a3b8' }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #14b8a6' }}>
+                        💡 <strong>תובנה מבוססת נתונים:</strong> 
+                        {healthCorrelations.prev.steps.goodPct > healthCorrelations.prev.steps.badPct + 10 
+                          ? " אימון ותנועה היום מרימים אותך גם מחר! פעילות משפיעה על מצב הרוח לאורך זמן." 
+                          : " ההשפעה של חוסר פעילות מאתמול כנראה פחות מהותית להיום, כל יום עומד בפני עצמו."}
+                      </div>
+                    </div>
+
+                    {/* Today Mood vs Next Day Health */}
+                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
+                        <span>⏩ נבואה שמגשימה את עצמה: מצב רוח היום לעומת שינה מחר</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.next.sleep.posCount + healthCorrelations.next.sleep.negCount} ימים</span>
+                      </h4>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>אחוז שינה מצוינת (&gt;80) מחר, אם היום היית במצב רוח חיובי:</span>
+                            <strong>{healthCorrelations.next.sleep.goodPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.next.sleep.goodPct}%`, height: '100%', background: '#8b5cf6' }} />
+                          </div>
+                        </div>
+                        <div style={{ flex: 1, minWidth: '200px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
+                            <span>אחוז שינה מצוינת מחר, אם היום לא היית חיובי:</span>
+                            <strong>{healthCorrelations.next.sleep.badPct}%</strong>
+                          </div>
+                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
+                            <div style={{ width: `${healthCorrelations.next.sleep.badPct}%`, height: '100%', background: '#d946ef' }} />
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #d946ef' }}>
+                        💡 <strong>תובנה מבוססת נתונים:</strong> 
+                        {healthCorrelations.next.sleep.goodPct > healthCorrelations.next.sleep.badPct + 10 
+                          ? " יום חיובי ורגוע עוזר לך להירדם בקלות ולישון טוב יותר בלילה שלאחריו." 
+                          : " ימים של סטרס או מצב רוח ירוד יכולים לשבש את השינה."}
+                      </div>
+                    </div>
+
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
 
