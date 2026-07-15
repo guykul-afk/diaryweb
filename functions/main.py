@@ -57,8 +57,8 @@ class GraphEdge(BaseModel):
     sourceQuotes: List[str] = Field(..., description="List of 1-2 direct quotes from the user's journal entries that prove this relationship.")
 
 class GraphNode(BaseModel):
-    id: str = Field(..., description="Unique node ID in English or Hebrew, lowercase or clean name, e.g., 'rationalization_defense' or 'חרדת_ביצוע'")
-    label: str = Field(..., description="Node name/label in Hebrew, e.g., 'מנגנון הגנה: רציונליזציה'")
+    id: str = Field(..., description="Unique atomic node ID in English or Hebrew, lowercase or clean name (1-3 words max, e.g., 'זוגיות' or 'חרדת_ביצוע'). Do NOT use long phrases or sentences.")
+    label: str = Field(..., description="Short atomic node name/label in Hebrew (1-3 words max, e.g., 'זוגיות', 'שיחה', 'מגע'). Avoid using sentences, descriptions, or connector words like 'באמצעות', 'על ידי', 'של'.")
     type: str = Field(..., description="Node type, e.g., 'Insight', 'Trait', 'Pattern'")
     val: int = Field(..., description="Node value/weight, e.g. 2 or 3")
     content: str = Field(..., description="Detailed explanation/insight description in Hebrew")
@@ -160,6 +160,7 @@ Your output must be structured exactly as requested, containing:
    - Linguistic metrics (emotional density, self-focus, stress level, scores from 0 to 100).
 3. A list of NEW psychological insight nodes to add to the knowledge graph.
    - For each new node, define an ID, label (Hebrew), type (Insight, Trait, Pattern, Defense, etc.), value/weight, and description (content in Hebrew).
+   - CRITICAL NODE ATOMICITY RULE: Every node ID and label must be a short, atomic concept (1-3 words max, e.g. 'זוגיות', 'מגע', 'שיחה', 'חרדת_ביצוע'). DO NOT create nodes that represent sentences, processes, or relationships (e.g. do NOT create a node like 'זוגיות באמצעות שיחה ומגע'). Break complex relationships down into simple atomic nodes connected by Edges.
    - Define relatedEdges to connect this new node to existing nodes or other new nodes. 
    - CRITICAL ONTOLOGY RULE: In relatedEdges, the `relation` field MUST be exactly one of the following Hebrew strings:
      * 'גורם_ל' (CAUSES) - if A causes/triggers B
@@ -231,6 +232,37 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_toke
         logger.error(f"Error running agent {agent_name}: {e}")
         return f"שגיאה בניתוח סוכן {agent_name}: {str(e)}"
 
+def get_embedding(text: str) -> List[float]:
+    """Helper function to generate embeddings using Gemini."""
+    if not text or not isinstance(text, str):
+        return []
+    try:
+        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            logger.warning("No API key for embeddings")
+            return []
+        genai.configure(api_key=api_key)
+        # Using text-embedding-004
+        result = genai.embed_content(
+            model="models/text-embedding-004",
+            content=text,
+            task_type="retrieval_document"
+        )
+        return result.get('embedding', [])
+    except Exception as e:
+        logger.error(f"Failed to generate embedding: {e}")
+        return []
+
+def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
+    """Calculate cosine similarity between two vectors."""
+    if not vec1 or not vec2 or len(vec1) != len(vec2):
+        return 0.0
+    dot_product = sum(a * b for a, b in zip(vec1, vec2))
+    norm1 = sum(a * a for a in vec1) ** 0.5
+    norm2 = sum(b * b for b in vec2) ** 0.5
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+    return dot_product / (norm1 * norm2)
 
 def extract_entities_from_text(text: str) -> List[str]:
     """
@@ -265,11 +297,27 @@ def extract_entities_from_text(text: str) -> List[str]:
     return cleaned_entities
 
 
-def get_subgraph_by_entities(nodes_data: list, entities: list, max_hops: int = 2) -> dict:
+def get_subgraph_by_semantic_search(nodes_data: list, query_text: str, top_k: int = 15, max_hops: int = 1) -> dict:
     """
-    Traverses the graph starting from nodes matching the extracted entities.
+    Traverses the graph starting from nodes semantically similar to the query.
     Returns a dictionary with 'nodes' list and 'edges' list representing the subgraph.
     """
+    query_emb = get_embedding(query_text)
+    
+    node_similarities = []
+    for n in nodes_data:
+        node_emb = n.get('embedding')
+        if not node_emb:
+            sim = 0.0
+        else:
+            sim = cosine_similarity(query_emb, node_emb)
+        node_similarities.append((sim, n))
+        
+    node_similarities.sort(key=lambda x: x[0], reverse=True)
+    top_nodes = [n for sim, n in node_similarities[:top_k] if sim > 0.1]
+    
+    seed_nodes = {n.get('id').strip().lower().replace(" ", "_") for n in top_nodes if n.get('id')}
+
     adj_list = {}
     nodes_by_id = {}
     
@@ -287,20 +335,10 @@ def get_subgraph_by_entities(nodes_data: list, entities: list, max_hops: int = 2
             source = edge.get('source', '').strip().lower().replace(" ", "_")
             target = edge.get('target', '').strip().lower().replace(" ", "_")
             if source and target:
-                # Undirected graph traversal for contextual completeness
                 if source in adj_list:
                     adj_list[source].append((target, edge))
                 if target in adj_list:
                     adj_list[target].append((source, edge))
-
-    # Find starting seed nodes
-    seed_nodes = set()
-    for ent in entities:
-        ent_norm = ent.strip().lower().replace(" ", "_")
-        for normalized_id, node in nodes_by_id.items():
-            label_norm = node.get('label', '').strip().lower().replace(" ", "_")
-            if ent_norm in normalized_id or normalized_id in ent_norm or ent_norm in label_norm or label_norm in ent_norm:
-                seed_nodes.add(normalized_id)
 
     visited_nodes = set(seed_nodes)
     visited_edges = []
@@ -466,7 +504,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         data['id'] = data.get('id') or doc.id
         all_nodes.append(data)
         
-    subgraph = get_subgraph_by_entities(all_nodes, new_entry_entities, max_hops=2)
+    subgraph = get_subgraph_by_semantic_search(all_nodes, prompt_context, top_k=15, max_hops=1)
     
     existing_nodes_context = "\n".join([
         f"- {n.get('id')} (Label: {n.get('label')})" 
@@ -611,13 +649,17 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
                 "sourceQuotes": getattr(edge, "sourceQuotes", [])
             })
             
+        node_embedding = get_embedding(f"{node.label} {node.content}")
+            
         node_ref.set({
             "id": node_doc_id,
             "label": node.label,
             "type": node.type,
             "val": node.val,
             "content": node.content,
-            "relatedEdges": edges_list
+            "relatedEdges": edges_list,
+            "embedding": node_embedding,
+            "last_active": firestore.SERVER_TIMESTAMP
         }, merge=True)
 
     # 11. Reset Counter in User Doc
@@ -869,17 +911,31 @@ def analyze_knowledge_graph(req: https_fn.CallableRequest) -> dict:
     import uuid
     insight_id = f"graph_insight_{uuid.uuid4().hex[:8]}"
     
-    extraction_prompt = f"Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the user's query/graph that it strongly discusses. Output strictly valid JSON like: {{\n  \"label\": \"...\",\n  \"related_nodes\": [\"node1\", \"node2\"]\n}}\n\nInsight:\n{response}"
+    extraction_prompt = f"""Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the user's query/graph that it strongly discusses. 
+Additionally, if the insight suggests a missing link or new relationship between existing nodes, provide a list of 'suggested_edges'.
+Output strictly valid JSON like: 
+{{
+  "label": "...",
+  "related_nodes": ["node1", "node2"],
+  "suggested_edges": [
+    {{"source": "node1", "target": "node2", "relation": "קשור_ל", "sentimentScore": -1}}
+  ]
+}}
+
+Insight:
+{response}"""
     extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt)
     
     label = "תובנת בלש (AI)"
     related_nodes = []
+    suggested_edges = []
     try:
         import json
         clean_json = extraction_response.strip().strip('`').replace('json\n', '')
         extracted = json.loads(clean_json)
         label = extracted.get('label', label)
         related_nodes = extracted.get('related_nodes', [])
+        suggested_edges = extracted.get('suggested_edges', [])
     except Exception as e:
         logger.error(f"Failed to extract JSON for insight node: {e}")
         pass
@@ -901,8 +957,33 @@ def analyze_knowledge_graph(req: https_fn.CallableRequest) -> dict:
         "val": 3,
         "content": response,
         "relatedEdges": edges_list,
-        "timestamp": firestore.SERVER_TIMESTAMP
+        "embedding": get_embedding(f"{label} {response}"),
+        "timestamp": firestore.SERVER_TIMESTAMP,
+        "last_active": firestore.SERVER_TIMESTAMP
     }, merge=True)
+    
+    # Save explicit suggested edges directly to their source nodes
+    for edge in suggested_edges:
+        source_id = edge.get("source", "").strip().replace(" ", "_")
+        target_id = edge.get("target", "").strip().replace(" ", "_")
+        if source_id and target_id:
+            edge_payload = {
+                "source": source_id,
+                "target": target_id,
+                "relation": edge.get("relation", "קשור_ל"),
+                "sentimentScore": edge.get("sentimentScore", 0),
+                "is_suggested": True,
+                "sourceQuotes": []
+            }
+            # Add to source node
+            try:
+                source_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(source_id)
+                source_ref.update({
+                    "relatedEdges": firestore.ArrayUnion([edge_payload]),
+                    "last_active": firestore.SERVER_TIMESTAMP
+                })
+            except Exception as update_err:
+                logger.warning(f"Failed to add suggested edge to {source_id}: {update_err}")
     
     return {
         "status": "success",
@@ -992,7 +1073,7 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
         data['id'] = data.get('id') or doc.id
         all_nodes.append(data)
         
-    subgraph = get_subgraph_by_entities(all_nodes, question_entities, max_hops=2)
+    subgraph = get_subgraph_by_semantic_search(all_nodes, query_text, top_k=15, max_hops=1)
     logger.info(f"Graph-RAG traversal retrieved {len(subgraph['nodes'])} relevant nodes.")
     
     graph_data = []
@@ -1147,52 +1228,50 @@ def resolve_and_cluster_entities(req: https_fn.CallableRequest) -> dict:
                 node_degrees[node_id] = len(edges)
                 
         import difflib
-        lexical_groups = []
-        seen_lexical = set()
+        semantic_groups = []
+        seen_semantic = set()
         
         for i in range(len(nodes_data)):
             n1 = nodes_data[i]
             id1 = n1.get('id')
-            if not id1 or not isinstance(id1, str):
+            if not id1 or not isinstance(id1, str) or id1 in seen_semantic:
                 continue
+                
+            group = [n1]
+            seen_semantic.add(id1)
+            
+            emb1 = n1.get('embedding')
             lbl1 = n1.get('label') or id1
             
-            group = [n1]
             for j in range(i + 1, len(nodes_data)):
                 n2 = nodes_data[j]
                 id2 = n2.get('id')
-                if not id2 or not isinstance(id2, str):
+                if not id2 or not isinstance(id2, str) or id2 in seen_semantic:
                     continue
+                    
+                emb2 = n2.get('embedding')
                 lbl2 = n2.get('label') or id2
-                
-                # Check lexical similarity
-                ratio = difflib.SequenceMatcher(None, lbl1, lbl2).ratio()
                 is_similar = False
-                if ratio > 0.8:
-                    is_similar = True
-                elif lbl1.startswith(lbl2) or lbl2.startswith(lbl1):
-                    if abs(len(lbl1) - len(lbl2)) <= 3:
+                
+                if emb1 and emb2:
+                    sim = cosine_similarity(emb1, emb2)
+                    if sim > 0.8:
                         is_similar = True
-                elif len(lbl1) > 3 and len(lbl2) > 3:
-                    w1 = set(lbl1.split())
-                    w2 = set(lbl2.split())
-                    common = w1.intersection(w2)
-                    if common and any(len(w) >= 3 for w in common):
+                else:
+                    ratio = difflib.SequenceMatcher(None, lbl1, lbl2).ratio()
+                    if ratio > 0.8:
                         is_similar = True
                         
                 if is_similar:
                     group.append(n2)
+                    seen_semantic.add(id2)
                     
             if len(group) > 1:
-                group_ids = [x.get('id') for x in group if x.get('id')]
-                if not any(gid in seen_lexical for gid in group_ids):
-                    lexical_groups.append(group)
-                    for gid in group_ids:
-                        seen_lexical.add(gid)
+                semantic_groups.append(group)
 
-        # Select nodes to send: lexical candidates + active nodes (degree >= 2)
+        # Select nodes to send: semantic candidates + active nodes (degree >= 2)
         selected_node_ids = set()
-        for grp in lexical_groups:
+        for grp in semantic_groups:
             for x in grp:
                 x_id = x.get('id')
                 if x_id:
@@ -1214,10 +1293,6 @@ def resolve_and_cluster_entities(req: https_fn.CallableRequest) -> dict:
                     "type": n.get('type'),
                     "content": n.get('content', '')
                 })
-                
-        # Sort by degree descending and keep at most 150 nodes to avoid token limits
-        if len(nodes_summary) > 150:
-            nodes_summary = sorted(nodes_summary, key=lambda x: node_degrees.get(x['id'], 0), reverse=True)[:150]
             
         logger.info(f"Total nodes in database: {len(nodes_data)}. Filtered nodes sent to Gemini: {len(nodes_summary)}")
             
@@ -1422,11 +1497,44 @@ Only suggest merges/clusters that are highly relevant. Do not force them if not 
                 logger.info(f"Attempting to set document: '{doc_id}'")
                 nodes_ref.document(doc_id).set(n)
             
+        # 5. Temporal Decay
+        now = datetime.datetime.now(datetime.timezone.utc)
+        decayed_count = 0
+        for n in nodes_data:
+            node_id = n.get('id')
+            if not node_id or node_id in nodes_to_delete:
+                continue
+                
+            last_active = n.get('last_active')
+            if not last_active:
+                continue
+                
+            try:
+                if hasattr(last_active, 'timestamp'):
+                    last_dt = datetime.datetime.fromtimestamp(last_active.timestamp(), tz=datetime.timezone.utc)
+                else:
+                    last_dt = last_active
+                    
+                if isinstance(last_dt, datetime.datetime):
+                    if last_dt.tzinfo is None:
+                        last_dt = last_dt.replace(tzinfo=datetime.timezone.utc)
+                    days_diff = (now - last_dt).days
+                    if days_diff >= 7:
+                        old_val = n.get('val', 2)
+                        decay_amount = days_diff // 7
+                        new_val = max(1, old_val - decay_amount)
+                        if new_val < old_val:
+                            nodes_ref.document(node_id).update({"val": new_val})
+                            decayed_count += 1
+            except Exception as e:
+                logger.error(f"Failed to decay node {node_id}: {e}")
+
         return {
             "status": "success",
             "merges_count": merges_count,
             "meta_concepts_created": clusters_count,
-            "message": f"הושלמה אופטימיזציה בהצלחה: {merges_count} ישויות אוחדו, ונוצרו {clusters_count} מושגי-על חדשים."
+            "decayed_nodes": decayed_count,
+            "message": f"הושלמה אופטימיזציה בהצלחה: {merges_count} ישויות אוחדו, נוצרו {clusters_count} מושגי-על, ו-{decayed_count} צמתים דעכו בזמן."
         }
     except Exception as e:
         tb = traceback.format_exc()

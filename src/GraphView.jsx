@@ -657,7 +657,7 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
             <input
               type="range"
               min="5"
-              max="150"
+              max={rawGraphData?.nodes?.length || 150}
               step="5"
               value={limitEntities}
               onChange={(e) => setLimitEntities(parseInt(e.target.value))}
