@@ -81,7 +81,7 @@ export default function KnowledgeBaseGraphView({ onNavigateToEntry }) {
     <div style={{ width: '100%', height: '100%', position: 'relative', overflow: 'hidden', background: '#0f172a' }}>
       <iframe 
         ref={iframeRef}
-        src="/knowledge_graph.html?v=7" 
+        src="/knowledge_graph.html?v=8" 
         title="Knowledge Graph"
         style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
       />

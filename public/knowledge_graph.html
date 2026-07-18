@@ -364,7 +364,7 @@ const network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
   edges: { smooth: { type: 'continuous', roundness: 0.2 }, selectionWidth: 3 },
 });
 
-network.once('stabilizationIterationsDone', () => {
+network.on('stabilizationIterationsDone', () => {
   network.setOptions({ physics: { enabled: false } });
 });
 
@@ -518,6 +518,7 @@ window.addEventListener('message', (event) => {
     edgesDS.clear();
     edgesDS.add(formattedEdges);
     
+    network.setOptions({ physics: { enabled: true } });
     network.setData({ nodes: nodesDS, edges: edgesDS });
     rebuildSidebar(formattedNodes);
   }
