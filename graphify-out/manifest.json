@@ -1,0 +1,632 @@
+{
+  ".oxlintrc.json": {
+    "mtime": 1784309836.8769765,
+    "ast_hash": "5e6e3cea3e89137071c142dd7835b0ef",
+    "semantic_hash": ""
+  },
+  "firebase.json": {
+    "mtime": 1784309836.8776636,
+    "ast_hash": "fa69e11a486c2d2c4dc0d9e050fc1266",
+    "semantic_hash": ""
+  },
+  "functions/main.py": {
+    "mtime": 1784394554.7026212,
+    "ast_hash": "a9821fc20cc0b3fd8485f66cc131b985",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1784309836.8795283,
+    "ast_hash": "1362627604dca12a8804284d5448676c",
+    "semantic_hash": ""
+  },
+  "read_entries.js": {
+    "mtime": 1784369753.914393,
+    "ast_hash": "8444c0d84362e04c7d3d106cd5faada4",
+    "semantic_hash": ""
+  },
+  "src/App.jsx": {
+    "mtime": 1784382216.0479634,
+    "ast_hash": "843bdc8cbe7d7cacf50ffe2418f57a07",
+    "semantic_hash": ""
+  },
+  "src/AskView.jsx": {
+    "mtime": 1784309836.8844135,
+    "ast_hash": "acf8d5796f22ba9544df9c91c170ff80",
+    "semantic_hash": ""
+  },
+  "src/CirclePackingView.jsx": {
+    "mtime": 1784309836.884707,
+    "ast_hash": "e879c753c0f36ca3e67a05299de1d616",
+    "semantic_hash": ""
+  },
+  "src/FeedView.jsx": {
+    "mtime": 1784382195.3475847,
+    "ast_hash": "cf31ba56cba65e8d6da2c0a85e73bd14",
+    "semantic_hash": ""
+  },
+  "src/GraphView.jsx": {
+    "mtime": 1784373004.3088095,
+    "ast_hash": "befe3a14d7713f771977450826d16a6a",
+    "semantic_hash": ""
+  },
+  "src/InsightsView.jsx": {
+    "mtime": 1784372203.8390281,
+    "ast_hash": "a0d741a02b3b5e8d2747f418f7ae6886",
+    "semantic_hash": ""
+  },
+  "src/KnowledgeBaseGraphView.jsx": {
+    "mtime": 1784381937.7454934,
+    "ast_hash": "3d1bce98510192342449f5c9843d2d27",
+    "semantic_hash": ""
+  },
+  "src/LocalGraph.jsx": {
+    "mtime": 1784309836.8860486,
+    "ast_hash": "73d6dd3f44fa8789eba14bff4606cdbf",
+    "semantic_hash": ""
+  },
+  "src/MatrixView.jsx": {
+    "mtime": 1784309836.886213,
+    "ast_hash": "6ecdf881cd9eea05790d3ed06a95d534",
+    "semantic_hash": ""
+  },
+  "src/MindMapBuilderView.jsx": {
+    "mtime": 1784309836.8864207,
+    "ast_hash": "3449e4b21235997d748af130ff91d03d",
+    "semantic_hash": ""
+  },
+  "src/PersonalityAnalysisView.jsx": {
+    "mtime": 1784309836.886655,
+    "ast_hash": "8761ae3018cf66f312941ebfc6f8a808",
+    "semantic_hash": ""
+  },
+  "src/QuotesView.jsx": {
+    "mtime": 1784309836.8869212,
+    "ast_hash": "08b24bee6d065981d2a6866b3a9097fb",
+    "semantic_hash": ""
+  },
+  "src/SankeyView.jsx": {
+    "mtime": 1784309836.8870888,
+    "ast_hash": "1e9fc2323eb2ef6005b637be38549f07",
+    "semantic_hash": ""
+  },
+  "src/StorylineView.jsx": {
+    "mtime": 1784309836.8872967,
+    "ast_hash": "56ca4da6528dd2c0562bcbd5ab9f57cf",
+    "semantic_hash": ""
+  },
+  "src/WikiView.jsx": {
+    "mtime": 1784312933.7714362,
+    "ast_hash": "d5aa4e7bf6498bde46faa588d0047b0b",
+    "semantic_hash": ""
+  },
+  "src/components/EntityTimeline.jsx": {
+    "mtime": 1784312899.3340003,
+    "ast_hash": "3a4223548cafc446e6f3a66d14a52440",
+    "semantic_hash": ""
+  },
+  "src/components/LintingAlerts.jsx": {
+    "mtime": 1784312909.7814941,
+    "ast_hash": "24eb1f32e52c66bc86ba1babd36f1169",
+    "semantic_hash": ""
+  },
+  "src/components/RecommendedReadingsCard.jsx": {
+    "mtime": 1784376025.658734,
+    "ast_hash": "4b3e91ea18048f82c51436432ec28ee4",
+    "semantic_hash": ""
+  },
+  "src/components/WikiLocalGraph.jsx": {
+    "mtime": 1784312823.3003087,
+    "ast_hash": "9af12f9a7be12cc43aea35ba5db82b57",
+    "semantic_hash": ""
+  },
+  "src/firebase.js": {
+    "mtime": 1784378606.897312,
+    "ast_hash": "c5051ad1a53d2f8949c08c011188fb83",
+    "semantic_hash": ""
+  },
+  "src/hooks/useDiaryData.jsx": {
+    "mtime": 1784376707.3382313,
+    "ast_hash": "984d06ee4bc5578deeba967d2b9f7186",
+    "semantic_hash": ""
+  },
+  "src/main.jsx": {
+    "mtime": 1784309836.8897789,
+    "ast_hash": "e13723e2574429d9a6d849727e3ff695",
+    "semantic_hash": ""
+  },
+  "vite.config.js": {
+    "mtime": 1784309836.889892,
+    "ast_hash": "3138d493262618435c3ec01d1174d956",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1784309836.8775048,
+    "ast_hash": "76950245a0cbc1218c5352428b2fc59a",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/act.md": {
+    "mtime": 1784375036.2499156,
+    "ast_hash": "cdec831e19defa44fc57ef61e13a34ce",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/alterman.md": {
+    "mtime": 1784373915.5954876,
+    "ast_hash": "9c333e4ce15c186a5be8f7e55c2859de",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/amichai.md": {
+    "mtime": 1784373889.4410653,
+    "ast_hash": "293088eda46aefe4256e700470222330",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/ariel.md": {
+    "mtime": 1784373915.5958827,
+    "ast_hash": "5c39b1837cb90e8d07bcedf09775d24e",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/aristotle.md": {
+    "mtime": 1784367062.1700604,
+    "ast_hash": "cb7a042c7a4545c747e9cb4386e75358",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/attachment.md": {
+    "mtime": 1784366741.1512582,
+    "ast_hash": "13149d71f074f12659488a9eee5ef119",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/auden.md": {
+    "mtime": 1784374046.1877644,
+    "ast_hash": "5ebdd31e9947a411ee7870363964b7c6",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/avidan.md": {
+    "mtime": 1784373915.5957563,
+    "ast_hash": "6e5c7e5f17866bc89fd7bea4b2b2f163",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/baudelaire.md": {
+    "mtime": 1784374067.5560408,
+    "ast_hash": "5739e6b4fc89a9c7f9bcd548715ef3fe",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/behavioral.md": {
+    "mtime": 1784371749.9445138,
+    "ast_hash": "2acd051ce571baee6bc5f0dd7761e438",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/borges.md": {
+    "mtime": 1784374046.1859176,
+    "ast_hash": "473b97d57bc90ad76fecf841d8666fd1",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/brecht.md": {
+    "mtime": 1784368819.5218468,
+    "ast_hash": "74196ce7167120ccd2446db5f4e83709",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/brooks.md": {
+    "mtime": 1784375432.7939777,
+    "ast_hash": "3c99832ba687c5b670a2084c7f244595",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/brown.md": {
+    "mtime": 1784368264.5912418,
+    "ast_hash": "06362493053db3f4596034cd29b8edbb",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/buber.md": {
+    "mtime": 1784368191.2219577,
+    "ast_hash": "71b957f454aa6ede2bacbe9ae404631d",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/buddhism.md": {
+    "mtime": 1784367216.9119222,
+    "ast_hash": "0cbddc7f36f3885a390088a843479ea3",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/byungchulhan.md": {
+    "mtime": 1784373604.1097014,
+    "ast_hash": "ef1ec4103ee45cd57fe6ed41a63c3744",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/cbt.md": {
+    "mtime": 1784371745.641265,
+    "ast_hash": "6be5c36721dd83cd6ef7c0ccc2077825",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/cialdini.md": {
+    "mtime": 1784366730.2757392,
+    "ast_hash": "bb3cd9244b609caa58ee42608d701643",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/clinical.md": {
+    "mtime": 1784371749.9732225,
+    "ast_hash": "b34d955e2294b61815814ada4c067c9c",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/cohen.md": {
+    "mtime": 1784374067.557114,
+    "ast_hash": "95741a6fe52b8d813c7e978b7700b3db",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/confucius.md": {
+    "mtime": 1784367199.024417,
+    "ast_hash": "2b92db5f9283fda82661c33cddaf17d2",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/dali.md": {
+    "mtime": 1784374046.1869912,
+    "ast_hash": "642b37e89a284ce068ec825740532bf1",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/debeauvoir.md": {
+    "mtime": 1784373618.574547,
+    "ast_hash": "5fed340b06286d66d3da23f8a876963c",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/debotton.md": {
+    "mtime": 1784373614.7556798,
+    "ast_hash": "2d79f331c0bcd34a15a78f75b860fdf0",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/dickinson.md": {
+    "mtime": 1784374067.5569475,
+    "ast_hash": "e9566bce73d318ddfa5723f9343bf369",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/dostoevsky.md": {
+    "mtime": 1784374046.1863375,
+    "ast_hash": "50b50a915c0247788f6040bf8a0b547d",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/duhigg.md": {
+    "mtime": 1784375432.7938325,
+    "ast_hash": "4271550c633dd10784c1d6b2809f7a2f",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/dylan.md": {
+    "mtime": 1784368814.481185,
+    "ast_hash": "47965674e561d3621f0126593c51c459",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/eliot.md": {
+    "mtime": 1784368803.2110553,
+    "ast_hash": "6ad2c1b6c63f37c1a0723ade1c68fde3",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/foucault.md": {
+    "mtime": 1784373607.816383,
+    "ast_hash": "6e674860b723c2a34f14ee9a9b0878ae",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/frankl.md": {
+    "mtime": 1784368196.0365741,
+    "ast_hash": "16ec7efef0deafa9c20e969ec80e3614",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/garner.md": {
+    "mtime": 1784375432.7945287,
+    "ast_hash": "516d20a37ed8e8c728a3fcb117f537c6",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/gibran.md": {
+    "mtime": 1784374046.1861846,
+    "ast_hash": "5e8cf66837ea900f9569c584f1f5dc1d",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/ginsberg.md": {
+    "mtime": 1784368814.474121,
+    "ast_hash": "324a8ed0831bdc5e026c37e7cf477ff6",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/goethe.md": {
+    "mtime": 1784368785.351236,
+    "ast_hash": "958cae192cc0f7e3eddb26f7806dd7d7",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/goldberg.md": {
+    "mtime": 1784373915.5948684,
+    "ast_hash": "50d484024a6a59b2a0fec4a8490db0e4",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/grant.md": {
+    "mtime": 1784375432.794114,
+    "ast_hash": "d8c473551e6d052da9f392ccd446a1a1",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/heine.md": {
+    "mtime": 1784368781.259752,
+    "ast_hash": "c7878e2bf63b6405fb4fceb87f25c98c",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/humanistic.md": {
+    "mtime": 1784371745.669752,
+    "ast_hash": "5b2164a302041d0e65d84e499b950a34",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/ifs.md": {
+    "mtime": 1784375036.2502468,
+    "ast_hash": "5153a604327e092e5bbf3ad9289094b0",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/jung.md": {
+    "mtime": 1784368258.3981035,
+    "ast_hash": "7cfe4ddf82e9a3ec07a7b642a8b730df",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/kafka.md": {
+    "mtime": 1784374067.556242,
+    "ast_hash": "226e0008164fd7b28b7c1f07bc7bd503",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/kahlo.md": {
+    "mtime": 1784374067.5565956,
+    "ast_hash": "5534a46fbd7a1ceeb8dd8cdf787c750a",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/kahneman.md": {
+    "mtime": 1784368264.5941114,
+    "ast_hash": "d2e441bc8d20d6bcd6510ac8c5d31eb2",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/kant.md": {
+    "mtime": 1784367359.0836556,
+    "ast_hash": "7f45803f3d6730936c1d08687b82d813",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/keats.md": {
+    "mtime": 1784374046.1867325,
+    "ast_hash": "a80a3d59fc0881e32966bad8ba0893f8",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/maslow.md": {
+    "mtime": 1784368253.596889,
+    "ast_hash": "d8ecf687ef99b31952c31e042ad204fe",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/neruda.md": {
+    "mtime": 1784374046.187357,
+    "ast_hash": "59732cad1bdfda80cc0a56e022229adc",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/neuroscience.md": {
+    "mtime": 1784375036.2503922,
+    "ast_hash": "e4ff6a63f54186b26b7f46c04264ccbd",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/nietzsche.md": {
+    "mtime": 1784368200.856813,
+    "ast_hash": "c386db0a98e3fc349130a7a0b05c05df",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/nussbaum.md": {
+    "mtime": 1784373622.3462129,
+    "ast_hash": "0171a9df05e16eeee4332be98d3d878e",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/oliver.md": {
+    "mtime": 1784374046.1865544,
+    "ast_hash": "88bdcc3e157763e57b0ff8473f648a61",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/pessoa.md": {
+    "mtime": 1784374067.5557494,
+    "ast_hash": "3780e6d368b54565b86e679847a43211",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/picasso.md": {
+    "mtime": 1784374046.1871986,
+    "ast_hash": "f9756abe373758fa1ebb6eb8179807b4",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/plath.md": {
+    "mtime": 1784374067.5567648,
+    "ast_hash": "d8ae4ebd333a260ac00b7c959c24b42e",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/plato.md": {
+    "mtime": 1784367062.1649685,
+    "ast_hash": "9f5878591b6c268b976dd6ed6d688f41",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/poe.md": {
+    "mtime": 1784368777.408994,
+    "ast_hash": "8bb641dd8a89ba487a0b372c7b7fdaaf",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/polyvagal.md": {
+    "mtime": 1784375036.2506828,
+    "ast_hash": "1ecd2cc4b75591e38a1f9d2a75340e14",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/proust.md": {
+    "mtime": 1784368814.573158,
+    "ast_hash": "e9d382b1ee3d759b958811d3826e24be",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/psychodynamic.md": {
+    "mtime": 1784371745.6577923,
+    "ast_hash": "e4db6cddc29ff04a23b05fe9e598ad43",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/rachel.md": {
+    "mtime": 1784373915.59505,
+    "ast_hash": "70c750ed7beaab03b9bd3e8b5bf6bf49",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/ravikovitch.md": {
+    "mtime": 1784373915.5953553,
+    "ast_hash": "bd053935e1b40a1b020c54b4d1bd5ddf",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/rilke.md": {
+    "mtime": 1784368798.806366,
+    "ast_hash": "379d21790bd3cc67541fdbc255bba19b",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/rimbaud.md": {
+    "mtime": 1784374067.5574622,
+    "ast_hash": "b57a411f60634b8aa715bc7ec6f9b09b",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/rogers.md": {
+    "mtime": 1784368200.8656187,
+    "ast_hash": "d9c279c8930ae1e6cad0ae27b231974a",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/rosen.md": {
+    "mtime": 1784375432.7946599,
+    "ast_hash": "3b45eed9fdb7f77d84355552b4a41d10",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/rousseau.md": {
+    "mtime": 1784367379.1025958,
+    "ast_hash": "50253cd5025bfcab12cf3758f1baf785",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/sartre.md": {
+    "mtime": 1784368200.8495998,
+    "ast_hash": "e1a8ff2237629297129e3dcc638d35bf",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/schematherapy.md": {
+    "mtime": 1784375036.2500985,
+    "ast_hash": "67bce0b4e320edf86dccf39e69485300",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/schiller.md": {
+    "mtime": 1784368789.4114525,
+    "ast_hash": "b8528ed0fb624a7b402512e3ea313084",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/sdt.md": {
+    "mtime": 1784364939.61394,
+    "ast_hash": "835667f9d1624a107f0e0cc5e68cc0df",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/shlonsky.md": {
+    "mtime": 1784373915.5960155,
+    "ast_hash": "03e29d2f9c816357ed2a0e4ad593dee8",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/socrates.md": {
+    "mtime": 1784367062.191823,
+    "ast_hash": "0914da0032470858e2e3ab42a5b7ac4f",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/spinoza.md": {
+    "mtime": 1784367379.0928807,
+    "ast_hash": "11b64fef7188e85d9412c24a3c85c41c",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/stoicism.md": {
+    "mtime": 1784368264.5725234,
+    "ast_hash": "26fef17b124764ed3581460e07a0ff70",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/taoism.md": {
+    "mtime": 1784367216.9000921,
+    "ast_hash": "6378affd8fbfd3e6374ff57c62b97405",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/tmt.md": {
+    "mtime": 1784366735.3070612,
+    "ast_hash": "67709bd545454dd287ac780191ca0aa6",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/tolstoy.md": {
+    "mtime": 1784374046.1875093,
+    "ast_hash": "e2fce549d8e83480dcde6c02df992d3e",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/tracy.md": {
+    "mtime": 1784375432.7944005,
+    "ast_hash": "0053592f48e7ed1a9357461d88d92e8e",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/trauma.md": {
+    "mtime": 1784375036.2505317,
+    "ast_hash": "e4dca7121140ae4ba7fe28d0812994ce",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/vangogh.md": {
+    "mtime": 1784374067.5564256,
+    "ast_hash": "879160a0b60364d87e7a6f21af36a7a1",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/wallach.md": {
+    "mtime": 1784373915.5951993,
+    "ast_hash": "0889c35119dfbba82bde53a3f9e98c6f",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/whitman.md": {
+    "mtime": 1784368773.2360795,
+    "ast_hash": "ea4888b57e5d3d627a83f2e7530913f0",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/wilde.md": {
+    "mtime": 1784368793.3817964,
+    "ast_hash": "b684277bd1988b0dd4c6ef5bae8a497a",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/woolf.md": {
+    "mtime": 1784374067.557283,
+    "ast_hash": "b3c5ea86f3ead9e672e574c55d8f9b9e",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/zelda.md": {
+    "mtime": 1784373915.5956192,
+    "ast_hash": "87597e7705c2b61b08f5c5e222c13b1e",
+    "semantic_hash": ""
+  },
+  "functions/okf/psychology/zizek.md": {
+    "mtime": 1784373611.4819326,
+    "ast_hash": "d7e1b21053bdc028311a225a5c4e92b6",
+    "semantic_hash": ""
+  },
+  "functions/requirements.txt": {
+    "mtime": 1784312970.702173,
+    "ast_hash": "e9aafa65131d35337e183cc4918254d7",
+    "semantic_hash": ""
+  },
+  "index.html": {
+    "mtime": 1784309836.8786256,
+    "ast_hash": "f872a7c7456182a80d72be83f54fed6d",
+    "semantic_hash": ""
+  },
+  "public/knowledge_graph.html": {
+    "mtime": 1784381931.722135,
+    "ast_hash": "fd7a4b3dc0689ac5d4cc2bd687118194",
+    "semantic_hash": ""
+  },
+  "public/favicon.svg": {
+    "mtime": 1784309836.8797593,
+    "ast_hash": "0a5475b69fab2fa8bcdcf9df1cf18522",
+    "semantic_hash": ""
+  },
+  "public/icons.svg": {
+    "mtime": 1784309836.8804471,
+    "ast_hash": "3b4fcfcf393eca4d264dca4a4663bc37",
+    "semantic_hash": ""
+  },
+  "public/logo.png": {
+    "mtime": 1784309836.8831835,
+    "ast_hash": "a14678af5fbe820a63d95e8d6407edac",
+    "semantic_hash": ""
+  },
+  "src/assets/hero.png": {
+    "mtime": 1784309836.8878956,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": ""
+  },
+  "src/assets/react.svg": {
+    "mtime": 1784309836.8883495,
+    "ast_hash": "f0402b67b6ce880f65666bb49e841696",
+    "semantic_hash": ""
+  },
+  "src/assets/vite.svg": {
+    "mtime": 1784309836.8886123,
+    "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": ""
+  }
+}

@@ -3,7 +3,7 @@ import json
 import logging
 import datetime
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Literal
 
 import google.generativeai as genai
 from pydantic import BaseModel, Field
@@ -71,10 +71,15 @@ class Metrics(BaseModel):
     ocean: OceanMetrics
     linguistic: LinguisticMetrics
 
+ValidRelation = Literal[
+    'גורם_ל', 'מרגיש', 'רוצה', 'מפחד_מ', 'חוסם', 'פתר', 
+    'סותר', 'מחריף', 'מרגיע', 'מייצג', 'מושפע_מ', 'משפיע_על', 'קשור_ל'
+]
+
 class GraphEdge(BaseModel):
     source: str = Field(..., description="Source node ID")
     target: str = Field(..., description="Target node ID")
-    relation: str = Field(..., description="Relationship type from a strict vocabulary: 'גורם_ל', 'מרגיש', 'רוצה', 'מפחד_מ', 'חוסם', 'פתר', 'קשור_ל', 'סותר', 'מחריף', 'מרגיע', 'מייצג'")
+    relation: ValidRelation = Field(..., description="Relationship type from a strict vocabulary: 'גורם_ל', 'מרגיש', 'רוצה', 'מפחד_מ', 'חוסם', 'פתר', 'סותר', 'מחריף', 'מרגיע', 'מייצג', 'מושפע_מ', 'משפיע_על', 'קשור_ל'")
     context: str = Field(..., description="The context or circumstances in which this relationship occurs (e.g., 'בעבודה', 'בזמן שיחה'). Use empty string if none.")
     sentimentScore: int = Field(..., description="Sentiment score of the relationship: -1 (negative/stressful), 0 (neutral), or 1 (positive/healing).")
     sourceQuotes: List[str] = Field(..., description="List of 1-2 direct quotes from the user's journal entries that prove this relationship.")
@@ -134,6 +139,72 @@ def load_okf_psychology() -> str:
 
 PSYCHOLOGY_KNOWLEDGE_BASE = load_okf_psychology()
 
+_okf_cache_object = None
+_okf_cache_created_at = None
+
+def get_okf_generative_model(api_key: str, system_prompt: str) -> genai.GenerativeModel:
+    """Helper to return a GenerativeModel utilizing Gemini Context Caching for the OKF base if available."""
+    global _okf_cache_object, _okf_cache_created_at
+    genai.configure(api_key=api_key)
+    try:
+        from google.generativeai import caching
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if _okf_cache_object and _okf_cache_created_at and (now - _okf_cache_created_at).total_seconds() < 3300:
+            return genai.GenerativeModel.from_cached_content(cached_content=_okf_cache_object)
+        
+        if len(PSYCHOLOGY_KNOWLEDGE_BASE) > 500:
+            logger.info("Creating Gemini Context Cache for OKF Psychology Base...")
+            _okf_cache_object = caching.CachedContent.create(
+                model='models/gemini-2.5-flash',
+                display_name='okf_psychology_base_cache',
+                system_instruction=system_prompt,
+                contents=[f"=== PSYCHOLOGICAL KNOWLEDGE BASE (OKF) ===\n{PSYCHOLOGY_KNOWLEDGE_BASE}"],
+                ttl=datetime.timedelta(minutes=60)
+            )
+            _okf_cache_created_at = now
+            return genai.GenerativeModel.from_cached_content(cached_content=_okf_cache_object)
+    except Exception as e:
+        logger.warning(f"Gemini Context Caching fallback to standard model generation: {e}")
+        
+    return genai.GenerativeModel(
+        model_name="gemini-2.5-flash",
+        system_instruction=system_prompt
+    )
+
+def extract_authenticated_uid(req: https_fn.CallableRequest) -> str:
+    """Extract authenticated user ID from req.auth, with fallback to req.data for backward compatibility."""
+    if req.auth and req.auth.uid:
+        return req.auth.uid
+    uid = req.data.get('uid')
+    if uid:
+        logger.warning(f"Callable function executed without req.auth; using fallback uid from req.data: {uid}")
+        return uid
+    raise https_fn.HttpsError(
+        code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
+        message="The function must be called while authenticated."
+    )
+
+def get_top_relevant_entries(entries_list: list, query_text: str, top_k: int = 15) -> list:
+    """RAG helper to retrieve top_k entries relevant to query_text using semantic embeddings."""
+    if not entries_list or len(entries_list) <= top_k:
+        return entries_list
+    try:
+        query_emb = get_embedding(query_text)
+        entry_sims = []
+        for entry in entries_list:
+            emb = entry.get('embedding')
+            if not emb:
+                content = entry.get('content') or entry.get('transcript') or ''
+                topics = " ".join(entry.get('topics', []))
+                emb = get_embedding(f"{topics} {content[:400]}")
+            sim = cosine_similarity(query_emb, emb)
+            entry_sims.append((sim, entry))
+        entry_sims.sort(key=lambda x: x[0], reverse=True)
+        return [entry for sim, entry in entry_sims[:top_k]]
+    except Exception as e:
+        logger.error(f"Failed RAG entries filtering, returning latest entries: {e}")
+        return entries_list[-top_k:]
+
 ORCHESTRATOR_SYSTEM_PROMPT = """You are the Lead Clinical Orchestrator of the diary system.
 Your task is to integrate the provided Psychological Knowledge Base (OKF formats) with the user's journal entries and produce a cohesive executive summary and structured profile.
 
@@ -164,7 +235,7 @@ Your output must be structured exactly as requested, containing:
      * 'פתר' (RESOLVES) - if A resolves/solves/relieves B
      * 'סותר' (CONTRADICTS) - if A contradicts B
      * 'מחריף' (EXACERBATES) - if A makes B worse
-     * 'مرגיע' (SOOTHES) - if A soothes/calms B
+     * 'מרגיע' (SOOTHES) - if A soothes/calms B
      * 'מייצג' (REPRESENTS) - if A represents/symbolizes B
      * 'מושפע_מ' (AFFECTED_BY) - if mental state is affected by physiological state (HealthMetric)
      * 'משפיע_על' (AFFECTS) - if mental state affects physiological state
@@ -380,16 +451,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     Firebase Cloud Function Gen 2 callable to analyze personality using Multi-Agent System.
     """
     # 1. Resolve UID
-    uid = req.data.get('uid')
-    if not uid:
-        if req.auth:
-            uid = req.auth.uid
-        else:
-            raise https_fn.HttpsError(
-                code=https_fn.FunctionsErrorCode.INVALID_ARGUMENT,
-                message="The function must be called with a user ID ('uid')."
-            )
-
+    uid = extract_authenticated_uid(req)
     logger.info(f"Starting personality analysis for user: {uid}")
 
     # 2. Fetch User Config and Metadata
@@ -421,15 +483,11 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         if isinstance(ts, (int, float)):
             return ts
         try:
-            # Try to parse string
             return datetime.datetime.fromisoformat(str(ts).replace('Z', '+00:00')).timestamp()
         except:
             return 0
 
     entries = sorted(entries, key=get_timestamp_val)
-
-    # 4. Fetch Existing Graph Nodes (OKF) - Will be resolved below using target entries (Graph-RAG)
-    # (We defer this step until target_entries is defined)
 
     # 5. Fetch Previous Analysis to decide if it's baseline or delta
     analysis_ref = get_db().collection('users').document(uid).collection('personality_analysis')
@@ -443,8 +501,6 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
 
     # Filter target entries depending on run type
     if health_only:
-        # User requested to only analyze entries that have corresponding health data
-        # Fetch all health metrics dates first
         graph_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
         health_nodes_snap = graph_ref.where(filter=firestore.FieldFilter("type", "==", "HealthMetric")).stream()
         health_dates = set([doc.to_dict().get('date') for doc in health_nodes_snap])
@@ -460,8 +516,6 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
                 date_str = date_str.split('T')[0]
             if date_str in health_dates:
                 target_entries.append(e)
-        
-        # Override delta flag since we are doing a specific historical analysis
         is_delta = False
         
     elif is_delta and prev_analysis:
@@ -479,20 +533,35 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
                     pass
         
         target_entries = [e for e in entries if get_timestamp_val(e) > prev_time_val]
-        # Fallback if filtering returns nothing but we have new entries counter
         if not target_entries:
             target_entries = entries[-max(1, new_entries_since_last):]
     else:
         target_entries = entries
 
-    # 4. Fetch and Filter Existing Graph Nodes (OKF) using Graph-RAG
+    # 4. Construct target text & prompt context
     combined_target_text = "\n".join([
         f"Topics: {', '.join(e.get('topics', []))}\nContent: {e.get('content') or e.get('transcript') or ''}"
         for e in target_entries
     ])
-    new_entry_entities = extract_entities_from_text(combined_target_text)
-    logger.info(f"Extracted entities for entry analysis: {new_entry_entities}")
-    
+
+    prompt_context = ""
+    if is_delta and prev_analysis:
+        prompt_context += "=== PREVIOUS PERSONALITY ANALYSIS EXECUTIVE SUMMARY ===\n"
+        prompt_context += f"{prev_analysis.get('executive_summary', '')}\n\n"
+        prompt_context += "=== PREVIOUS REPORTS ===\n"
+        for k, v in prev_analysis.get('reports', {}).items():
+            prompt_context += f"Agent {k}: {v[:300]}...\n"
+        prompt_context += "\n=== NEW JOURNAL ENTRIES SINCE LAST ANALYSIS ===\n"
+    else:
+        prompt_context += "=== ALL JOURNAL ENTRIES ===\n"
+
+    for entry in target_entries:
+        date_str = entry.get('date') or str(entry.get('timestamp'))
+        topics = ", ".join(entry.get('topics', []))
+        content = entry.get('content') or entry.get('transcript') or ""
+        prompt_context += f"Date: {date_str}\nTopics: {topics}\nContent: {content}\n---\n"
+
+    # Fetch and Filter Existing Graph Nodes using Graph-RAG (passing combined_target_text)
     graph_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
     graph_snapshot = graph_ref.stream()
     all_nodes = []
@@ -501,7 +570,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         data['id'] = data.get('id') or doc.id
         all_nodes.append(data)
         
-    subgraph = get_subgraph_by_semantic_search(all_nodes, prompt_context, top_k=15, max_hops=1)
+    subgraph = get_subgraph_by_semantic_search(all_nodes, combined_target_text, top_k=15, max_hops=1)
     
     existing_nodes_context = "\n".join([
         f"- {n.get('id')} (Label: {n.get('label')})" 
@@ -529,46 +598,17 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         ])
 
     logger.info(f"Filtered to {len(subgraph['nodes'])} relevant existing nodes and {len(health_nodes)} health nodes for context.")
-
     logger.info(f"Running {'delta' if is_delta else 'baseline'} analysis on {len(target_entries)} entries.")
 
-    # 6. Format prompt context for the agents
-    prompt_context = ""
-    if is_delta and prev_analysis:
-        prompt_context += "=== PREVIOUS PERSONALITY ANALYSIS EXECUTIVE SUMMARY ===\n"
-        prompt_context += f"{prev_analysis.get('executive_summary', '')}\n\n"
-        prompt_context += "=== PREVIOUS REPORTS ===\n"
-        for k, v in prev_analysis.get('reports', {}).items():
-            prompt_context += f"Agent {k}: {v[:300]}...\n" # Brief snippet of previous reports
-        prompt_context += "\n=== NEW JOURNAL ENTRIES SINCE LAST ANALYSIS ===\n"
-    else:
-        prompt_context += "=== ALL JOURNAL ENTRIES ===\n"
-
-    for entry in target_entries:
-        date_str = entry.get('date') or str(entry.get('timestamp'))
-        topics = ", ".join(entry.get('topics', []))
-        content = entry.get('content') or entry.get('transcript') or ""
-        prompt_context += f"Date: {date_str}\nTopics: {topics}\nContent: {content}\n---\n"
-
     # 7. Execute single unified AI Orchestrator with OKF Context
-    agent_reports = {"OKF_Agent": "All agent theory loaded statically from OKF Graph. No parallel agents run."}
-    
-    # 8. Run the Orchestrator
     try:
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
         if not api_key:
             raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
         
-        genai.configure(api_key=api_key)
-        orchestrator_model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            system_instruction=ORCHESTRATOR_SYSTEM_PROMPT
-        )
+        orchestrator_model = get_okf_generative_model(api_key, ORCHESTRATOR_SYSTEM_PROMPT)
         
         orchestrator_prompt = f"""
-=== PSYCHOLOGICAL KNOWLEDGE BASE (OKF) ===
-{PSYCHOLOGY_KNOWLEDGE_BASE}
-
 === USER ENTRIES ===
 {prompt_context}
 
@@ -580,7 +620,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             generation_config=genai.GenerationConfig(
                 response_mime_type="application/json",
                 response_schema=OrchestratorOutput,
-                temperature=0.2  # Lower temperature to prevent hallucination
+                temperature=0.2
             )
         )
         
@@ -874,23 +914,20 @@ Output your response in Hebrew using markdown."""
 
 @https_fn.on_call(timeout_sec=120)
 def analyze_knowledge_graph(req: https_fn.CallableRequest) -> dict:
-    uid = req.data.get('uid')
-    if not uid and req.auth:
-        uid = req.auth.uid
-    if not uid:
-        return {"status": "error", "message": "Missing UID"}
-        
+    uid = extract_authenticated_uid(req)
     query = req.data.get('query', 'אנא נתח את הגרף שלי ומצא קשרים חסרים, קונפליקטים ותבניות מעניינות.')
 
     logger.info(f"Detective agent analyzing graph for {uid} with query: {query}")
 
-    # Fetch nodes
+    # Fetch nodes excluding embeddings and isolating QAResponse nodes
     nodes_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
-    nodes_snapshot = nodes_ref.stream()
+    nodes_snapshot = nodes_ref.select(['id', 'label', 'type', 'content', 'relatedEdges']).stream()
     
     graph_data = []
     for doc in nodes_snapshot:
         data = doc.to_dict()
+        if data.get('type') == 'QAResponse':
+            continue
         node_id = data.get('id', doc.id)
         label = data.get('label', node_id)
         edges = data.get('relatedEdges', [])
@@ -903,7 +940,6 @@ def analyze_knowledge_graph(req: https_fn.CallableRequest) -> dict:
     
     response = run_agent("Detective", DETECTIVE_SYSTEM_PROMPT, prompt)
     
-    # Auto-save insight to the knowledge graph
     import uuid
     insight_id = f"graph_insight_{uuid.uuid4().hex[:8]}"
     
@@ -949,7 +985,7 @@ Insight:
     get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(insight_id).set({
         "id": insight_id,
         "label": label,
-        "type": "Insight",
+        "type": "DetectiveInsight",
         "val": 3,
         "content": response,
         "relatedEdges": edges_list,
@@ -958,7 +994,6 @@ Insight:
         "last_active": firestore.SERVER_TIMESTAMP
     }, merge=True)
     
-    # Save explicit suggested edges directly to their source nodes
     for edge in suggested_edges:
         source_id = edge.get("source", "").strip().replace(" ", "_")
         target_id = edge.get("target", "").strip().replace(" ", "_")
@@ -971,7 +1006,6 @@ Insight:
                 "is_suggested": True,
                 "sourceQuotes": []
             }
-            # Add to source node
             try:
                 source_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(source_id)
                 source_ref.update({
@@ -1002,12 +1036,7 @@ CRITICAL RULES:
 
 @https_fn.on_call(timeout_sec=120)
 def query_diary_insights(req: https_fn.CallableRequest) -> dict:
-    uid = req.data.get('uid')
-    if not uid and req.auth:
-        uid = req.auth.uid
-    if not uid:
-        return {"status": "error", "message": "Missing UID"}
-        
+    uid = extract_authenticated_uid(req)
     query_text = req.data.get('query')
     if not query_text:
         return {"status": "error", "message": "Missing query"}
@@ -1016,7 +1045,6 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
     history_lines = []
     for msg in history:
         role = msg.get('role')
-        # Skip the default greeting
         text = msg.get('text') or msg.get('content') or ""
         if "שאל אותי כל שאלה על היומנים" in text:
             continue
@@ -1028,12 +1056,14 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
 
     logger.info(f"Investigating diary/insights/graph for {uid} with query: {query_text}. History length: {len(history)}")
 
-    # 1. Fetch entries
+    # 1. Fetch entries and filter with Semantic RAG
     entries_ref = get_db().collection('users').document(uid).collection('entries')
     entries_snapshot = entries_ref.stream()
+    raw_entries = [doc.to_dict() for doc in entries_snapshot]
+    relevant_entries = get_top_relevant_entries(raw_entries, query_text, top_k=35)
+    
     entries_data = []
-    for doc in entries_snapshot:
-        data = doc.to_dict()
+    for data in relevant_entries:
         date_str = data.get('date') or str(data.get('timestamp'))
         topics = ", ".join(data.get('topics', []))
         content = data.get('content') or data.get('transcript') or ""
@@ -1057,15 +1087,13 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
         insights_context = f"Major Insights:\n{major}\n\nWeekly Insight:\n{weekly}\n\nShadow Work:\n{shadow}\n\nOperating Manual:\n{manual_context}"
 
     # 3. Fetch and filter graph nodes (Graph-RAG)
-    # Extract entities from the user's question to locate seed nodes
-    question_entities = extract_entities_from_text(query_text)
-    logger.info(f"Extracted entities for Q&A: {question_entities}")
-
     nodes_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
     nodes_snapshot = nodes_ref.stream()
     all_nodes = []
     for doc in nodes_snapshot:
         data = doc.to_dict()
+        if data.get('type') == 'QAResponse':
+            continue
         data['id'] = data.get('id') or doc.id
         all_nodes.append(data)
         
@@ -1091,58 +1119,15 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
 
     response = run_agent("Investigator", INVESTIGATOR_SYSTEM_PROMPT, prompt)
     
-    # Auto-save insight to the knowledge graph
     import uuid
     insight_id = f"investigator_{uuid.uuid4().hex[:8]}"
     
     extraction_prompt = f"Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the knowledge base that it discusses. Output strictly valid JSON like: {{\n  \"label\": \"...\",\n  \"related_nodes\": [\"node1\", \"node2\"]\n}}\n\nInsight:\n{response}"
     extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt)
     
-    label = "תשובת חוקר יומן (AI)"
-    related_nodes = []
-    try:
-        import json
-        clean_json = extraction_response.strip().strip('`').replace('json\n', '')
-        extracted = json.loads(clean_json)
-        label = extracted.get('label', label)
-        related_nodes = extracted.get('related_nodes', [])
-    except Exception as e:
-        logger.error(f"Failed to extract JSON for investigator node: {e}")
-        pass
-        
-    edges_list = []
-    for rn in related_nodes:
-        edges_list.append({
-            "source": insight_id,
-            "target": rn.strip().replace(" ", "_"),
-            "relation": "תשובת יומן",
-            "sentimentScore": 0,
-            "sourceQuotes": []
-        })
-        
-    get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(insight_id).set({
-        "id": insight_id,
-        "label": label,
-        "type": "Insight",
-        "val": 3,
-        "content": f"שאלה: {query_text}\n\n{response}",
-        "relatedEdges": edges_list,
-        "timestamp": firestore.SERVER_TIMESTAMP
-    }, merge=True)
-    
-    return {
-        "status": "success",
-        "result": response
-    }
-
 @https_fn.on_call(timeout_sec=60)
 def explain_graph_link(req: https_fn.CallableRequest) -> dict:
-    uid = req.data.get('uid')
-    if not uid and req.auth:
-        uid = req.auth.uid
-    if not uid:
-        return {"status": "error", "message": "Missing UID"}
-        
+    uid = extract_authenticated_uid(req)
     source = req.data.get('source')
     target = req.data.get('target')
     relation = req.data.get('relation', '')
@@ -1196,12 +1181,7 @@ def resolve_and_cluster_entities(req: https_fn.CallableRequest) -> dict:
     """
     import traceback
     try:
-        uid = req.data.get('uid')
-        if not uid and req.auth:
-            uid = req.auth.uid
-        if not uid:
-            return {"status": "error", "message": "Missing UID"}
-            
+        uid = extract_authenticated_uid(req)
         db_conn = get_db()
         nodes_ref = db_conn.collection('users').document(uid).collection('knowledge_graph_nodes')
         nodes_snapshot = nodes_ref.stream()
@@ -1452,6 +1432,7 @@ Only suggest merges/clusters that are highly relevant. Do not force them if not 
                 unique_contents = list(set([c.strip() for c in content_pieces if c.strip()]))
                 canon_node['content'] = "\n\n".join(unique_contents)
                 canon_node['label'] = canon_label
+                canon_node['embedding'] = get_embedding(f"{canon_label} {canon_node['content']}")
                 updated_nodes[canon_id] = canon_node
                 merges_count += len([d for d in dups if d and isinstance(d, str) and d.strip()])
 
@@ -1516,7 +1497,8 @@ Only suggest merges/clusters that are highly relevant. Do not force them if not 
                 "type": "Concept",
                 "val": 2,
                 "content": meta_content,
-                "relatedEdges": meta_edges
+                "relatedEdges": meta_edges,
+                "embedding": get_embedding(f"{meta_label} {meta_content}")
             }
             updated_nodes[meta_id] = new_meta_node
             clusters_count += 1

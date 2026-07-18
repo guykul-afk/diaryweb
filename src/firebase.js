@@ -261,7 +261,8 @@ export async function fetchTheoreticalConcepts() {
       weight: data.weight || 1,
       content: data.content || '',
       isH1: data.is_h1 || false,
-      sourceFile: data.source_file || ''
+      sourceFile: data.source_file || '',
+      thinker: data.thinker || ''
     });
     
     if (data.related_edges) {

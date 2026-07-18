@@ -298,7 +298,13 @@
     <div id="search-results"></div>
   </div>
   <div id="nodes-list-container">
-    <h3>מושגים והוגים מרכזיים</h3>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px; direction: rtl;">
+      <h3 style="margin:0;">מושגים והוגים מרכזיים</h3>
+      <select id="grouping-mode" style="background:#0f0f1a; color:#e0e0e0; border:1px solid #3a3a5e; border-radius:4px; font-size:12px; padding:2px 6px;">
+        <option value="theory">לפי תיאוריות</option>
+        <option value="thinker">לפי הוגים</option>
+      </select>
+    </div>
     <div id="nodes-list-body"></div>
   </div>
   <div id="legend-wrap">
@@ -370,8 +376,31 @@ network.on('stabilizationIterationsDone', () => {
 
 
 function showInfo(nodeId) {
-  const n = nodesDS.get(nodeId);
-  if (!n) return;
+  let n = nodesDS.get(nodeId);
+  if (!n) {
+    if (typeof network !== 'undefined' && network.isCluster && network.isCluster(nodeId)) {
+      const thinkerName = nodeId.replace('cluster_', '');
+      
+      // Find all nodes grouped under this thinker
+      const childNodes = (window.GLOBAL_NODES_LIST || []).filter(node => {
+        const isFile = (node.label || '').endsWith('.md');
+        return !isFile && extractThinker(node) === thinkerName;
+      });
+      
+      const childLinks = childNodes.map(node => {
+        const color = node.color ? (node.color.background || node.color) : '#60a5fa';
+        return `<div class="linked-entry-item" style="border-right: 3px solid ${esc(color)}; margin-top: 8px; text-align: right;" onclick="try { network.openCluster('${esc(nodeId)}'); } catch(e){} focusNode('${esc(node.id)}');">📄 ${esc(node.label || node.name)}</div>`;
+      }).join('');
+      
+      n = {
+        id: nodeId,
+        label: thinkerName,
+        _description: `הוגה: <strong>${thinkerName}</strong><br><br>צומת זה מקבץ את כל התיאוריות, הכתבים והמושגים השייכים להוגה זה. לחץ על מושג כדי לפתוח אותו בגרף:<br><br>${childLinks}`
+      };
+    } else {
+      return;
+    }
+  }
   const neighborIds = network.getConnectedNodes(nodeId);
   const neighborItems = neighborIds.map(nid => {
     const nb = nodesDS.get(nid);
@@ -389,7 +418,8 @@ function showInfo(nodeId) {
   // Update left overlay panel (detailed content)
   const leftPanel = document.getElementById('left-panel');
   if (n._description) {
-    document.getElementById('left-panel-description').innerHTML = esc(n._description);
+    const isThinkerHub = (nodeId.indexOf('thinker_') === 0);
+    document.getElementById('left-panel-description').innerHTML = isThinkerHub ? n._description : esc(n._description);
     document.getElementById('left-panel-title').innerText = n.label;
     leftPanel.style.display = 'flex';
     
@@ -520,7 +550,12 @@ window.addEventListener('message', (event) => {
     
     network.setOptions({ physics: { enabled: true } });
     network.setData({ nodes: nodesDS, edges: edgesDS });
-    rebuildSidebar(formattedNodes);
+    const modeSelect = document.getElementById('grouping-mode');
+    const mode = modeSelect ? modeSelect.value : 'theory';
+    rebuildSidebar(formattedNodes, mode);
+    if (mode === 'thinker') {
+      applyGraphClustering(formattedNodes, mode);
+    }
   }
 });
 
@@ -700,37 +735,220 @@ network.on('afterDrawing', function(ctx) {
 });
 </script>
 <script>
-function rebuildSidebar(nodesList) {
+const fileToThinkerMap = {};
+
+const thinkerOverrides = {
+  "הפילוסופיה הסטואית": "Marcus Aurelius & Seneca",
+  "Attachment Theory": "John Bowlby",
+  "Behavioral": "B.F. Skinner & Watson",
+  "Buddhism": "Siddhartha Gautama (Buddha)",
+  "CBT": "Aaron Beck & Albert Ellis",
+  "ACT": "Steven Hayes",
+  "TMT": "Ernest Becker",
+  "Polyvagal": "Stephen Porges",
+  "Gottman": "John Gottman & Julie Gottman",
+  "NVC": "Marshall Rosenberg",
+  "Positive Psychology": "Martin Seligman",
+  "Stoicism": "Marcus Aurelius & Seneca",
+  "Logotherapy": "Viktor Frankl",
+  "Taoism": "Lao Tzu",
+  "Self-Determination Theory": "Edward Deci & Richard Ryan",
+  "Trauma": "Gabor Maté & Bessel van der Kolk",
+  "Neuroscience": "Andrew Huberman",
+  "DBT": "Marsha Linehan"
+};
+
+function extractThinker(n) {
+  if (n.thinker && n.thinker !== "Unknown") {
+    if (thinkerOverrides[n.thinker]) return thinkerOverrides[n.thinker];
+    return n.thinker;
+  }
+  
+  const srcFile = n.source_file || n._source_file || n.sourceFile;
+  if (srcFile && fileToThinkerMap[srcFile]) {
+    const rawThinker = fileToThinkerMap[srcFile];
+    if (thinkerOverrides[rawThinker]) return thinkerOverrides[rawThinker];
+    // Check if parts of the name match overrides (e.g. case insensitive)
+    for (let key in thinkerOverrides) {
+      if (rawThinker.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(rawThinker.toLowerCase())) {
+        return thinkerOverrides[key];
+      }
+    }
+    return rawThinker;
+  }
+  
+  // Fallback to regex
+  const label = n.label || n.name || '';
+  const match = label.match(/\(([^)]+)\)$/);
+  if (match) {
+    const matchedVal = match[1].trim();
+    if (thinkerOverrides[matchedVal]) return thinkerOverrides[matchedVal];
+    return matchedVal;
+  }
+  
+  if (srcFile) {
+    const parts = srcFile.split('/');
+    const fname = parts[parts.length - 1];
+    if (fname && fname.includes('_')) {
+        const namePart = fname.split('_')[1].replace('.md', '');
+        const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+        if (thinkerOverrides[formattedName]) return thinkerOverrides[formattedName];
+        return formattedName;
+    }
+  }
+  return "Unknown";
+}
+
+let currentClusters = [];
+
+function applyGraphClustering(nodesList, mode) {
+  // Build thinker map first
+  nodesList.forEach(n => {
+    if (n._is_h1 || n.isH1 || n.is_h1) {
+      const srcFile = n.source_file || n._source_file || n.sourceFile;
+      if (srcFile) {
+        const label = n.label || n.name || '';
+        let thinker = label;
+        const match = label.match(/\(([^)]+)\)$/);
+        if (match) {
+          thinker = match[1].trim();
+        }
+        fileToThinkerMap[srcFile] = thinker;
+      }
+    }
+  });
+
+  // First open all existing clusters
+  currentClusters.forEach(cid => {
+    try { network.openCluster(cid); } catch(e){}
+  });
+  currentClusters = [];
+
+  if (mode === 'thinker') {
+    const thinkers = new Set();
+    nodesList.forEach(n => {
+      const isFileNode = (n.label || '').endsWith('.md');
+      if (!isFileNode) thinkers.add(extractThinker(n));
+    });
+
+    thinkers.forEach(thinker => {
+      if (!thinker || thinker === "Unknown") return;
+      
+      const cid = 'cluster_' + thinker;
+      const clusterOptionsByData = {
+        joinCondition: function(childOptions) {
+          if ((childOptions.label || '').endsWith('.md')) return false;
+          const origNode = nodesList.find(n => n.id === childOptions.id);
+          if (!origNode) return false;
+          return extractThinker(origNode) === thinker;
+        },
+        clusterNodeProperties: {
+          id: cid,
+          borderWidth: 3,
+          shape: 'star',
+          size: 40,
+          label: thinker,
+          font: { size: 16, color: '#ffffff', face: 'arial' },
+          color: { background: '#60a5fa', border: '#ffffff' },
+          allowSingleNodeCluster: true
+        }
+      };
+      network.cluster(clusterOptionsByData);
+      currentClusters.push(cid);
+    });
+  }
+}
+
+// Add event listener to open cluster on click
+network.on("selectNode", function(params) {
+  if (params.nodes.length === 1) {
+    if (network.isCluster(params.nodes[0]) === true) {
+      network.openCluster(params.nodes[0]);
+    }
+  }
+});
+
+const groupingModeSelect = document.getElementById('grouping-mode');
+if (groupingModeSelect) {
+  groupingModeSelect.addEventListener('change', (e) => {
+    const mode = e.target.value;
+    if (typeof window.GLOBAL_NODES_LIST !== 'undefined' && typeof window.GLOBAL_EDGES_LIST !== 'undefined') {
+      // Restore original graph data first
+      nodesDS.clear();
+      nodesDS.add(window.GLOBAL_NODES_LIST);
+      edgesDS.clear();
+      edgesDS.add(window.GLOBAL_EDGES_LIST);
+      
+      rebuildSidebar(window.GLOBAL_NODES_LIST, mode);
+      applyGraphClustering(window.GLOBAL_NODES_LIST, mode);
+    }
+  });
+}
+
+function rebuildSidebar(nodesList, mode = 'theory') {
+  window.GLOBAL_NODES_LIST = nodesList;
+  
+  // Build thinker map first
+  nodesList.forEach(n => {
+    if (n._is_h1 || n.isH1 || n.is_h1) {
+      const srcFile = n.source_file || n._source_file || n.sourceFile;
+      if (srcFile) {
+        const label = n.label || n.name || '';
+        let thinker = label;
+        const match = label.match(/\(([^)]+)\)$/);
+        if (match) {
+          thinker = match[1].trim();
+        }
+        fileToThinkerMap[srcFile] = thinker;
+      }
+    }
+  });
+
   const listBody = document.getElementById('nodes-list-body');
   if (!listBody) return;
   listBody.innerHTML = '';
   
-  const fileGroups = {};
+  const groups = {};
   
   nodesList.forEach(n => {
     const isFileNode = (n.label || '').endsWith('.md');
     if (isFileNode) return;
     
-    const srcFile = n.source_file || n._source_file || n.sourceFile;
-    if (!srcFile) return;
+    let key = n.source_file || n._source_file || n.sourceFile;
+    if (mode === 'thinker') {
+      key = extractThinker(n);
+    }
+    if (!key) return;
     
-    if (!fileGroups[srcFile]) {
-      fileGroups[srcFile] = { parent: null, children: [] };
+    if (!groups[key]) {
+      groups[key] = { parent: null, children: [] };
     }
     
-    if (n._is_h1 || n.isH1 || n.is_h1) {
-      fileGroups[srcFile].parent = n;
-    } else if (n._description || n.description || n.content) {
-      fileGroups[srcFile].children.push(n);
+    if (mode === 'theory') {
+      if (n._is_h1 || n.isH1 || n.is_h1) {
+        groups[key].parent = n;
+      } else if (n._description || n.description || n.content) {
+        groups[key].children.push(n);
+      }
+    } else {
+      if (!groups[key].parent) {
+        groups[key].parent = {
+          id: 'thinker_' + key,
+          label: key,
+          name: key,
+          color: n.color
+        };
+      }
+      if (n._is_h1 || n.isH1 || n.is_h1) {
+        groups[key].children.push(n);
+      }
     }
   });
 
-  // Sort groups alphabetically by their parent's label
-  const sortedGroups = Object.values(fileGroups).filter(g => g.parent);
+  const sortedGroups = Object.values(groups).filter(g => g.parent);
   sortedGroups.sort((a, b) => (a.parent.label || a.parent.name || '').localeCompare(b.parent.label || b.parent.name || '', 'he'));
 
   sortedGroups.forEach(g => {
-    // 1. Parent Item (Thinker / Theory)
     const parentItem = document.createElement('div');
     parentItem.className = 'nodes-list-item';
     const parentColor = g.parent.color ? (g.parent.color.background || g.parent.color) : '#555';
@@ -742,39 +960,52 @@ function rebuildSidebar(nodesList) {
     parentItem.textContent = g.parent.label || g.parent.name;
     
     parentItem.onclick = () => {
-      network.focus(g.parent.id, { 
-        scale: 1.3, 
-        animation: { duration: 800, easingFunction: 'easeInOutQuad' } 
-      });
-      network.selectNodes([g.parent.id]);
-      showInfo(g.parent.id);
+      if (mode === 'thinker') {
+        const clusterId = 'cluster_' + (g.parent.label || g.parent.name);
+        if (network.isCluster(clusterId)) {
+          network.focus(clusterId, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+          network.selectNodes([clusterId]);
+          showInfo(clusterId);
+        } else if (g.children.length > 0) {
+          network.focus(g.children[0].id, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+          network.selectNodes([g.children[0].id]);
+          showInfo(g.children[0].id);
+        }
+      } else {
+        network.focus(g.parent.id, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+        network.selectNodes([g.parent.id]);
+        showInfo(g.parent.id);
+      }
     };
     listBody.appendChild(parentItem);
 
-    // 2. Child Items (Concepts / Poems)
-    g.children.sort((a, b) => (a.label || a.name || '').localeCompare(b.label || b.name || '', 'he'));
-    
-    g.children.forEach(c => {
-      const childItem = document.createElement('div');
-      childItem.className = 'nodes-list-item';
-      const childColor = c.color ? (c.color.background || c.color) : '#888';
-      childItem.style.borderRight = `2px solid ${childColor}`;
-      childItem.style.marginRight = '14px'; // Indent under RTL
-      childItem.style.fontSize = '12px';
-      childItem.style.color = '#cbd5e1';
-      childItem.style.background = 'transparent';
-      childItem.textContent = '└ ' + (c.label || c.name);
+    if (mode === 'theory') {
+      g.children.sort((a, b) => (a.label || a.name || '').localeCompare(b.label || b.name || '', 'he'));
       
-      childItem.onclick = () => {
-        network.focus(c.id, { 
-          scale: 1.3, 
-          animation: { duration: 800, easingFunction: 'easeInOutQuad' } 
-        });
-        network.selectNodes([c.id]);
-        showInfo(c.id);
-      };
-      listBody.appendChild(childItem);
-    });
+      g.children.forEach(c => {
+        const childItem = document.createElement('div');
+        childItem.className = 'nodes-list-item';
+        const childColor = c.color ? (c.color.background || c.color) : '#888';
+        childItem.style.borderRight = `2px solid ${childColor}`;
+        childItem.style.marginRight = '14px';
+        childItem.style.fontSize = '12px';
+        childItem.style.color = '#cbd5e1';
+        childItem.style.background = 'transparent';
+        childItem.textContent = '└ ' + (c.label || c.name);
+        
+        childItem.onclick = () => {
+          const thinker = extractThinker(c);
+          const clusterId = 'cluster_' + thinker;
+          if (network.isCluster(clusterId)) {
+            network.openCluster(clusterId);
+          }
+          network.focus(c.id, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+          network.selectNodes([c.id]);
+          showInfo(c.id);
+        };
+        listBody.appendChild(childItem);
+      });
+    }
   });
 }
 
