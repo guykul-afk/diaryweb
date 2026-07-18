@@ -7,6 +7,7 @@ import { DiaryDataProvider } from './hooks/useDiaryData';
 import QuotesView from './QuotesView';
 import MindMapBuilderView from './MindMapBuilderView';
 import KnowledgeBaseGraphView from './KnowledgeBaseGraphView';
+import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 
@@ -214,6 +215,14 @@ function App() {
             <InsightsView {...props} />
           </div>
         );
+      case 'readings':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', overflowY: 'auto', padding: '24px 32px' }}>
+            <div style={{ maxWidth: '720px', width: '100%', margin: '0 auto' }}>
+              <RecommendedReadingsCard uid={uid} onNavigateToNewEntry={handleNavigateToEntry} />
+            </div>
+          </div>
+        );
       case 'quotes':
         return (
           <QuotesView 
@@ -252,6 +261,14 @@ function App() {
               title="יומן רשומות"
             >
               <span>יומן רשומות</span>
+            </button>
+
+            <button
+              className={`sidebar-btn ${activeTab === 'readings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('readings')}
+              title="השראה והמלצות קריאה"
+            >
+              <span>השראה והמלצות</span>
             </button>
             
             <button
