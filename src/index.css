@@ -400,33 +400,50 @@ body {
   gap: 4px;
 }
 
-/* Graph View */
+/* Graph View - Dark Theme & Glassmorphism matching Graphify */
 .graph-container {
   width: 100%;
   height: 100%;
   position: relative;
   display: flex;
   overflow: hidden;
+  background-color: #0f0f1a;
 }
 
 .graph-canvas-wrapper {
   flex-grow: 1;
   height: 100%;
-  background-color: #ffffff;
-  background-image: radial-gradient(rgba(0, 53, 95, 0.08) 1.5px, transparent 1.5px);
+  background-color: #0f0f1a;
+  background-image: radial-gradient(rgba(78, 121, 167, 0.15) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
 }
 
 .graph-sidebar {
+  position: absolute;
+  top: 20px;
+  right: 20px;
   width: 320px;
-  background-color: var(--panel-bg);
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.02);
+  max-height: calc(100vh - 40px);
+  background: rgba(15, 15, 26, 0.95);
+  border: 1px solid rgba(78, 121, 167, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px);
   padding: 24px;
   overflow-y: auto;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  z-index: 1000;
+  color: #e2e8f0;
+}
+
+/* Ensure text inside sidebar adapts to dark theme */
+.graph-sidebar h2, .graph-sidebar h3 {
+  color: #ffffff;
+}
+.graph-sidebar p, .graph-sidebar span {
+  color: #cbd5e1;
 }
 
 .graph-instructions {

@@ -1,6 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { useDiaryData } from './hooks/useDiaryData';
 import { Search, Hash, Heart, User, Sparkles, ArrowLeftRight, FileText, ArrowLeft } from 'lucide-react';
+import WikiLocalGraph from './components/WikiLocalGraph';
+import EntityTimeline from './components/EntityTimeline';
+import LintingAlerts from './components/LintingAlerts';
 
 export default function WikiView({ onNavigateToEntry }) {
   const {
@@ -73,6 +76,8 @@ export default function WikiView({ onNavigateToEntry }) {
     return {
       type: getNodeType(activeNode),
       entries: meta.entries || [],
+      topics: meta.topics ? Array.from(meta.topics) : [],
+      moods: meta.moods ? Array.from(meta.moods) : [],
       positive: positiveConnections,
       negative: negativeConnections,
       neutral: neutralConnections
@@ -201,31 +206,77 @@ export default function WikiView({ onNavigateToEntry }) {
         {activeNode ? (
           <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '24px' }}>
             
-            {/* Header */}
-            <div style={{ borderBottom: '2px solid var(--border-color)', paddingBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span 
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '6px', 
-                    padding: '4px 10px', 
-                    borderRadius: '12px', 
-                    fontSize: '0.75rem', 
-                    fontWeight: 600,
-                    background: getNodeBadgeColor(pageDetails.type)
-                  }}
-                >
-                  {getTypeIcon(pageDetails.type)}
-                  {pageDetails.type}
-                </span>
+            {/* Dataview / Frontmatter Header & Local Graph */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '24px' }}>
+              <div style={{ 
+                border: '1px solid var(--border-color)', 
+                borderRadius: 'var(--radius-lg)', 
+                padding: '24px', 
+                background: 'linear-gradient(145deg, rgba(30,41,59,0.4) 0%, rgba(15,23,42,0.6) 100%)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                backdropFilter: 'blur(10px)',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', marginBottom: '16px' }}>
+                  <div>
+                    <h1 style={{ fontSize: '2.4rem', margin: '0 0 8px 0', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+                      {activeNode.name || activeNode.id}
+                    </h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                      <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>[[{activeNode.id}]]</code>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                    <span 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        padding: '6px 12px', 
+                        borderRadius: '16px', 
+                        fontSize: '0.85rem', 
+                        fontWeight: 600,
+                        background: getNodeBadgeColor(pageDetails.type),
+                        border: '1px solid rgba(255,255,255,0.1)'
+                      }}
+                    >
+                      {getTypeIcon(pageDetails.type)}
+                      {pageDetails.type}
+                    </span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Sparkles size={12} /> חשיבות: {activeNode.weight}
+                    </span>
+                  </div>
+                </div>
+
+              {/* Tags & Metadata */}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>נושאים:</span>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                    {pageDetails.topics.length > 0 ? pageDetails.topics.map((t, i) => (
+                      <span key={i} style={{ fontSize: '0.75rem', background: 'rgba(159, 122, 234, 0.15)', color: '#b794f4', padding: '2px 8px', borderRadius: '12px' }}>#{t}</span>
+                    )) : <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>אין</span>}
+                  </div>
+                </div>
+                <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)', height: '20px' }}></div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: 600 }}>רגשות:</span>
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                    {pageDetails.moods.length > 0 ? pageDetails.moods.map((m, i) => (
+                      <span key={i} style={{ fontSize: '0.75rem', background: 'rgba(237, 100, 166, 0.15)', color: '#f687b3', padding: '2px 8px', borderRadius: '12px' }}>{m}</span>
+                    )) : <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>אין</span>}
+                  </div>
+                </div>
               </div>
-              <h1 style={{ fontSize: '2.2rem', margin: 0, fontWeight: 800, color: 'var(--text-primary)' }}>
-                {activeNode.name || activeNode.id}
-              </h1>
-              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-                מזהה רשומה: <code>[[{activeNode.id}]]</code> • חשיבות במאגר: {activeNode.weight}
-              </p>
+              </div>
+              
+              {/* Local Graph Side Panel */}
+              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                <WikiLocalGraph activeNodeId={activeNode.id} onNodeClick={setSelectedNodeId} />
+              </div>
             </div>
 
             {/* Content Section */}
@@ -243,7 +294,41 @@ export default function WikiView({ onNavigateToEntry }) {
                   whiteSpace: 'pre-wrap'
                 }}
               >
-                {activeNode.content ? activeNode.content : <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>אין הגדרה מורחבת עבור מושג זה.</span>}
+                {activeNode.content ? (
+                  <div>
+                    {activeNode.content.split(/(\[\[.*?\]\])/g).map((part, i) => {
+                      if (part.startsWith('[[') && part.endsWith(']]')) {
+                        const linkText = part.slice(2, -2);
+                        // Find node by id or name (case insensitive ideally, but exact for now)
+                        const targetNode = filteredNodes.find(n => n.id === linkText || n.name === linkText);
+                        const targetId = targetNode ? targetNode.id : linkText;
+                        return (
+                          <span 
+                            key={i}
+                            onClick={() => setSelectedNodeId(targetId)}
+                            style={{ 
+                              color: 'var(--accent-color)', 
+                              cursor: 'pointer',
+                              fontWeight: 600,
+                              padding: '2px 6px',
+                              background: 'var(--accent-light)',
+                              borderRadius: '4px',
+                              display: 'inline-block',
+                              margin: '0 2px',
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseOver={(e) => e.target.style.background = 'rgba(0,0,0,0.1)'}
+                            onMouseOut={(e) => e.target.style.background = 'var(--accent-light)'}
+                            title={`נווט אל ${linkText}`}
+                          >
+                            {linkText}
+                          </span>
+                        );
+                      }
+                      return <span key={i}>{part}</span>;
+                    })}
+                  </div>
+                ) : <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>אין הגדרה מורחבת עבור מושג זה.</span>}
               </div>
             </div>
 
@@ -352,55 +437,18 @@ export default function WikiView({ onNavigateToEntry }) {
               )}
             </div>
 
-            {/* Backlinks & Quotes (Journal mentions) */}
+            {/* Backlinks & Timeline (Journal mentions) */}
             <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>מוזכר ביומן (Backlinks):</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {pageDetails.entries.length === 0 ? (
-                  <div style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem' }}>אין אזכורים ישירים ברשומות היומן הנוכחיות.</div>
-                ) : (
-                  pageDetails.entries.map((entry, idx) => (
-                    <div 
-                      key={idx} 
-                      style={{ 
-                        border: '1px solid var(--border-color)', 
-                        borderRadius: 'var(--radius-md)', 
-                        padding: '12px 16px', 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        justifyContent: 'space-between',
-                        backgroundColor: 'var(--panel-bg)'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ fontSize: '1.2rem' }}>📄</span>
-                        <div>
-                          <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>רשומה מתאריך: {entry.date}</strong>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => onNavigateToEntry && onNavigateToEntry(entry.id)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--accent-color)',
-                          fontSize: '0.8rem',
-                          cursor: 'pointer',
-                          fontWeight: 600,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          textDecoration: 'underline'
-                        }}
-                      >
-                        פתח רשומה מלאה
-                        <ArrowLeft size={12} />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '12px' }}>היסטוריה בציר זמן:</h3>
+              <EntityTimeline entries={pageDetails.entries} onNavigateToEntry={onNavigateToEntry} />
             </div>
+
+            {/* AI System Alerts / Linting */}
+            <LintingAlerts 
+              activeNodeId={activeNode.id} 
+              relatedNodes={[...pageDetails.positive, ...pageDetails.negative, ...pageDetails.neutral]} 
+            />
+
 
           </div>
         ) : (

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { fetchFirebaseGraph, fetchFirebaseEntries } from '../firebase';
+import { fetchFirebaseGraph, fetchFirebaseEntries, fetchTheoreticalConcepts } from '../firebase';
 
 const DiaryDataContext = createContext(null);
 
@@ -25,11 +25,53 @@ export function DiaryDataProvider({ children, uid }) {
     setLoading(true);
     setError(null);
     try {
-      const [graphData, entriesData] = await Promise.all([
+      const [graphData, entriesData, theoreticalData] = await Promise.all([
         fetchFirebaseGraph(uid),
-        fetchFirebaseEntries(uid)
+        fetchFirebaseEntries(uid),
+        fetchTheoreticalConcepts()
       ]);
-      setRawGraphData(graphData);
+
+      // Combine user nodes and theoretical concepts
+      const combinedNodes = [...graphData.nodes];
+      const combinedLinks = [...graphData.links];
+
+      // Add/enrich theoretical concepts
+      theoreticalData.nodes.forEach(tNode => {
+        const lowerId = tNode.id.toLowerCase();
+        const existing = combinedNodes.find(n => n.id.toLowerCase() === lowerId);
+        if (existing) {
+          existing.content = existing.content || tNode.content;
+          existing.sourceFile = tNode.sourceFile;
+          existing.isH1 = tNode.isH1;
+          if (existing.type === 'Concept' && tNode.type !== 'Concept') {
+            existing.type = tNode.type;
+          }
+        } else {
+          combinedNodes.push(tNode);
+        }
+      });
+
+      // Combine theoretical links, avoiding duplicates
+      const existingLinkKeys = new Set(combinedLinks.map(l => {
+        const s = (typeof l.source === 'object' ? l.source.id : l.source).toLowerCase();
+        const t = (typeof l.target === 'object' ? l.target.id : l.target).toLowerCase();
+        const label = (l.label || '').toLowerCase();
+        return `${s}-${t}-${label}`;
+      }));
+
+      theoreticalData.links.forEach(tLink => {
+        const s = tLink.source.toLowerCase();
+        const t = tLink.target.toLowerCase();
+        const label = tLink.label.toLowerCase();
+        const key1 = `${s}-${t}-${label}`;
+        const key2 = `${t}-${s}-${label}`;
+        if (!existingLinkKeys.has(key1) && !existingLinkKeys.has(key2)) {
+          combinedLinks.push(tLink);
+          existingLinkKeys.add(key1);
+        }
+      });
+
+      setRawGraphData({ nodes: combinedNodes, links: combinedLinks });
       setEntries(entriesData);
     } catch (err) {
       console.error(err);

@@ -93,6 +93,21 @@ export async function fetchOriginalInsights(uid) {
   return null;
 }
 
+// Fetch latest recommended readings from users/{uid}/recommended_readings/latest
+export async function fetchRecommendedReadings(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  try {
+    const docRef = doc(db, `users/${uid}/recommended_readings`, 'latest');
+    const docSnap = await getDocFromServer(docRef);
+    if (docSnap.exists()) {
+      return docSnap.data()?.readings || [];
+    }
+  } catch (err) {
+    console.error("Failed to fetch recommended readings:", err);
+  }
+  return [];
+}
+
 
 
 // Helper to fetch entries from Firebase Firestore
@@ -224,6 +239,51 @@ export async function fetchFirebaseGraph(uid) {
     }
   });
 
+  return { nodes, links };
+}
+
+// Fetch global theoretical concepts from Firestore
+export async function fetchTheoreticalConcepts() {
+  const conceptsRef = collection(db, 'theoretical_concepts');
+  const querySnapshot = await getDocsFromServer(conceptsRef);
+  
+  const nodes = [];
+  const links = [];
+  
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    const nodeId = decodeURIComponent(data.id || doc.id);
+    
+    nodes.push({
+      id: nodeId,
+      name: data.label || nodeId,
+      type: data.type || 'Concept',
+      weight: data.weight || 1,
+      content: data.content || '',
+      isH1: data.is_h1 || false,
+      sourceFile: data.source_file || ''
+    });
+    
+    if (data.related_edges) {
+      data.related_edges.forEach((edgeStr) => {
+        // Format: other:relation:sentiment
+        const parts = edgeStr.split(':');
+        if (parts.length >= 2) {
+          const other = decodeURIComponent(parts[0]);
+          const relation = parts[1];
+          const sentiment = parts.length >= 3 ? parseFloat(parts[2]) : 0;
+          links.push({
+            source: nodeId,
+            target: other,
+            label: relation,
+            sentimentScore: sentiment,
+            isTheoretical: true
+          });
+        }
+      });
+    }
+  });
+  
   return { nodes, links };
 }
 

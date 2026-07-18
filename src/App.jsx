@@ -6,6 +6,7 @@ import InsightsView from './InsightsView';
 import { DiaryDataProvider } from './hooks/useDiaryData';
 import QuotesView from './QuotesView';
 import MindMapBuilderView from './MindMapBuilderView';
+import KnowledgeBaseGraphView from './KnowledgeBaseGraphView';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 
@@ -219,6 +220,12 @@ function App() {
             onNavigateToEntry={handleNavigateToEntry} 
           />
         );
+      case 'knowledge':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
+            <KnowledgeBaseGraphView onNavigateToEntry={handleNavigateToEntry} />
+          </div>
+        );
       default:
         return null;
     }
@@ -290,9 +297,16 @@ function App() {
             <button
               className={`sidebar-btn ${activeTab === 'insights' ? 'active' : ''}`}
               onClick={() => setActiveTab('insights')}
-              title="תובנות ומאגר ידע"
+              title="תובנות אישיות"
             >
-              <span>תובנות ומאגר</span>
+              <span>תובנות אישיות</span>
+            </button>
+            <button
+              className={`sidebar-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
+              onClick={() => setActiveTab('knowledge')}
+              title="בסיס ידע אקדמי"
+            >
+              <span>בסיס ידע אקדמי</span>
             </button>
           </nav>
 

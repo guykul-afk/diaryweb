@@ -29,6 +29,28 @@ def get_db():
         db_client = firestore.client()
     return db_client
 
+def log_knowledge_action(action_type: str, details: dict):
+    """Log an AI action to the knowledge_log collection (OKF compliant)."""
+    try:
+        db = get_db()
+        log_entry = {
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "action_type": action_type,
+            "details": details
+        }
+        db.collection("knowledge_log").add(log_entry)
+    except Exception as e:
+        logger.error(f"Failed to log knowledge action: {e}")
+
+def update_knowledge_index(stats: dict):
+    """Update the global knowledge_index document (OKF compliant)."""
+    try:
+        db = get_db()
+        stats["last_updated"] = firestore.SERVER_TIMESTAMP
+        db.collection("knowledge_index").document("global_stats").set(stats, merge=True)
+    except Exception as e:
+        logger.error(f"Failed to update knowledge index: {e}")
+
 # =====================================================================
 # Pydantic Schemas for Structured Output
 # =====================================================================
@@ -52,116 +74,87 @@ class Metrics(BaseModel):
 class GraphEdge(BaseModel):
     source: str = Field(..., description="Source node ID")
     target: str = Field(..., description="Target node ID")
-    relation: str = Field(..., description="Relationship type from a strict vocabulary: 'גורם_ל' (CAUSES), 'מרגיש' (FEELS), 'רוצה' (DESIRES), 'מפחד_מ' (FEARS), 'חוסם' (BLOCKS), 'פתר' (RESOLVES), 'קשור_ל' (RELATED_TO)")
+    relation: str = Field(..., description="Relationship type from a strict vocabulary: 'גורם_ל', 'מרגיש', 'רוצה', 'מפחד_מ', 'חוסם', 'פתר', 'קשור_ל', 'סותר', 'מחריף', 'מרגיע', 'מייצג'")
+    context: str = Field(..., description="The context or circumstances in which this relationship occurs (e.g., 'בעבודה', 'בזמן שיחה'). Use empty string if none.")
     sentimentScore: int = Field(..., description="Sentiment score of the relationship: -1 (negative/stressful), 0 (neutral), or 1 (positive/healing).")
     sourceQuotes: List[str] = Field(..., description="List of 1-2 direct quotes from the user's journal entries that prove this relationship.")
 
 class GraphNode(BaseModel):
     id: str = Field(..., description="Unique atomic node ID in English or Hebrew, lowercase or clean name (1-3 words max, e.g., 'זוגיות' or 'חרדת_ביצוע'). Do NOT use long phrases or sentences.")
     label: str = Field(..., description="Short atomic node name/label in Hebrew (1-3 words max, e.g., 'זוגיות', 'שיחה', 'מגע'). Avoid using sentences, descriptions, or connector words like 'באמצעות', 'על ידי', 'של'.")
+    aliases: List[str] = Field(..., description="List of synonyms or alternative names for this concept to prevent duplication (e.g., 'סטרס' for 'לחץ').")
+    tags: List[str] = Field(..., description="List of explicit category tags for this concept.")
+    coping_strategies: List[str] = Field(..., description="List of coping strategies or interventions that help with this concept (especially if negative).")
     type: str = Field(..., description="Node type, e.g., 'Insight', 'Trait', 'Pattern'")
     val: int = Field(..., description="Node value/weight, e.g. 2 or 3")
     content: str = Field(..., description="Detailed explanation/insight description in Hebrew")
     relatedEdges: List[GraphEdge] = Field(..., description="List of edges connected to this node")
 
+class ApproachReports(BaseModel):
+    clinical: str = Field(..., description="Professional clinical assessment report in Hebrew, mapping symptoms, distress and functioning based on Clinical OKF rules.")
+    psychodynamic: str = Field(..., description="Deep psychodynamic formulation in Hebrew, detailing defense mechanisms, shadow, and attachment based on Psychodynamic OKF rules.")
+    cbt: str = Field(..., description="Structured CBT formulation in Hebrew, identifying distortions, core beliefs, and thoughts-feelings-behaviors links based on CBT OKF rules.")
+    behavioral: str = Field(..., description="Structured behavioral assessment (FBA) in Hebrew, mapping triggers (A), behaviors (B) and consequences (C) based on Behavioral OKF rules.")
+    humanistic: str = Field(..., description="Existential-humanistic report in Hebrew, discussing meaning, freedom, isolation, and self-actualization based on Humanistic OKF rules.")
+    fareast: str = Field(..., description="Far East Zen-Buddhist and Daoist philosophical analysis in Hebrew, analyzing the user's attachments, ego-clinging, and flow (Wu Wei).")
+
+class RecommendedReading(BaseModel):
+    thinker: str = Field(..., description="Name of the thinker, philosopher, poet, or psychologist from the knowledge base (e.g. 'דיוויד ברוקס', 'צ'ארלס דוהיג', 'יהודה עמיחי', 'סרן קירקגור').")
+    source_work: str = Field(..., description="Title of the recommended book, essay, or poem (e.g. 'ההר השני', 'כוחו של הרגל', 'עכשיו ובימים האחרים').")
+    quote: str = Field(..., description="A direct or representative quote/insight from the work in Hebrew.")
+    relevance: str = Field(..., description="Empathic explanation in Hebrew connecting this quote/work directly to the issues discussed in the user's recent journal entries.")
+    reflection_question: str = Field(..., description="A thought-provoking reflection question for the user to reflect upon or write about in their next journal entry.")
+
 class OrchestratorOutput(BaseModel):
     executive_summary: str = Field(..., description="Integrative summary merging the insights from the 5 agents, written in Hebrew, about 2-4 paragraphs.")
+    reports: ApproachReports = Field(..., description="Detailed clinical reports for each of the 5 theoretical approaches, written by applying their corresponding OKF knowledge rules.")
+    significant_events: List[str] = Field(..., description="List of factual significant life events that occurred in the entry (e.g., 'פוטר מהעבודה', 'פגישה עם חבר').")
+    action_items: List[str] = Field(..., description="List of intentions or goals the user resolved to do in the entry.")
+    bio_psycho_correlation: str = Field(..., description="Brief analysis of correlation between physiological state (if available) and mental state described.")
     metrics: Metrics
     new_nodes: List[GraphNode] = Field(..., description="New psychological insight nodes to add to the knowledge graph, linking them to relevant existing concepts.")
+    recommended_readings: List[RecommendedReading] = Field(default=[], description="List of 2-4 tailored reading recommendations and quotes from thinkers in the knowledge base relevant to the user's entries.")
 
 # =====================================================================
 # Specialized System Prompts
 # =====================================================================
 
-CLINICAL_SYSTEM_PROMPT = """You are an expert Clinical Psychiatrist specialized in DSM-5 diagnostics and clinical formulation.
-Your task is to analyze the user's personal journal entries and construct a clinical report.
-Focus on:
-1. Clinical Symptoms & Distress: Identify signs of mood fluctuations, anxiety, stress, or other psychological symptoms.
-2. Behavioral and Sleep Patterns: Analyze sleep quality, fatigue, energy levels, and daily functioning indicators.
-3. Mood & Affect: Map out the emotional tone, reactivity, and general affect state.
-4. DSM-5 Dimensions: Reference relevant DSM-5 diagnostic frameworks (e.g., anxiety features, depressive symptoms, sleep-wake concerns, adjustment issues) without diagnosing, but pointing out patterns and severity indicators.
+def load_okf_psychology() -> str:
+    base_path = os.path.join(os.path.dirname(__file__), "okf", "psychology")
+    content = ""
+    try:
+        if os.path.exists(base_path):
+            for file in os.listdir(base_path):
+                if file.endswith(".md"):
+                    with open(os.path.join(base_path, file), "r", encoding="utf-8") as f:
+                        content += f.read() + "\n\n"
+    except Exception as e:
+        logger.error(f"Failed to load OKF: {e}")
+    return content
 
-CRITICAL RULES:
-- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
-- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
-- Quote directly from the text if needed, but only use actual words from the entries.
+PSYCHOLOGY_KNOWLEDGE_BASE = load_okf_psychology()
 
-Format your output as a professional clinical assessment report, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
-
-PSYCHODYNAMIC_SYSTEM_PROMPT = """You are an expert Psychodynamic Therapist trained in Jungian, Freudian, and Object Relations theories.
-Your task is to analyze the user's personal journal entries and construct a psychodynamic formulation.
-Focus on:
-1. Defense Mechanisms: Identify active defenses (e.g., intellectualization, rationalization, projection, repression, reaction formation, displacement, splitting) and how they manifest.
-2. Jungian Archetypes & Shadows: Detect archetypal themes (e.g., Shadow, Persona, Anima/Animus, Self, Hero, Wise Old Man) and the integration/expression of the unconscious.
-3. Object Relations & Attachment: Map out the user's internal working models of self and others, attachment style indicators (secure, anxious, avoidant), and repeating relational patterns.
-
-CRITICAL RULES:
-- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
-- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
-- Quote directly from the text if needed, but only use actual words from the entries.
-
-Format your output as a deep psychodynamic formulation, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
-
-CBT_SYSTEM_PROMPT = """You are an expert Cognitive Behavioral Therapist (CBT) specializing in identifying cognitive schemas and distortions.
-Your task is to analyze the user's personal journal entries and construct a CBT formulation.
-Focus on:
-1. Cognitive Distortions: Identify patterns of all-or-nothing thinking, catastrophizing, mind reading, emotional reasoning, overgeneralization, personalization, should statements, etc.
-2. Core Beliefs & Intermediate Beliefs: Extract underlying core beliefs about the self, others, and the world.
-3. CBT Triangle: Describe the interactions between typical situations, negative automatic Thoughts, corresponding Feelings (physical and emotional), and subsequent Behaviors.
-
-CRITICAL RULES:
-- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
-- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
-- Quote directly from the text if needed, but only use actual words from the entries.
-
-Format your output as a structured CBT analysis, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
-
-BEHAVIORAL_SYSTEM_PROMPT = """You are a Board Certified Behavior Analyst (BCBA) specialized in functional behavior analysis (FBA).
-Your task is to analyze the user's personal journal entries and construct a behavioral report.
-Focus on:
-1. Functional Analysis (ABC): Identify Antecedents (triggers, environmental/internal contexts), Behaviors (observable or described actions, habits, avoidance patterns), and Consequences (what happens after, including reinforcers).
-2. Maintaining Reinforcers: Distinguish between negative reinforcement (e.g., relief from anxiety, avoidance of task) and positive reinforcement (e.g., approval, control, distraction).
-3. Skill Deficits & Behavioral Assets: Identify strengths and areas where coping skills could be introduced or reinforced.
-
-CRITICAL RULES:
-- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
-- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
-- Quote directly from the text if needed, but only use actual words from the entries.
-
-Format your output as a structured behavioral assessment, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
-
-HUMANISTIC_SYSTEM_PROMPT = """You are an expert Humanistic and Existentialist Therapist focusing on meaning, self-actualization, and ultimate concerns.
-Your task is to analyze the user's journal entries and construct an existential-humanistic report.
-Focus on:
-1. Ultimate Concerns: Track how the user relates to meaning of life (vs. meaninglessness), freedom/agency (vs. deterministic constraint), isolation/loneliness (vs. connection), and mortality/finitude.
-2. Self-Actualization & Authenticity: Assess the degree of authenticity in self-expression vs. social compliance/pleasing, and their progress towards self-actualization.
-3. Unconditional Self-Regard: Analyze the level of self-acceptance, conditions of worth, and overall growth.
-
-CRITICAL RULES:
-- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
-- Base your analysis STRICTLY on the provided journal entries. If the provided text is short, your report should be concise. Do not make up information to fill the report.
-- Quote directly from the text if needed, but only use actual words from the entries.
-
-Format your output as a warm, humanistic, and existential analysis, in Hebrew. Be insightful and empathetic, but strictly evidence-based."""
-
-ORCHESTRATOR_SYSTEM_PROMPT = """You are the Orchestrator agent of a psychological multi-agent system.
-Your task is to integrate the findings from 5 specialized psychological agents (Clinical, Psychodynamic, CBT, Behavioral, Humanistic) and produce a cohesive executive summary and structured profile.
+ORCHESTRATOR_SYSTEM_PROMPT = """You are the Lead Clinical Orchestrator of the diary system.
+Your task is to integrate the provided Psychological Knowledge Base (OKF formats) with the user's journal entries and produce a cohesive executive summary and structured profile.
 
 Here are your inputs:
 1. The user's recent journal entries.
-2. The individual reports written by the 5 specialized agents.
+2. The Psychological Knowledge Base (CBT, Psychodynamic, Clinical, Humanistic, Behavioral, Stoicism, Modern Thinkers, Poets).
 3. The names/labels of existing concepts/nodes in the user's knowledge graph.
 4. The user's physiological health metrics for the specific dates, represented as existing HealthMetric nodes.
 
 Your output must be structured exactly as requested, containing:
 1. An executive summary (integrative overview of the user's current psychological state, conflicts, coping mechanisms, and growth paths).
-2. Metrics:
+2. Six detailed approach reports (CBT, Psychodynamic, Humanistic, Behavioral, Clinical, and Far East Philosophy) populated in the `reports` field, applying the specific rules and terminology of each OKF model.
+3. Metrics:
    - OCEAN profile (scores from 0 to 100).
    - Linguistic metrics (emotional density, self-focus, stress level, scores from 0 to 100).
-3. A list of NEW psychological insight nodes to add to the knowledge graph.
-   - For each new node, define an ID, label (Hebrew), type (Insight, Trait, Pattern, Defense, etc.), value/weight, and description (content in Hebrew).
+4. A list of NEW psychological insight nodes to add to the knowledge graph.
+5. A list of 2-4 tailored reading recommendations (`recommended_readings`) selecting relevant thinkers/writers from the Psychological Knowledge Base, complete with direct quotes, personal relevance explanations, and reflection questions.
+   - CRITICAL WIKI-LINKS RULE: Inside the `content` and `executive_summary`, whenever you mention an existing concept, a new node you just created, or a specific psychologist, philosopher, or theory from the Psychological Knowledge Base (e.g., [[דיוויד ברוקס]], [[צ'ארלס דוהיג]], [[CBT]], [[תיאוריית הפוליווגל]]), wrap it in double brackets like `[[מושג]]`. This creates a live hyperlink in the UI and connects personal insights directly to the academic/practical frameworks. Make sure to use this extensively to interconnect knowledge!
    - CRITICAL NODE ATOMICITY RULE: Every node ID and label must be a short, atomic concept (1-3 words max, e.g. 'זוגיות', 'מגע', 'שיחה', 'חרדת_ביצוע'). DO NOT create nodes that represent sentences, processes, or relationships (e.g. do NOT create a node like 'זוגיות באמצעות שיחה ומגע'). Break complex relationships down into simple atomic nodes connected by Edges.
-   - Define relatedEdges to connect this new node to existing nodes or other new nodes. 
+   - CRITICAL DISAMBIGUATION RULE: Always review the existing concepts provided. If the user mentions "סטרס", and "לחץ" exists, DO NOT create a new node. Use the existing concept ID and add "סטרס" to its `aliases` list.
+   - Define relatedEdges to connect this new node to existing nodes or other new nodes. Provide `context` if applicable.
    - CRITICAL ONTOLOGY RULE: In relatedEdges, the `relation` field MUST be exactly one of the following Hebrew strings:
      * 'גורם_ל' (CAUSES) - if A causes/triggers B
      * 'מרגיש' (FEELS) - if A feels B (e.g. A feels anxiety)
@@ -169,6 +162,10 @@ Your output must be structured exactly as requested, containing:
      * 'מפחד_מ' (FEARS) - if A fears/avoids B
      * 'חוסם' (BLOCKS) - if A blocks/prevents/restricts B
      * 'פתר' (RESOLVES) - if A resolves/solves/relieves B
+     * 'סותר' (CONTRADICTS) - if A contradicts B
+     * 'מחריף' (EXACERBATES) - if A makes B worse
+     * 'مرגיע' (SOOTHES) - if A soothes/calms B
+     * 'מייצג' (REPRESENTS) - if A represents/symbolizes B
      * 'מושפע_מ' (AFFECTED_BY) - if mental state is affected by physiological state (HealthMetric)
      * 'משפיע_על' (AFFECTS) - if mental state affects physiological state
      * 'קשור_ל' (RELATED_TO) - general fallback relationship
@@ -553,29 +550,9 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         content = entry.get('content') or entry.get('transcript') or ""
         prompt_context += f"Date: {date_str}\nTopics: {topics}\nContent: {content}\n---\n"
 
-    # 7. Execute individual agents in parallel
-    agents_to_run = {
-        "clinical": CLINICAL_SYSTEM_PROMPT,
-        "psychodynamic": PSYCHODYNAMIC_SYSTEM_PROMPT,
-        "cbt": CBT_SYSTEM_PROMPT,
-        "behavioral": BEHAVIORAL_SYSTEM_PROMPT,
-        "humanistic": HUMANISTIC_SYSTEM_PROMPT
-    }
-
-    agent_reports = {}
-    with ThreadPoolExecutor(max_workers=5) as executor:
-        futures = {
-            executor.submit(run_agent, name, sys_prompt, prompt_context): name
-            for name, sys_prompt in agents_to_run.items()
-        }
-        for future in futures:
-            name = futures[future]
-            try:
-                agent_reports[name] = future.result()
-            except Exception as e:
-                logger.error(f"Thread execution failed for {name}: {e}")
-                agent_reports[name] = f"שגיאה בהפעלת סוכן: {str(e)}"
-
+    # 7. Execute single unified AI Orchestrator with OKF Context
+    agent_reports = {"OKF_Agent": "All agent theory loaded statically from OKF Graph. No parallel agents run."}
+    
     # 8. Run the Orchestrator
     try:
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -589,11 +566,11 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         )
         
         orchestrator_prompt = f"""
+=== PSYCHOLOGICAL KNOWLEDGE BASE (OKF) ===
+{PSYCHOLOGY_KNOWLEDGE_BASE}
+
 === USER ENTRIES ===
 {prompt_context}
-
-=== SPECIALIZED AGENT REPORTS ===
-{json.dumps(agent_reports, ensure_ascii=False, indent=2)}
 
 === EXISTING GRAPH NODES ===
 {existing_nodes_context}
@@ -613,6 +590,14 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         # Build a raw/mock structure in case of orchestrator schema validation failure
         orchestrator_output = OrchestratorOutput(
             executive_summary="שגיאה בעיבוד האינטגרטיבי של הסוכנים. מוצג דוח משולב בסיסי.",
+            reports=ApproachReports(
+                clinical="שגיאה בטעינת הדוח הקליני.",
+                psychodynamic="שגיאה בטעינת הדוח הפסיכודינמי.",
+                cbt="שגיאה בטעינת דוח ה-CBT.",
+                behavioral="שגיאה בטעינת הדוח ההתנהגותי.",
+                humanistic="שגיאה בטעינת הדוח ההומניסטי.",
+                fareast="שגיאה בטעינת דוח המזרח הרחוק."
+            ),
             metrics=Metrics(
                 ocean=OceanMetrics(o=50, c=50, e=50, a=50, n=50),
                 linguistic=LinguisticMetrics(emotional_density=50, self_focus=50, stress_level=50)
@@ -620,17 +605,28 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             new_nodes=[]
         )
 
-    # 9. Persist Personality Analysis Document
+    # 9. Persist Personality Analysis Document & Reading Recommendations
     analysis_doc_id = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    readings_data = [r.model_dump() for r in orchestrator_output.recommended_readings]
+    
     analysis_payload = {
         "timestamp": firestore.SERVER_TIMESTAMP,
         "executive_summary": orchestrator_output.executive_summary,
-        "reports": agent_reports,
+        "reports": orchestrator_output.reports.model_dump(),
         "metrics": orchestrator_output.metrics.model_dump(),
+        "recommended_readings": readings_data,
         "new_entries_since_last_analysis": 0
     }
     
     analysis_ref.document(analysis_doc_id).set(analysis_payload)
+    
+    if readings_data:
+        readings_ref = get_db().collection('users').document(uid).collection('recommended_readings')
+        readings_ref.document("latest").set({
+            "updated_at": firestore.SERVER_TIMESTAMP,
+            "readings": readings_data,
+            "analysis_id": analysis_doc_id
+        })
 
     # 10. Write New Nodes to Firestore OKF Knowledge Graph
     for node in orchestrator_output.new_nodes:
@@ -1218,6 +1214,49 @@ def resolve_and_cluster_entities(req: https_fn.CallableRequest) -> dict:
             
         if not nodes_data:
             return {"status": "success", "message": "הגרף ריק, אין מה לאחד."}
+            
+        # =========================================================
+        # OKF Knowledge Indexing & Clustering (Graphify Logic)
+        # =========================================================
+        try:
+            import networkx as nx
+            from networkx.algorithms.community import louvain_communities
+            
+            G = nx.Graph()
+            for n in nodes_data:
+                node_id = n.get('id')
+                if node_id:
+                    G.add_node(node_id, label=n.get('label') or node_id)
+                    for edge in n.get('relatedEdges', []):
+                        target = edge.get('target')
+                        if target:
+                            if isinstance(target, dict):
+                                target = target.get('id')
+                            G.add_edge(node_id, target)
+                            
+            if len(G.nodes) > 0:
+                louvain_comms = louvain_communities(G)
+                pr = nx.pagerank(G)
+                communities = []
+                
+                for i, comm in enumerate(louvain_comms):
+                    god_node = max(comm, key=lambda x: pr.get(x, 0))
+                    communities.append({
+                        "community_id": f"cluster_{i}",
+                        "god_node": god_node,
+                        "size": len(comm),
+                        "members": list(comm)
+                    })
+                    
+                update_knowledge_index({
+                    "total_nodes": len(G.nodes),
+                    "total_edges": len(G.edges),
+                    "communities": communities
+                })
+                log_knowledge_action("graph_clustering", {"communities_count": len(communities), "nodes": len(G.nodes)})
+        except Exception as e:
+            logger.error(f"NetworkX clustering failed: {e}")
+        # =========================================================
 
         # Calculate degrees and detect lexical duplicate candidates in Python
         node_degrees = {}

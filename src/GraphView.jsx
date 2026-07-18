@@ -310,9 +310,58 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
     );
   };
 
+  // -------------------------------------------------------------
+  // COMMUNITY DETECTION (Connected Components / Simple Louvain Alternative)
+  // -------------------------------------------------------------
+  const nodeCommunities = useMemo(() => {
+    const communities = {};
+    const adjList = {};
+    finalGraphData.nodes.forEach(n => { adjList[n.id] = []; });
+    finalGraphData.links.forEach(l => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      if (adjList[s]) adjList[s].push(t);
+      if (adjList[t]) adjList[t].push(s);
+    });
+
+    let currentCommunity = 0;
+    const visited = new Set();
+    
+    // Sort nodes by degree descending to make hubs the center of communities
+    const sortedNodes = [...finalGraphData.nodes].sort((a, b) => (adjList[b.id]?.length || 0) - (adjList[a.id]?.length || 0));
+
+    sortedNodes.forEach(n => {
+      if (!visited.has(n.id)) {
+        currentCommunity++;
+        const queue = [n.id];
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          if (!visited.has(curr)) {
+            visited.add(curr);
+            communities[curr] = currentCommunity;
+            if (adjList[curr]) {
+              adjList[curr].forEach(neighbor => {
+                if (!visited.has(neighbor)) {
+                  queue.push(neighbor);
+                }
+              });
+            }
+          }
+        }
+      }
+    });
+    return communities;
+  }, [finalGraphData]);
+
+  const COMMUNITY_COLORS = [
+    '#4e79a7', '#f28e2c', '#e15759', '#76b7b2', '#59a14f',
+    '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab',
+    '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'
+  ];
+
   // Node Color scheme helper
   const getNodeColor = (node, isSelected) => {
-    if (isSelected) return '#ff6b6b';
+    if (isSelected) return '#ffffff';
     
     if (colorByIsa && isaData) {
       const nodeIdLower = node.id.toLowerCase();
@@ -355,16 +404,12 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
           return `hsl(${hue}, 80%, 45%)`;
         }
       }
-      return '#708a9f'; // Neutral slate blue if no entries with ISA data
+      return '#333344'; // Dark neutral if no entries with ISA data
     }
 
-    const type = getNodeType(node);
-    switch (type) {
-      case 'Person': return '#48bb78';  // Green
-      case 'Topic': return '#9f7aea';   // Purple
-      case 'Emotion': return '#ed64a6'; // Pink
-      default: return '#3182ce';        // Blue (Concept)
-    }
+    // Community based color (Graphify style)
+    const commId = nodeCommunities[node.id] || 1;
+    return COMMUNITY_COLORS[commId % COMMUNITY_COLORS.length];
   };
 
   return (
@@ -988,15 +1033,16 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
             width={dimensions.width}
             height={dimensions.height}
             nodeLabel="name"
-            nodeColor={node => ((node.weight && node.weight > 3) || (selectedNode && node.id === selectedNode.id) ? '#00355F' : '#FFFFFF')}
+            nodeColor={node => getNodeColor(node, selectedNode && node.id === selectedNode.id)}
             nodeVal={node => getNodeRadius(node)}
             onNodeClick={handleNodeClick}
             onBackgroundClick={() => { setSelectedNode(null); setSelectedLink(null); }}
             onLinkClick={(link) => setSelectedLink(link)}
-            linkDirectionalArrowLength={4}
-            linkDirectionalArrowRelPos={1}
-            linkWidth={1.5}
+            linkWidth={link => (link.weight || 1) * 1.5}
             linkColor={getLinkColor}
+            linkDirectionalParticles={link => (link.weight && link.weight > 1) ? 2 : 1}
+            linkDirectionalParticleWidth={2}
+            linkDirectionalParticleSpeed={d => Math.max(0.005, (d.weight || 1) * 0.005)}
             nodeCanvasObject={(node, ctx, globalScale) => {
               const label = node.name;
               const r = getNodeRadius(node);
@@ -1017,26 +1063,26 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
               ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
               
               if (isPrimary) {
-                // Central: filled with blue #00355F
-                ctx.fillStyle = isMatchingSearch ? '#00355F' : 'rgba(0, 53, 95, 0.25)';
+                // Central: filled with node color
+                ctx.fillStyle = isMatchingSearch ? getNodeColor(node, isSelected) : 'rgba(100, 100, 100, 0.25)';
                 ctx.fill();
                 
-                ctx.strokeStyle = isSelected ? '#ff6b6b' : 'transparent';
+                ctx.strokeStyle = isSelected ? '#ffffff' : 'transparent';
                 ctx.lineWidth = 2 / globalScale;
                 ctx.stroke();
               } else {
-                // Secondary: Outline and white center
-                ctx.fillStyle = '#FFFFFF';
+                // Secondary: Outline and dark center
+                ctx.fillStyle = '#0f0f1a';
                 ctx.fill();
                 
-                ctx.strokeStyle = isMatchingSearch ? '#00355F' : 'rgba(0, 53, 95, 0.25)';
+                ctx.strokeStyle = isMatchingSearch ? getNodeColor(node, isSelected) : 'rgba(100, 100, 100, 0.25)';
                 ctx.lineWidth = 1.5 / globalScale;
                 ctx.stroke();
               }
 
               // Shadow effect for premium feel
-              ctx.shadowColor = 'rgba(0, 0, 0, 0.05)';
-              ctx.shadowBlur = 4;
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+              ctx.shadowBlur = 6;
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 2;
               
@@ -1063,14 +1109,14 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
                   fontSize + padY*2, 
                   4 / globalScale
                 );
-                ctx.fillStyle = isMatchingSearch ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.5)';
+                ctx.fillStyle = isMatchingSearch ? 'rgba(15, 15, 26, 0.85)' : 'rgba(15, 15, 26, 0.4)';
                 ctx.fill();
-                ctx.strokeStyle = 'rgba(0, 53, 95, 0.05)';
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
                 ctx.lineWidth = 0.5 / globalScale;
                 ctx.stroke();
                 
                 // Draw text
-                ctx.fillStyle = isMatchingSearch ? '#1A1A1A' : 'rgba(26, 26, 26, 0.4)';
+                ctx.fillStyle = isMatchingSearch ? '#e2e8f0' : 'rgba(226, 232, 240, 0.4)';
                 ctx.fillText(label, node.x, textY);
               }
               
@@ -1092,8 +1138,11 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
             onNodeClick={handleNodeClick}
             onBackgroundClick={() => { setSelectedNode(null); setSelectedLink(null); }}
             onLinkClick={(link) => setSelectedLink(link)}
-            linkWidth={1.5}
+            linkWidth={link => (link.weight || 1) * 1.5}
             linkColor={getLinkColor}
+            linkDirectionalParticles={link => (link.weight && link.weight > 1) ? 2 : 1}
+            linkDirectionalParticleWidth={2}
+            linkDirectionalParticleSpeed={d => Math.max(0.005, (d.weight || 1) * 0.005)}
           />
         )}
       </div>

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Calendar, Tag, RefreshCw, Search, BookOpen, Activity, Heart, Moon, Zap, Sparkles } from 'lucide-react';
 import { fetchFirebaseEntries, fetchFirebaseGraph } from './firebase';
 import LocalGraph from './LocalGraph';
+import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 
 const getHebrewDayOfWeek = (dateStr) => {
   if (!dateStr) return '';
@@ -324,6 +325,9 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
       <main className="reader-pane" style={{ overflowY: 'auto', flexGrow: 1, padding: '24px 32px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
           
+          {/* Recommended Readings & Quotes Card */}
+          <RecommendedReadingsCard uid={uid} onNavigateToNewEntry={onSelectEntry} />
+
           {/* Habit-Triggered Prompts */}
           {writingPrompts.length > 0 && (
             <div style={{

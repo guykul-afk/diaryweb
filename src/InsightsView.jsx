@@ -553,13 +553,7 @@ export default function InsightsView({ uid, isaData }) {
     });
   };
 
-  const handleQaSubmit = async (e) => {
-    e.preventDefault();
-    if (!qaQuery.trim() || qaLoading) return;
-
-    const userQuestion = qaQuery.trim();
-    setQaQuery('');
-    
+  const runQaQuery = async (userQuestion) => {
     // Construct local history list including the current question to pass to backend immediately
     const historyToSend = [...qaHistory.slice(1), { role: 'user', text: userQuestion }]; // skip greeting
     
@@ -590,6 +584,24 @@ export default function InsightsView({ uid, isaData }) {
     } finally {
       setQaLoading(false);
     }
+  };
+
+  const handleQaSubmit = async (e) => {
+    e.preventDefault();
+    if (!qaQuery.trim() || qaLoading) return;
+
+    const userQuestion = qaQuery.trim();
+    setQaQuery('');
+    await runQaQuery(userQuestion);
+  };
+
+  const handleTopQaSubmit = async (e) => {
+    e.preventDefault();
+    const q = e.target.elements.topQaQuery.value.trim();
+    if (!q || qaLoading) return;
+    e.target.elements.topQaQuery.value = '';
+    setActiveTab('qa');
+    await runQaQuery(q);
   };
 
   const renderMarkdown = (text) => {
@@ -831,6 +843,63 @@ export default function InsightsView({ uid, isaData }) {
 
         {/* Scrollable Content Pane */}
         <div style={{ flexGrow: 1, padding: '40px', overflowY: 'auto' }}>
+          
+          {/* Top Q&A Search bar (always visible except in qa chat itself) */}
+          {activeTab !== 'qa' && (
+            <div style={{ 
+              background: 'var(--panel-bg)', 
+              border: '1px solid var(--border-color)', 
+              borderRadius: 'var(--radius-lg)', 
+              padding: '20px', 
+              marginBottom: '30px',
+              maxWidth: '900px',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                <HelpCircle size={18} style={{ color: 'var(--accent-color)' }} />
+                שאל את היומן שלך לאור גרף הידע
+              </h3>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', marginTop: '4px' }}>
+                הזן שאלה על דפוסים פסיכולוגיים, חוויות או מטרות שכתבת עליהן, וה-AI ינתח אותן בהתבסס על רשומותיך ועל בסיס הידע הפסיכולוגי.
+              </p>
+              <form onSubmit={handleTopQaSubmit} style={{ display: 'flex', gap: '10px' }}>
+                <input 
+                  name="topQaQuery"
+                  type="text" 
+                  placeholder="למשל: באילו מצבים אני חווה קוצר נשימה? או אילו עיוותי חשיבה CBT נפוצים אצלי?" 
+                  style={{
+                    flexGrow: 1,
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-color)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem'
+                  }}
+                />
+                <button 
+                  type="submit"
+                  disabled={qaLoading}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '12px 24px',
+                    borderRadius: 'var(--radius-md)',
+                    border: 'none',
+                    background: 'var(--accent-color)',
+                    color: '#fff',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    opacity: qaLoading ? 0.7 : 1
+                  }}
+                >
+                  {qaLoading ? <RefreshCw className="spin" size={16} /> : <Send size={16} />}
+                  שאל
+                </button>
+              </form>
+            </div>
+          )}
           
           {/* TAB 1: MAJOR INSIGHTS */}
           {activeTab === 'major' && (
