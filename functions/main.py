@@ -125,7 +125,7 @@ class OrchestratorOutput(BaseModel):
 # =====================================================================
 
 def load_okf_psychology() -> str:
-    base_path = os.path.join(os.path.dirname(__file__), "okf", "psychology")
+    base_path = os.path.join(os.path.dirname(__file__), "okf", "tkb")
     content = ""
     try:
         if os.path.exists(base_path):

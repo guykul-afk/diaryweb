@@ -3,7 +3,7 @@ import ForceGraph2D from 'react-force-graph-2d';
 import ForceGraph3D from 'react-force-graph-3d';
 import { Info, Search, Filter, Hash, Heart, Brain, RefreshCw, Sparkles } from 'lucide-react';
 import { triggerGraphAnalysis, explainGraphLink, resolveAndClusterEntities } from './firebase';
-import { forceCollide } from 'd3-force';
+import { forceCollide, forceX, forceY } from 'd3-force';
 import { useDiaryData } from './hooks/useDiaryData';
 
 export default function GraphView({ onNavigateToEntry, isaData }) {
@@ -253,63 +253,6 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
     };
   }, [filteredNodes, filteredLinks, selectedNode, egoDepth]);
 
-  const getLinkColor = (link) => {
-    if (selectedLink && link === selectedLink) return '#ff6b6b';
-    if (link.sentimentScore > 0) return 'rgba(72, 187, 120, 0.6)';
-    if (link.sentimentScore < 0) return 'rgba(229, 62, 62, 0.6)';
-    return '#E0E0E0';
-  };
-
-  // Helper to calculate node radius based on weight with high variance
-  const getNodeRadius = (node) => {
-    const isGuy = node.id === 'גיא' || node.name === 'גיא' || node.id === 'guy';
-    if (isGuy) return 5;
-    const weight = node.weight || 1;
-    // Steeper linear growth for high visual variance (weight 1 -> r=4, weight 10 -> r=40)
-    return Math.max(4, weight * 4);
-  };
-
-  // Setup force simulation with collision detection
-  useEffect(() => {
-    if (fgRef.current) {
-      fgRef.current.d3Force('charge').strength(-250);
-      fgRef.current.d3Force('link').distance(120);
-      // Dynamic collision detection to match the new size variance
-      fgRef.current.d3Force('collision', forceCollide(node => getNodeRadius(node) + 20));
-    }
-  }, [finalGraphData]);
-
-  const handleNodeClick = (node) => {
-    const nodeIdLower = node.id.toLowerCase();
-    const meta = conceptMetadataMap[nodeIdLower] || { topics: new Set(), moods: new Set(), entries: [] };
-    
-    setSelectedNode({
-      ...node,
-      type: getNodeType(node),
-      associatedTopics: Array.from(meta.topics),
-      associatedMoods: Array.from(meta.moods),
-      associatedEntries: meta.entries || []
-    });
-  };
-
-  const toggleTopic = (topic) => {
-    setSelectedTopics(prev => 
-      prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
-    );
-  };
-
-  const toggleMood = (mood) => {
-    setSelectedMoods(prev => 
-      prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
-    );
-  };
-
-  const toggleTypeVisibility = (type) => {
-    setVisibleTypes(prev => 
-      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
-    );
-  };
-
   // -------------------------------------------------------------
   // COMMUNITY DETECTION (Connected Components / Simple Louvain Alternative)
   // -------------------------------------------------------------
@@ -358,6 +301,94 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
     '#edc949', '#af7aa1', '#ff9da7', '#9c755f', '#bab0ab',
     '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd'
   ];
+
+  const getLinkColor = (link) => {
+    if (selectedLink && link === selectedLink) return '#ff6b6b';
+    const weight = link.weight || 1;
+    // Lower weight = more transparent to reduce visual noise
+    const alpha = Math.min(0.85, 0.15 + (weight * 0.15));
+    if (link.sentimentScore > 0) return `rgba(72, 187, 120, ${alpha})`;
+    if (link.sentimentScore < 0) return `rgba(229, 62, 62, ${alpha})`;
+    return `rgba(224, 224, 224, ${alpha})`;
+  };
+
+  // Helper to calculate node radius based on weight with high variance
+  const getNodeRadius = (node) => {
+    const isGuy = node.id === 'גיא' || node.name === 'גיא' || node.id === 'guy';
+    if (isGuy) return 5;
+    const weight = node.weight || 1;
+    // Steeper linear growth for high visual variance (weight 1 -> r=4, weight 10 -> r=40)
+    return Math.max(4, weight * 4);
+  };
+
+  // Setup force simulation with collision detection
+  useEffect(() => {
+    if (fgRef.current) {
+      const numNodes = finalGraphData.nodes.length;
+      // Dynamic charge strength based on node density
+      const chargeStrength = Math.min(-150, -5000 / Math.max(10, numNodes));
+      fgRef.current.d3Force('charge').strength(chargeStrength);
+      fgRef.current.d3Force('link').distance(graphMode === '3d' ? 180 : 120);
+      // Dynamic collision detection to match the new size variance
+      fgRef.current.d3Force('collision', forceCollide(node => getNodeRadius(node) + 20));
+
+      if (graphMode === '2d') {
+        const totalCommunities = Math.max(...Object.values(nodeCommunities), 1);
+        const radius = Math.min(dimensions.width, dimensions.height) * 0.25;
+        
+        fgRef.current.d3Force('customX', forceX(node => {
+          const commId = nodeCommunities[node.id] || 1;
+          const angle = (commId / totalCommunities) * 2 * Math.PI;
+          return Math.cos(angle) * radius;
+        }).strength(0.08));
+        
+        fgRef.current.d3Force('customY', forceY(node => {
+          const commId = nodeCommunities[node.id] || 1;
+          const angle = (commId / totalCommunities) * 2 * Math.PI;
+          return Math.sin(angle) * radius;
+        }).strength(0.08));
+      } else {
+        // Remove 2D custom forces for 3D to prevent crushing onto 2D plane
+        fgRef.current.d3Force('customX', null);
+        fgRef.current.d3Force('customY', null);
+      }
+
+      fgRef.current.d3ReheatSimulation();
+    }
+  }, [finalGraphData, nodeCommunities, dimensions, graphMode]);
+
+  const handleNodeClick = (node) => {
+    const nodeIdLower = node.id.toLowerCase();
+    const meta = conceptMetadataMap[nodeIdLower] || { topics: new Set(), moods: new Set(), entries: [] };
+    
+    setSelectedNode({
+      ...node,
+      type: getNodeType(node),
+      associatedTopics: Array.from(meta.topics),
+      associatedMoods: Array.from(meta.moods),
+      associatedEntries: meta.entries || []
+    });
+  };
+
+  const toggleTopic = (topic) => {
+    setSelectedTopics(prev => 
+      prev.includes(topic) ? prev.filter(t => t !== topic) : [...prev, topic]
+    );
+  };
+
+  const toggleMood = (mood) => {
+    setSelectedMoods(prev => 
+      prev.includes(mood) ? prev.filter(m => m !== mood) : [...prev, mood]
+    );
+  };
+
+  const toggleTypeVisibility = (type) => {
+    setVisibleTypes(prev => 
+      prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]
+    );
+  };
+
+
 
   // Node Color scheme helper
   const getNodeColor = (node, isSelected) => {
@@ -1086,8 +1117,24 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 2;
               
-              // 2. Draw text label
-              if (globalScale > 0.8 || isSelected || isPrimary) {
+              // 2. Draw text label with Level of Detail (LOD) to prevent clutter
+              let shouldShowLabel = isSelected;
+              if (searchQuery.trim() && isMatchingSearch) {
+                shouldShowLabel = true;
+              } else if (globalScale > 1.8) {
+                shouldShowLabel = true;
+              } else if (globalScale > 0.8) {
+                const degree = rawNodeDegrees[node.id] || 0;
+                shouldShowLabel = isPrimary || degree > 1;
+              } else if (globalScale > 0.35) {
+                const degree = rawNodeDegrees[node.id] || 0;
+                shouldShowLabel = isPrimary || degree > 3;
+              } else {
+                const degree = rawNodeDegrees[node.id] || 0;
+                shouldShowLabel = isSelected || degree > 7;
+              }
+
+              if (shouldShowLabel) {
                 const fontSize = 11 / globalScale;
                 // Use Serif font for primary nodes, Sans-Serif for secondary nodes
                 ctx.font = `${isPrimary ? 'bold' : 'normal'} ${fontSize}px var(--font-serif)`;

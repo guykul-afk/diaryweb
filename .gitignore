@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Project-specific ignores
+venv/
+functions/venv/
+functions/okf/tkb_backup/
+.env
+functions/.env
+scratch/
+sync_log.txt
+takeout-20260713T152930Z-2-001/

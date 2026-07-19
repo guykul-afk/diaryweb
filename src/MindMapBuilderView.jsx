@@ -25,7 +25,7 @@ export default function MindMapBuilderView() {
   const [backboneMinDegree, setBackboneMinDegree] = useState(3);
   
   // View mode states
-  const [viewMode, setViewMode] = useState('force'); // 'force' | 'hierarchical' | 'focus'
+  const [viewMode, setViewMode] = useState('force'); // 'force' | 'radial' | 'hierarchical' | 'focus'
   const [hierarchyRootId, setHierarchyRootId] = useState('גיא');
 
   const containerRef = useRef(null);
@@ -59,6 +59,10 @@ export default function MindMapBuilderView() {
         fgRef.current.d3Force('charge').strength(-200);
         fgRef.current.d3Force('link').distance(130);
         fgRef.current.d3Force('collision', forceCollide(node => getNodeRadius(node) + 15));
+      } else if (viewMode === 'radial') {
+        fgRef.current.d3Force('charge').strength(-300);
+        fgRef.current.d3Force('link').distance(100);
+        fgRef.current.d3Force('collision', forceCollide(node => getNodeRadius(node) + 18));
       } else {
         fgRef.current.d3Force('charge').strength(-400);
         fgRef.current.d3Force('link').distance(80);
@@ -154,7 +158,7 @@ export default function MindMapBuilderView() {
       };
     }
 
-    if (viewMode === 'hierarchical') {
+    if (viewMode === 'hierarchical' || viewMode === 'radial') {
       // Build BFS tree from rootId using filtered nodes/links
       const adj = {};
       filteredNodes.forEach(n => { adj[n.id] = []; });
@@ -225,11 +229,10 @@ export default function MindMapBuilderView() {
           <h4 style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
             מצב תצוגה
           </h4>
-          <div style={{ display: 'flex', gap: '8px', backgroundColor: 'var(--bg-secondary)', padding: '4px', borderRadius: 'var(--radius-md)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', backgroundColor: 'var(--bg-secondary)', padding: '4px', borderRadius: 'var(--radius-md)' }}>
             <button
               onClick={() => setViewMode('force')}
               style={{
-                flex: 1,
                 padding: '6px',
                 backgroundColor: viewMode === 'force' ? 'var(--accent-color)' : 'transparent',
                 color: viewMode === 'force' ? 'white' : 'var(--text-primary)',
@@ -240,12 +243,26 @@ export default function MindMapBuilderView() {
                 transition: 'all 0.2s'
               }}
             >
-              מפת מוח חופשית
+              חופשי
+            </button>
+            <button
+              onClick={() => setViewMode('radial')}
+              style={{
+                padding: '6px',
+                backgroundColor: viewMode === 'radial' ? 'var(--accent-color)' : 'transparent',
+                color: viewMode === 'radial' ? 'white' : 'var(--text-primary)',
+                border: 'none',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              מפת מוח (רדיאלי)
             </button>
             <button
               onClick={() => setViewMode('hierarchical')}
               style={{
-                flex: 1,
                 padding: '6px',
                 backgroundColor: viewMode === 'hierarchical' ? 'var(--accent-color)' : 'transparent',
                 color: viewMode === 'hierarchical' ? 'white' : 'var(--text-primary)',
@@ -261,7 +278,6 @@ export default function MindMapBuilderView() {
             <button
               onClick={() => setViewMode('focus')}
               style={{
-                flex: 1,
                 padding: '6px',
                 backgroundColor: viewMode === 'focus' ? 'var(--accent-color)' : 'transparent',
                 color: viewMode === 'focus' ? 'white' : 'var(--text-primary)',
@@ -272,10 +288,10 @@ export default function MindMapBuilderView() {
                 transition: 'all 0.2s'
               }}
             >
-              מיקוד במושג
+              מיקוד מושג
             </button>
           </div>
-          {(viewMode === 'hierarchical' || viewMode === 'focus') && (
+          {(viewMode === 'hierarchical' || viewMode === 'radial' || viewMode === 'focus') && (
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.4 }}>
               * לחץ על מושג כדי להפוך אותו למרכז התצוגה
             </p>
@@ -381,8 +397,8 @@ export default function MindMapBuilderView() {
             width={dimensions.width}
             height={dimensions.height}
             graphData={graphDataToRender}
-            dagMode={viewMode === 'hierarchical' ? 'td' : null}
-            dagLevelDistance={viewMode === 'hierarchical' ? 100 : undefined}
+            dagMode={viewMode === 'hierarchical' ? 'td' : viewMode === 'radial' ? 'radialout' : null}
+            dagLevelDistance={viewMode === 'hierarchical' ? 100 : viewMode === 'radial' ? 120 : undefined}
 
             nodeLabel={node => `${node.name || node.id} [${getNodeType(node)}]`}
             nodeVal={getNodeRadius}

@@ -108,6 +108,31 @@ export async function fetchRecommendedReadings(uid) {
   return [];
 }
 
+export async function fetchAllRecommendedReadings(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  try {
+    const analysisRef = collection(db, `users/${uid}/personality_analysis`);
+    const q = query(analysisRef, orderBy('timestamp', 'desc'));
+    const querySnapshot = await getDocsFromServer(q);
+    
+    const allReadings = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      if (data.recommended_readings && data.recommended_readings.length > 0) {
+        allReadings.push({
+          analysisId: doc.id,
+          timestamp: data.timestamp,
+          readings: data.recommended_readings
+        });
+      }
+    });
+    return allReadings;
+  } catch (err) {
+    console.error("Failed to fetch all recommended readings:", err);
+  }
+  return [];
+}
+
 
 
 // Helper to fetch entries from Firebase Firestore

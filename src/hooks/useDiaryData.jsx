@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchFirebaseGraph, fetchFirebaseEntries, fetchTheoreticalConcepts } from '../firebase';
 
 const DiaryDataContext = createContext(null);
@@ -20,7 +20,7 @@ export function DiaryDataProvider({ children, uid }) {
   const [limitEntities, setLimitEntities] = useState(30); // Dynamic slider default 30
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!uid) return;
     setLoading(true);
     setError(null);
@@ -81,7 +81,7 @@ export function DiaryDataProvider({ children, uid }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [uid]);
 
   useEffect(() => {
     fetchData();
@@ -121,7 +121,7 @@ export function DiaryDataProvider({ children, uid }) {
   }, [allDatesSorted]);
 
   // Helper to determine node type
-  const getNodeType = (node) => {
+  const getNodeType = useCallback((node) => {
     const type = (node.type || '').toLowerCase();
     if (type === 'person' || type === 'people' || type === 'name' || node.id.match(/^[A-Z][a-z]+ [A-Z][a-z]+$/)) return 'Person';
     if (type === 'emotion' || type === 'mood' || type === 'feeling') return 'Emotion';
@@ -138,7 +138,7 @@ export function DiaryDataProvider({ children, uid }) {
     if (uniqueMoods.some(m => m.toLowerCase() === node.id.toLowerCase())) return 'Emotion';
 
     return 'Concept';
-  };
+  }, [uniqueTopics, uniqueMoods]);
 
   const rawNodeDegrees = useMemo(() => {
     const degrees = {};
@@ -310,7 +310,8 @@ export function DiaryDataProvider({ children, uid }) {
     selectedMoods,
     searchQuery,
     limitEntities,
-    conceptMetadataMap
+    conceptMetadataMap,
+    getNodeType
   ]);
 
   // Derived filtered links matching filtered nodes
