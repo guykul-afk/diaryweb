@@ -1,0 +1,13 @@
+required_fields:
+  - type
+  - domain
+  - relations
+allowed_types:
+  - CBT
+  - Psychodynamic
+  - Behavioral
+  - Humanistic
+  - FarEast
+  - Clinical
+  - Thinker
+  - Poet

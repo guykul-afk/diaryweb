@@ -568,7 +568,7 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
                 setSelectedTopics([]);
                 setSelectedMoods([]);
                 setMinWeight(1);
-                setVisibleTypes(['Concept', 'Person', 'Topic', 'Emotion']);
+                setVisibleTypes(['Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight']);
                 setMinDegree(0);
                 setMinLinkWeight(1);
                 setEgoDepth(1);
@@ -616,10 +616,14 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
             <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>הצג סוגי מידע:</span>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
               {[
-                { type: 'Concept', label: 'מושגים', color: '#3182ce' },
-                { type: 'Person', label: 'שמות/אנשים', color: '#48bb78' },
-                { type: 'Topic', label: 'נושאים/תגיות', color: '#9f7aea' },
-                { type: 'Emotion', label: 'רגשות', color: '#ed64a6' }
+                { type: 'Domain', label: 'תחומי חיים', color: '#3182ce' },
+                { type: 'Person', label: 'אנשים', color: '#48bb78' },
+                { type: 'Goal', label: 'מטרות/שאיפות', color: '#d69e2e' },
+                { type: 'Pattern', label: 'דפוסי התנהגות', color: '#9f7aea' },
+                { type: 'Strategy', label: 'אסטרטגיות', color: '#00b5d8' },
+                { type: 'Emotion', label: 'רגשות', color: '#ed64a6' },
+                { type: 'Event', label: 'אירועים משמעותיים', color: '#e53e3e' },
+                { type: 'Insight', label: 'תובנות', color: '#718096' }
               ].map(item => {
                 const checked = visibleTypes.includes(item.type);
                 return (
@@ -857,6 +861,21 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
                 <span style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>רשומה ריקה או לא נוצרה עדיין</span>
               )}
             </div>
+            
+            {/* Stance History Display */}
+            {selectedNode.stances && selectedNode.stances.length > 0 && (
+              <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', marginTop: '10px' }}>
+                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>יחס המשתמש (Stance):</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {selectedNode.stances.map((stance, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', background: 'var(--bg-secondary)', padding: '4px 8px', borderRadius: '4px' }}>
+                      <span style={{ fontWeight: 600, color: 'var(--accent-color)' }}>{stance.stance}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{stance.since ? new Date(stance.since).toLocaleDateString('he-IL') : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Link to related journal entries */}
             {selectedNode.associatedEntries && selectedNode.associatedEntries.length > 0 && (

@@ -1,3 +1,7 @@
+---
+type: Uncategorized
+---
+
 ```yaml
 ---
 type: concept

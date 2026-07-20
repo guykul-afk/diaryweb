@@ -14,7 +14,7 @@ export function DiaryDataProvider({ children, uid }) {
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [selectedMoods, setSelectedMoods] = useState([]);
   const [minWeight, setMinWeight] = useState(1);
-  const [visibleTypes, setVisibleTypes] = useState(['Concept', 'Person', 'Topic', 'Emotion']);
+  const [visibleTypes, setVisibleTypes] = useState(['Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight']);
   const [minDegree, setMinDegree] = useState(0);
   const [minLinkWeight, setMinLinkWeight] = useState(1);
   const [limitEntities, setLimitEntities] = useState(30); // Dynamic slider default 30
@@ -245,8 +245,7 @@ export function DiaryDataProvider({ children, uid }) {
 
       if (node.weight < minWeight) return false;
 
-      const degree = rawNodeDegrees[node.id] || 0;
-      if (degree < minDegree) return false;
+      // minDegree filtering is now done iteratively after limitEntities
 
       if (allDatesSorted.length > 0 && maxDateStr && selectedDateIndex < allDatesSorted.length - 1) {
         const nodeEntries = metadata.entries || [];
@@ -295,9 +294,41 @@ export function DiaryDataProvider({ children, uid }) {
     }
 
     // Sort by weight/relevance and slice to limitEntities
-    return finalNodes
+    let limitedNodes = finalNodes
       .sort((a, b) => (b.weight || 0) - (a.weight || 0))
       .slice(0, limitEntities);
+
+    // K-Core Filter: iteratively remove nodes that do not meet minDegree in the VISUAL graph
+    if (minDegree > 0) {
+      let currentNodes = limitedNodes;
+      let keepFiltering = true;
+      while (keepFiltering) {
+        keepFiltering = false;
+        const activeIds = new Set(currentNodes.map(n => n.id));
+        const visualDegrees = {};
+        activeIds.forEach(id => visualDegrees[id] = 0);
+        
+        rawGraphData.links.forEach(link => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          const linkWeight = link.weight || link.val || link.strength || link.value || 1;
+          
+          if (linkWeight >= minLinkWeight && activeIds.has(sourceId) && activeIds.has(targetId)) {
+            visualDegrees[sourceId]++;
+            visualDegrees[targetId]++;
+          }
+        });
+
+        const nextNodes = currentNodes.filter(node => visualDegrees[node.id] >= minDegree);
+        if (nextNodes.length < currentNodes.length) {
+          currentNodes = nextNodes;
+          keepFiltering = true;
+        }
+      }
+      return currentNodes;
+    }
+
+    return limitedNodes;
   }, [
     rawGraphData.nodes,
     rawGraphData.links,
@@ -311,7 +342,9 @@ export function DiaryDataProvider({ children, uid }) {
     searchQuery,
     limitEntities,
     conceptMetadataMap,
-    getNodeType
+    getNodeType,
+    minDegree,
+    minLinkWeight
   ]);
 
   // Derived filtered links matching filtered nodes

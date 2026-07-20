@@ -133,20 +133,107 @@ class OrchestratorOutput(BaseModel):
 # Specialized System Prompts
 # =====================================================================
 
-def load_okf_psychology() -> str:
-    base_path = os.path.join(os.path.dirname(__file__), "okf", "tkb")
+def load_okf_psychology_core() -> str:
+    core_path = os.path.join(os.path.dirname(__file__), "okf", "tkb_core.md")
     content = ""
     try:
-        if os.path.exists(base_path):
-            for file in os.listdir(base_path):
-                if file.endswith(".md"):
-                    with open(os.path.join(base_path, file), "r", encoding="utf-8") as f:
-                        content += f.read() + "\n\n"
+        if os.path.exists(core_path):
+            with open(core_path, "r", encoding="utf-8") as f:
+                content += "=== TKB CORE LAYER (STATIC INDEX) ===\n" + f.read() + "\n"
     except Exception as e:
-        logger.error(f"Failed to load OKF: {e}")
+        logger.error(f"Failed to load OKF Core: {e}")
     return content
 
-PSYCHOLOGY_KNOWLEDGE_BASE = load_okf_psychology()
+PSYCHOLOGY_KNOWLEDGE_BASE = load_okf_psychology_core()
+
+import re
+import yaml
+def select_lenses(entry_text: str, active_nodes: list, k: int = 4) -> str:
+    """
+    Selects k lenses (markdown files) from TKB based on text overlaps, triggers, and active_nodes (Domains/Patterns).
+    Forces 1 counterpart.
+    """
+    base_path = os.path.join(os.path.dirname(__file__), "okf", "tkb")
+    if not os.path.exists(base_path): return ""
+    
+    # 1. Gather all files and their frontmatters
+    lenses = []
+    for file in os.listdir(base_path):
+        if not file.endswith(".md"): continue
+        with open(os.path.join(base_path, file), "r", encoding="utf-8") as f:
+            raw = f.read()
+        
+        # Simple frontmatter parsing
+        fm_match = re.search(r"^---\s*\n(.*?)\n---\s*\n(.*)", raw, re.DOTALL)
+        if not fm_match: continue
+        
+        try:
+            fm = yaml.safe_load(fm_match.group(1))
+        except: continue
+        if not isinstance(fm, dict): continue
+        
+        # Calculate Score
+        score = 0
+        
+        # 1. Text overlap (Trigger phrases / name)
+        name = fm.get('title', '').lower()
+        if name and name in entry_text.lower(): score += 5
+        for trigger in fm.get('trigger_phrases', []):
+            if trigger.lower() in entry_text.lower(): score += 3
+            
+        # 2. Join on Active Nodes (Domains and Patterns)
+        active_domains = [n['label'] for n in active_nodes if n.get('type') == 'Domain']
+        active_patterns = [n['label'] for n in active_nodes if n.get('type') == 'Pattern']
+        
+        file_domains = fm.get('domain', [])
+        if isinstance(file_domains, str): file_domains = [file_domains]
+        for d in file_domains:
+            if d in active_domains: score += 10 # Strong match
+            
+        file_patterns = fm.get('maps_to_patterns', [])
+        if isinstance(file_patterns, str): file_patterns = [file_patterns]
+        for p in file_patterns:
+            if p in active_patterns: score += 15 # Very strong match
+            
+        lenses.append({
+            'file': file,
+            'score': score,
+            'counterpart': fm.get('counterpart', ''),
+            'content': raw
+        })
+        
+    if not lenses: return ""
+    
+    # Sort and pick top k-1
+    lenses.sort(key=lambda x: x['score'], reverse=True)
+    top_lenses = lenses[:k-1]
+    
+    # Find counterpart of the top lens
+    chosen_files = {l['file'] for l in top_lenses}
+    top_counterpart_file = top_lenses[0]['counterpart']
+    
+    # If the counterpart exists and wasn't already chosen, add it
+    if top_counterpart_file and top_counterpart_file not in chosen_files:
+        cp_lens = next((l for l in lenses if l['file'] == top_counterpart_file), None)
+        if cp_lens:
+            top_lenses.append(cp_lens)
+            chosen_files.add(top_counterpart_file)
+            
+    # If we still don't have k lenses (e.g. no counterpart found), fill up
+    for l in lenses:
+        if len(top_lenses) >= k: break
+        if l['file'] not in chosen_files:
+            top_lenses.append(l)
+            chosen_files.add(l['file'])
+            
+    # Concatenate the selected lenses
+    selected_content = "=== TKB FULL CONTENT (RAG LAYER - SELECTED LENSES) ===\n"
+    for l in top_lenses:
+        selected_content += f"--- {l['file']} ---\n{l['content']}\n\n"
+        
+    return selected_content
+
+
 
 _okf_cache_object = None
 _okf_cache_created_at = None
@@ -236,18 +323,10 @@ Your output must be structured exactly as requested, containing:
    - CRITICAL DISAMBIGUATION RULE: Always review the existing concepts provided. If a similar atomic node exists, DO NOT create a new node. Use the existing concept ID and add the new term to its `aliases` list. Do NOT create duplicate nodes like 'טיסה חזור' and 'טיסה חזרה', use only ONE atomic node.
    - Define relatedEdges to connect this new node to existing nodes or other new nodes. Provide `context` if applicable.
    - CRITICAL ONTOLOGY RULE: In relatedEdges, the `relation` field MUST be exactly one of the following Hebrew strings:
-     * 'גורם_ל' (CAUSES) - if A causes/triggers B
-     * 'מרגיש' (FEELS) - if A feels B (e.g. A feels anxiety)
-     * 'רוצה' (DESIRES) - if A desires/aims for B
-     * 'מפחד_מ' (FEARS) - if A fears/avoids B
-     * 'חוסם' (BLOCKS) - if A blocks/prevents/restricts B
-     * 'פתר' (RESOLVES) - if A resolves/solves/relieves B
-     * 'סותר' (CONTRADICTS) - if A contradicts B
-     * 'מחריף' (EXACERBATES) - if A makes B worse
-     * 'מרגיע' (SOOTHES) - if A soothes/calms B
-     * 'מייצג' (REPRESENTS) - if A represents/symbolizes B
-     * 'מושפע_מ' (AFFECTED_BY) - if mental state is affected by physiological state (HealthMetric)
-     * 'משפיע_על' (AFFECTS) - if mental state affects physiological state
+     * 'חלק_מ', 'סותר', 'מתועד_ב', 'דומה_ל', 'קשור_ל', 'שואף_ל', 'שייך_ל', 'חווה', 'מפעיל', 'משפיע_על', 'מחזק', 'מחליש'.
+   - CRITICAL SUBJECT RULE (Implicit Subject): The graph maps the user's life. Do NOT create a node for the user (e.g. 'גיא' or 'אני'). Instead, any relationship where the user is the subject (e.g. 'the user desires X', 'the user plans Y') must be recorded as a `stance` property on the target node. Populate the `stances` array on the target node with the appropriate stance ('שאיפה', 'תכנון', 'פעולה', 'הימנעות', 'הדחקה', 'קונפליקט') and the date.
+   - ONLY IF the subject is ANOTHER PERSON (e.g., 'Tali', 'Eitan'), you may create an explicit edge between that person node and the target node.
+   - CRITICAL NODE TYPES RULE: Every node MUST be strictly one of these 8 types: 'Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight'. DO NOT use any other type. Do not extract raw numbers or dates as nodes.
      * 'קשור_ל' (RELATED_TO) - general fallback relationship
    - In relatedEdges, specify source, target, the relation, sentimentScore (-1 to 1), and sourceQuotes (actual quotes from text). Ensure you link the insights to the existing graph concepts where appropriate.
 
@@ -617,12 +696,17 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         
         orchestrator_model = get_okf_generative_model(api_key, ORCHESTRATOR_SYSTEM_PROMPT)
         
+        # Router: Select specific lenses dynamically based on entry text and active graph nodes
+        selected_lenses_context = select_lenses(prompt_context, subgraph['nodes'], k=4)
+        
         orchestrator_prompt = f"""
 === USER ENTRIES ===
 {prompt_context}
 
 === EXISTING GRAPH NODES ===
 {existing_nodes_context}
+
+{selected_lenses_context}
 """
         orchestrator_response = orchestrator_model.generate_content(
             orchestrator_prompt,
@@ -677,13 +761,22 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             "analysis_id": analysis_doc_id
         })
 
+    import re
     # 10. Write New Nodes to Firestore OKF Knowledge Graph
     for node in orchestrator_output.new_nodes:
-        # Sanitize node id
+        # Block value nodes via Regex (e.g., numbers, dates, weights)
+        if re.search(r'^(\d+|\d+[-/]\d+[-/]\d+|\d+\s*ק"ג|\d+\s*קילו)$', node.label.strip()):
+            logger.info(f"Blocked value-node by regex: {node.label}")
+            continue
+
         node_doc_id = node.id.strip().replace(" ", "_")
         node_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(node_doc_id)
         
-        # Format edges
+        # Enforce Mandatory Domain Edge
+        has_domain_edge = any(e.relation == "שייך_ל" for e in node.relatedEdges)
+        if not has_domain_edge and node.type != "Domain":
+            logger.warning(f"Node {node.label} is missing a 'שייך_ל' edge to a Domain. The system should enforce this at the prompt level.")
+        
         edges_list = []
         for edge in node.relatedEdges:
             edges_list.append({
@@ -694,18 +787,66 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
                 "sourceQuotes": getattr(edge, "sourceQuotes", [])
             })
             
+        stances_list = [s.model_dump() for s in getattr(node, "stances", [])]
         node_embedding = get_embedding(f"{node.label} {node.content}")
+        
+        # Candidate State & Similarity Deduplication
+        best_sim = 0.0
+        best_match = None
+        for existing in all_nodes:
+            if existing.get('embedding'):
+                sim = cosine_similarity(node_embedding, existing['embedding'])
+                if sim > best_sim:
+                    best_sim = sim
+                    best_match = existing
+        
+        state = "active"
+        if best_sim > 0.85:
+            # Merge with existing
+            node_doc_id = best_match['id']
+            node_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(node_doc_id)
+            logger.info(f"Merged {node.label} into {best_match.get('label', node_doc_id)} (sim: {best_sim})")
             
-        node_ref.set({
-            "id": node_doc_id,
-            "label": node.label,
-            "type": node.type,
-            "val": node.val,
-            "content": node.content,
-            "relatedEdges": edges_list,
-            "embedding": node_embedding,
-            "last_active": firestore.SERVER_TIMESTAMP
-        }, merge=True)
+            # Candidate Promotion Logic
+            update_data = {
+                "relatedEdges": firestore.ArrayUnion(edges_list),
+                "stances": firestore.ArrayUnion(stances_list),
+                "last_active": firestore.SERVER_TIMESTAMP,
+                "mentions": firestore.Increment(1)
+            }
+            
+            # Check if it was a candidate and should be promoted
+            if best_match.get('state') == 'candidate':
+                # Since we incremented mentions, it is now >= 2
+                logger.info(f"Promoting candidate {node_doc_id} to active due to repeated mentions.")
+                update_data["state"] = "active"
+                
+            node_ref.set(update_data, merge=True)
+        else:
+            if best_sim > 0.70 and best_match:
+                # Create with דומה_ל link
+                edges_list.append({
+                    "source": node_doc_id, "target": best_match['id'], "relation": "דומה_ל", "sentimentScore": 0, "sourceQuotes": []
+                })
+            else:
+                # Candidate state
+                state = "candidate"
+            
+            node_ref.set({
+                "id": node_doc_id,
+                "label": node.label,
+                "type": node.type,
+                "val": node.val,
+                "content": node.content,
+                "relatedEdges": edges_list,
+                "stances": stances_list,
+                "embedding": node_embedding,
+                "state": state,
+                "mentions": 1,
+                "created_at": firestore.SERVER_TIMESTAMP,
+                "last_active": firestore.SERVER_TIMESTAMP
+            }, merge=True)
+            all_nodes.append({"id": node_doc_id, "label": node.label, "embedding": node_embedding})
 
     # 11. Reset Counter in User Doc
     user_ref.set({"new_entries_since_last_analysis": 0}, merge=True)

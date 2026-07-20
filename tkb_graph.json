@@ -1,0 +1,533 @@
+{
+  "nodes": [
+    {
+      "id": "act",
+      "label": "act",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "אורבניות_מלנכולית,_גורל_ומסירות_טוטאלית",
+      "label": "אורבניות מלנכולית, גורל ומסירות טוטאלית",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "amichai",
+      "label": "amichai",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "פילוסופיית_הנווד,_אירוניה_וספק_קיומי_(מאיר_אריאל)",
+      "label": "פילוסופיית הנווד, אירוניה וספק קיומי (מאיר אריאל)",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "aristotle",
+      "label": "aristotle",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "Attachment_Theory_in_Adult_Relationships",
+      "label": "Attachment Theory in Adult Relationships",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "auden",
+      "label": "auden",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "avidan",
+      "label": "avidan",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "מלנכוליה_מודרנית,_שעמום_קיומי_ויופי_באופל",
+      "label": "מלנכוליה מודרנית, שעמום קיומי ויופי באופל",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "ניתוח_התנהגות_יישומי_והרגלים",
+      "label": "ניתוח התנהגות יישומי והרגלים",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "borges",
+      "label": "borges",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "אפקט_הניכור_והביקורת_החברתית",
+      "label": "אפקט הניכור והביקורת החברתית",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "brooks",
+      "label": "brooks",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "brown",
+      "label": "brown",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "פילוסופיית_הדיאלוג_ויחסי_אני-אתה",
+      "label": "פילוסופיית הדיאלוג ויחסי אני-אתה",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "העדר_עצמי_(Anatta)_וחמלה_(Karuna)",
+      "label": "העדר עצמי (Anatta) וחמלה (Karuna)",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "חברת_העייפות_והישגיות_יתר",
+      "label": "חברת העייפות והישגיות יתר",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "טיפול_קוגניטיבי_התנהגותי_ועיוותי_חשיבה",
+      "label": "טיפול קוגניטיבי התנהגותי ועיוותי חשיבה",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "cialdini",
+      "label": "cialdini",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "clinical",
+      "label": "clinical",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "כמיהה,_רוחניות_ומשמעות_מתוך_השברים",
+      "label": "כמיהה, רוחניות ומשמעות מתוך השברים",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "confucius",
+      "label": "confucius",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "dali",
+      "label": "dali",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "האתיקה_של_העמימות_וחירות_הזולת",
+      "label": "האתיקה של העמימות וחירות הזולת",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "חרדת_סטטוס_ונחמות_הפילוסופיה",
+      "label": "חרדת סטטוס ונחמות הפילוסופיה",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "dickinson",
+      "label": "dickinson",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "פסיכולוגיית_המעמקים,_רגשות_אשם_והאדם_מן_המרתף",
+      "label": "פסיכולוגיית המעמקים, רגשות אשם והאדם מן המרתף",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "צ'ארלס_דוהיג_(Charles_Duhigg)_-_כוחו_של_הרגל",
+      "label": "צ'ארלס דוהיג (Charles Duhigg) - כוחו של הרגל",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "זרימה,_שינוי_חברתי_וחופש_מוחלט",
+      "label": "זרימה, שינוי חברתי וחופש מוחלט",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "eliot",
+      "label": "eliot",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "foucault",
+      "label": "foucault",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "מציאת_משמעות_ולוגותרפיה",
+      "label": "מציאת משמעות ולוגותרפיה",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "garner",
+      "label": "garner",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "אהבה_קוסמית,_חירות_והכאב_כמעטפת_הנפש",
+      "label": "אהבה קוסמית, חירות והכאב כמעטפת הנפש",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "ginsberg",
+      "label": "ginsberg",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "הסער_והפרץ_והשאיפה_הבלתי_פוסקת",
+      "label": "הסער והפרץ והשאיפה הבלתי פוסקת",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "goldberg",
+      "label": "goldberg",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "grant",
+      "label": "grant",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "אירוניה_רומנטית_ושבריריות_הלב",
+      "label": "אירוניה רומנטית ושבריריות הלב",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "דאגות_קיומיות_ומימוש_עצמי_הומניסטי",
+      "label": "דאגות קיומיות ומימוש עצמי הומניסטי",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "ifs",
+      "label": "ifs",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "jung",
+      "label": "jung",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "ניכור,_אבסורד_מערכתי_ואשמה_פנימית",
+      "label": "ניכור, אבסורד מערכתי ואשמה פנימית",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "kahlo",
+      "label": "kahlo",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "kahneman",
+      "label": "kahneman",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "הצו_הקטגורי_והאדם_כתכלית_(Kant)",
+      "label": "הצו הקטגורי והאדם כתכלית (Kant)",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "keats",
+      "label": "keats",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "maslow",
+      "label": "maslow",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "שירה_חושנית,_תשוקה_והודיה_לדברים_הפשוטים_(פבלו_נרודה)",
+      "label": "שירה חושנית, תשוקה והודיה לדברים הפשוטים (פבלו נרודה)",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "neuroscience",
+      "label": "neuroscience",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "הרצון_לעוצמה_ויצירת_ערכים",
+      "label": "הרצון לעוצמה ויצירת ערכים",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "nussbaum",
+      "label": "nussbaum",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "oliver",
+      "label": "oliver",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "pessoa",
+      "label": "pessoa",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "picasso",
+      "label": "picasso",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "שירה_וידויית,_דיכאון_קליני_וקונפליקט_תפקידים",
+      "label": "שירה וידויית, דיכאון קליני וקונפליקט תפקידים",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "המבנה_המשולש_של_הנפש_ואהבה_אפלטונית",
+      "label": "המבנה המשולש של הנפש ואהבה אפלטונית",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "התת-מודע,_אימה_ודחף_ההרס",
+      "label": "התת-מודע, אימה ודחף ההרס",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "תיאוריית_הפוליווגל_וויסות_מערכת_העצבים",
+      "label": "תיאוריית הפוליווגל וויסות מערכת העצבים",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "זיכרון_לא-רצוני_וסובייקטיביות_האהבה",
+      "label": "זיכרון לא-רצוני וסובייקטיביות האהבה",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "מנגנוני_הגנה_ותהליכים_פסיכודינמיים",
+      "label": "מנגנוני הגנה ותהליכים פסיכודינמיים",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "rachel",
+      "label": "rachel",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "ravikovitch",
+      "label": "ravikovitch",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "בדידות,_אהבה_וקבלת_הקושי",
+      "label": "בדידות, אהבה וקבלת הקושי",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "rimbaud",
+      "label": "rimbaud",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "rogers",
+      "label": "rogers",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "rosen",
+      "label": "rosen",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "rousseau",
+      "label": "rousseau",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "sartre",
+      "label": "sartre",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "schematherapy",
+      "label": "schematherapy",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "schiller",
+      "label": "schiller",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "Self-Determination_Theory_(SDT)",
+      "label": "Self-Determination Theory (SDT)",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "מודרניזם,_עמל_והתמודדות_עם_הריק_הקיומי",
+      "label": "מודרניזם, עמל והתמודדות עם הריק הקיומי",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "socrates",
+      "label": "socrates",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "קונאטוס,_תבונה_ומערכות_יחסים",
+      "label": "קונאטוס, תבונה ומערכות יחסים",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "הדיכוטומיה_של_השליטה_וויסות_רגשי",
+      "label": "הדיכוטומיה של השליטה וויסות רגשי",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "טבעיות,_פשטות,_ועשייה_ללא_מאמץ_(Wu_Wei)",
+      "label": "טבעיות, פשטות, ועשייה ללא מאמץ (Wu Wei)",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "tmt",
+      "label": "tmt",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "tolstoy",
+      "label": "tolstoy",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "בריאן_טרייסי_(Brian_Tracy)_-_פרודוקטיביות_ומשמעת_עצמית",
+      "label": "בריאן טרייסי (Brian Tracy) - פרודוקטיביות ומשמעת עצמית",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "השפעת_טראומה_על_הגוף_והנפש",
+      "label": "השפעת טראומה על הגוף והנפש",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "vangogh",
+      "label": "vangogh",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "פריצת_גבולות_הנפש,_זהות_נזילה_וסערה_מנטלית",
+      "label": "פריצת גבולות הנפש, זהות נזילה וסערה מנטלית",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "העצמי_האינסופי_והחיבור_הקוסמי",
+      "label": "העצמי האינסופי והחיבור הקוסמי",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "wilde",
+      "label": "wilde",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "זרם_התודעה,_תפיסת_הזמן_המנטלי_ושבירות_הנפש",
+      "label": "זרם התודעה, תפיסת הזמן המנטלי ושבירות הנפש",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    },
+    {
+      "id": "zelda",
+      "label": "zelda",
+      "type": "TKB_Concept",
+      "domain": "Uncategorized"
+    },
+    {
+      "id": "הבניית_התשוקה_ופנטזיה_אידיאולוגית",
+      "label": "הבניית התשוקה ופנטזיה אידיאולוגית",
+      "type": "TKB_Concept",
+      "domain": "concept"
+    }
+  ],
+  "edges": []
+}
