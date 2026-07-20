@@ -72,8 +72,8 @@ class Metrics(BaseModel):
     linguistic: LinguisticMetrics
 
 ValidRelation = Literal[
-    'גורם_ל', 'מרגיש', 'רוצה', 'מפחד_מ', 'חוסם', 'פתר', 
-    'סותר', 'מחריף', 'מרגיע', 'מייצג', 'מושפע_מ', 'משפיע_על', 'קשור_ל'
+    'חלק_מ', 'סותר', 'מתועד_ב', 'דומה_ל', 'קשור_ל', 'שואף_ל', 
+    'שייך_ל', 'חווה', 'מפעיל', 'משפיע_על', 'מחזק', 'מחליש'
 ]
 
 class GraphEdge(BaseModel):
@@ -84,16 +84,25 @@ class GraphEdge(BaseModel):
     sentimentScore: int = Field(..., description="Sentiment score of the relationship: -1 (negative/stressful), 0 (neutral), or 1 (positive/healing).")
     sourceQuotes: List[str] = Field(..., description="List of 1-2 direct quotes from the user's journal entries that prove this relationship.")
 
+class StanceHistory(BaseModel):
+    stance: Literal['שאיפה', 'תכנון', 'פעולה', 'הימנעות', 'הדחקה', 'קונפליקט'] = Field(..., description="The user's stance towards this node.")
+    intensity: int = Field(..., description="Intensity of the stance (0-100)")
+    since: str = Field(..., description="ISO timestamp of when this stance was recorded")
+    source_entry_id: str = Field(..., description="ID of the journal entry that generated this stance")
+
+ValidNodeType = Literal['Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight']
+
 class GraphNode(BaseModel):
     id: str = Field(..., description="Unique atomic node ID in English or Hebrew, lowercase or clean name (1-3 words max, e.g., 'זוגיות' or 'חרדת_ביצוע'). Do NOT use long phrases or sentences.")
     label: str = Field(..., description="Short atomic node name/label in Hebrew (1-3 words max, e.g., 'זוגיות', 'שיחה', 'מגע'). Avoid using sentences, descriptions, or connector words like 'באמצעות', 'על ידי', 'של'.")
     aliases: List[str] = Field(..., description="List of synonyms or alternative names for this concept to prevent duplication (e.g., 'סטרס' for 'לחץ').")
     tags: List[str] = Field(..., description="List of explicit category tags for this concept.")
     coping_strategies: List[str] = Field(..., description="List of coping strategies or interventions that help with this concept (especially if negative).")
-    type: str = Field(..., description="Node type, e.g., 'Insight', 'Trait', 'Pattern'")
+    type: ValidNodeType = Field(..., description="Strictly one of: 'Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight'")
     val: int = Field(..., description="Node value/weight, e.g. 2 or 3")
     content: str = Field(..., description="Detailed explanation/insight description in Hebrew")
     relatedEdges: List[GraphEdge] = Field(..., description="List of edges connected to this node")
+    stances: List[StanceHistory] = Field(default=[], description="History of the user's implicit stances towards this node.")
 
 class ApproachReports(BaseModel):
     clinical: str = Field(..., description="Professional clinical assessment report in Hebrew, mapping symptoms, distress and functioning based on Clinical OKF rules.")
