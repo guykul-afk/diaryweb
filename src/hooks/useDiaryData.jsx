@@ -15,9 +15,9 @@ export function DiaryDataProvider({ children, uid }) {
   const [selectedMoods, setSelectedMoods] = useState([]);
   const [minWeight, setMinWeight] = useState(1);
   const [visibleTypes, setVisibleTypes] = useState(['Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight']);
-  const [minDegree, setMinDegree] = useState(0);
+  const [minDegree, setMinDegree] = useState(2);
   const [minLinkWeight, setMinLinkWeight] = useState(1);
-  const [limitEntities, setLimitEntities] = useState(30); // Dynamic slider default 30
+  const [limitEntities, setLimitEntities] = useState(30); // Will be updated on load
   const [selectedDateIndex, setSelectedDateIndex] = useState(0);
 
   const fetchData = useCallback(async () => {
@@ -72,6 +72,7 @@ export function DiaryDataProvider({ children, uid }) {
       });
 
       setRawGraphData({ nodes: combinedNodes, links: combinedLinks });
+      setLimitEntities(Math.round(combinedNodes.length / 2));
       setEntries(entriesData);
     } catch (err) {
       console.error(err);
