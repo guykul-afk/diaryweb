@@ -1,13 +1,37 @@
 ---
 type: concept
 title: אפקט הניכור והביקורת החברתית
-tags: [personality, society, brecht, theater, alienation, political_psychology, social_justice, critical_thinking, oppression, individual_society, social_norms, agency, power_dynamics]
-trigger_phrases: ["אני מרגיש/ה מנוצל/ת במערכת הזו", "למה כולם מקבלים את זה כמובן מאליו?", "האם אני באמת מאמין/ה בזה, או שפשוט ככה לימדו אותי?", "אני מרגיש/ה כבורג קטן במכונה גדולה מדי", "איך אני יכול/ה להשפיע על המצב הלא הוגן הזה?", "אני מרגיש/ה חוסר אונים מול המערכת"]
-core_conflicts: [הפער בין קבלה פסיבית של מציאות (מבוססת נורמות חברתיות) לבין רצון לחשיבה ביקורתית ואותנטית, המאבק בין ההזדהות האישית עם תפקיד חברתי לבין היכולת להתבונן בו מרחוק ולערער עליו, הצורך למצוא משמעות וסוכנות בתוך מערכות כוח גדולות ומדכאות לכאורה]
-domain: meaning
+tags:
+- personality
+- society
+- brecht
+- theater
+- alienation
+- political_psychology
+- social_justice
+- critical_thinking
+- oppression
+- individual_society
+- social_norms
+- agency
+- power_dynamics
+trigger_phrases:
+- אני מרגיש/ה מנוצל/ת במערכת הזו
+- למה כולם מקבלים את זה כמובן מאליו?
+- האם אני באמת מאמין/ה בזה, או שפשוט ככה לימדו אותי?
+- אני מרגיש/ה כבורג קטן במכונה גדולה מדי
+- איך אני יכול/ה להשפיע על המצב הלא הוגן הזה?
+- אני מרגיש/ה חוסר אונים מול המערכת
+core_conflicts:
+- הפער בין קבלה פסיבית של מציאות (מבוססת נורמות חברתיות) לבין רצון לחשיבה ביקורתית
+  ואותנטית
+- המאבק בין ההזדהות האישית עם תפקיד חברתי לבין היכולת להתבונן בו מרחוק ולערער עליו
+- הצורך למצוא משמעות וסוכנות בתוך מערכות כוח גדולות ומדכאות לכאורה
+domain: רוחניות_ומשמעות
 source: Bertolt Brecht's Epic Theater
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # אפקט הניכור והביקורת החברתית (Bertolt Brecht)
 
 ## הגדרה

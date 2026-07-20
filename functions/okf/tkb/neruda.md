@@ -1,16 +1,41 @@
 ---
 type: concept
 title: שירה חושנית, תשוקה והודיה לדברים הפשוטים (פבלו נרודה)
-tags: ['personality', 'poetry', 'neruda', 'passion', 'sensuality', 'nature', 'love', 'desire', 'gratitude', 'mindfulness', 'loss', 'grief', 'vulnerability', 'connection', 'acceptance']
-trigger_phrases: ["מרגיש חוסר תשוקה", "החיים אפורים", "לא מצליח להעריך את הרגע", "מתמודד עם פרידה קשה", "מחפש משמעות בקשר", "אובדן", "געגוע", "צורך בחיבור עמוק", "רוצה להרגיש יותר"]
+tags:
+- personality
+- poetry
+- neruda
+- passion
+- sensuality
+- nature
+- love
+- desire
+- gratitude
+- mindfulness
+- loss
+- grief
+- vulnerability
+- connection
+- acceptance
+trigger_phrases:
+- מרגיש חוסר תשוקה
+- החיים אפורים
+- לא מצליח להעריך את הרגע
+- מתמודד עם פרידה קשה
+- מחפש משמעות בקשר
+- אובדן
+- געגוע
+- צורך בחיבור עמוק
+- רוצה להרגיש יותר
 core_conflicts:
-  - חוסר יכולת להתמסר לתשוקה או לאהבה במלוא העוצמה, מתוך חשש מכאב או פגיעות.
-  - קושי למצוא יופי, משמעות וסיפוק בדברים היומיומיים והפשוטים של החיים.
-  - התמודדות עם כאב פרידה, אובדן או אכזבה, והקושי לקבל את מלוא מנעד הרגשות הכרוך בכך.
+- חוסר יכולת להתמסר לתשוקה או לאהבה במלוא העוצמה, מתוך חשש מכאב או פגיעות.
+- קושי למצוא יופי, משמעות וסיפוק בדברים היומיומיים והפשוטים של החיים.
+- התמודדות עם כאב פרידה, אובדן או אכזבה, והקושי לקבל את מלוא מנעד הרגשות הכרוך בכך.
 domain: relationships, inner_self
 source: Pablo Neruda's Twenty Love Poems and a Song of Despair, Odes to Common Things
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # שירה חושנית, תשוקה והודיה לדברים הפשוטים (פבלו נרודה)
 
 ## הגדרה

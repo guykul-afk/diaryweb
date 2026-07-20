@@ -1,11 +1,15 @@
 ---
-title: "Self-Compassion (Kristin Neff)"
-domain: "עולם_פנימי"
-maps_to_patterns: ["ביקורת_עצמית", "פרפקציוניזם"]
-counterpart: "stoicism_aurelius.md"
-trigger_phrases: ["אני לא מספיק טוב", "הייתי צריך", "כישלון"]
+title: Self-Compassion (Kristin Neff)
+domain: עולם_פנימי
+maps_to_patterns:
+- ביקורת_עצמית
+- פרפקציוניזם
+counterpart: stoicism.md
+trigger_phrases:
+- אני לא מספיק טוב
+- הייתי צריך
+- כישלון
 ---
-
 # Self-Compassion
 
 ## TheoryConcept

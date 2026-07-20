@@ -1,11 +1,15 @@
 ---
-title: "Procrastination (Timothy Pychyl)"
-domain: "עבודה_וקריירה"
-maps_to_patterns: ["דחיינות", "הימנעות_מקונפליקט"]
-counterpart: "stoicism.md"
-trigger_phrases: ["אעשה את זה מחר", "אין לי כוח עכשיו", "דחיינות"]
+title: Procrastination (Timothy Pychyl)
+domain: עבודה_וקריירה
+maps_to_patterns:
+- דחיינות
+- הימנעות_מקונפליקט
+counterpart: stoicism.md
+trigger_phrases:
+- אעשה את זה מחר
+- אין לי כוח עכשיו
+- דחיינות
 ---
-
 # Procrastination
 
 ## TheoryConcept

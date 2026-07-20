@@ -1,21 +1,38 @@
 ---
 type: concept
 title: חרדת סטטוס ונחמות הפילוסופיה
-tags: [personality, philosophy, debotton, status-anxiety, relationships, everyday-life, self-worth, social-pressure, emotional-intelligence, coping-mechanisms, modern-life, self-acceptance, existentialism, romantic-realism]
+tags:
+- personality
+- philosophy
+- debotton
+- status-anxiety
+- relationships
+- everyday-life
+- self-worth
+- social-pressure
+- emotional-intelligence
+- coping-mechanisms
+- modern-life
+- self-acceptance
+- existentialism
+- romantic-realism
 trigger_phrases:
-  - "אני מרגיש/ה לא מספיק טוב/ה בהשוואה לאחרים."
-  - "אני מודאג/ת ממה שאנשים חושבים עלי או ממעמדי בחברה."
-  - "האהבה שלי לא נראית כמו בסרטים, אולי יש משהו לא בסדר איתי או איתנו."
-  - "אני מתמודד/ת עם תסכול, כעס או אכזבה וקשה לי לשלוט בזה."
-  - "אני מרגיש/ה בושה לגבי מי שאני, לגבי כישלונותיי או חוסר ההתאמה שלי."
+- אני מרגיש/ה לא מספיק טוב/ה בהשוואה לאחרים.
+- אני מודאג/ת ממה שאנשים חושבים עלי או ממעמדי בחברה.
+- האהבה שלי לא נראית כמו בסרטים, אולי יש משהו לא בסדר איתי או איתנו.
+- אני מתמודד/ת עם תסכול, כעס או אכזבה וקשה לי לשלוט בזה.
+- אני מרגיש/ה בושה לגבי מי שאני, לגבי כישלונותיי או חוסר ההתאמה שלי.
 core_conflicts:
-  - הפער בין הציפיות החברתיות להצלחה (סטטוס) לבין הערך העצמי הפנימי.
-  - ההתנגשות בין אידיאל האהבה הרומנטי למציאות המורכבת, הפגומה והמחייבת עבודה של זוגיות.
-  - הנטייה לתגובתיות רגשית או ילדותית מול הצורך בתגובה רפלקטיבית, מודעת ואמפתית לקשיי החיים והיחסים.
-domain: inner_self
-source: Alain de Botton's Status Anxiety, The Consolations of Philosophy, The Course of Love
+- הפער בין הציפיות החברתיות להצלחה (סטטוס) לבין הערך העצמי הפנימי.
+- ההתנגשות בין אידיאל האהבה הרומנטי למציאות המורכבת, הפגומה והמחייבת עבודה של זוגיות.
+- הנטייה לתגובתיות רגשית או ילדותית מול הצורך בתגובה רפלקטיבית, מודעת ואמפתית לקשיי
+  החיים והיחסים.
+domain: עולם_פנימי
+source: Alain de Botton's Status Anxiety, The Consolations of Philosophy, The Course
+  of Love
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # חרדת סטטוס ונחמות הפילוסופיה (אלן דה בוטון)
 
 ## הגדרה

@@ -79,7 +79,7 @@ ValidRelation = Literal[
 class GraphEdge(BaseModel):
     source: str = Field(..., description="Source node ID")
     target: str = Field(..., description="Target node ID")
-    relation: ValidRelation = Field(..., description="Relationship type from a strict vocabulary: 'גורם_ל', 'מרגיש', 'רוצה', 'מפחד_מ', 'חוסם', 'פתר', 'סותר', 'מחריף', 'מרגיע', 'מייצג', 'מושפע_מ', 'משפיע_על', 'קשור_ל'")
+    relation: ValidRelation = Field(..., description="Relationship type from a strict vocabulary: 'חלק_מ', 'סותר', 'מתועד_ב', 'דומה_ל', 'קשור_ל', 'שואף_ל', 'שייך_ל', 'חווה', 'מפעיל', 'משפיע_על', 'מחזק', 'מחליש'")
     context: str = Field(..., description="The context or circumstances in which this relationship occurs (e.g., 'בעבודה', 'בזמן שיחה'). Use empty string if none.")
     sentimentScore: int = Field(..., description="Sentiment score of the relationship: -1 (negative/stressful), 0 (neutral), or 1 (positive/healing).")
     sourceQuotes: List[str] = Field(..., description="List of 1-2 direct quotes from the user's journal entries that prove this relationship.")
@@ -92,6 +92,11 @@ class StanceHistory(BaseModel):
 
 ValidNodeType = Literal['Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight']
 
+ValidDomain = Literal[
+    'עולם_פנימי', 'בריאות_ותזונה', 'עבודה_וקריירה', 'זוגיות_ומשפחה', 
+    'חברים_וקהילה', 'פיננסים', 'למידה_והתפתחות', 'פנאי_ותחביבים', 
+    'סביבה_ומגורים', 'רוחניות_ומשמעות'
+]
 class GraphNode(BaseModel):
     id: str = Field(..., description="Unique atomic node ID in English or Hebrew, lowercase or clean name (1-3 words max, e.g., 'זוגיות' or 'חרדת_ביצוע'). Do NOT use long phrases or sentences.")
     label: str = Field(..., description="Short atomic node name/label in Hebrew (1-3 words max, e.g., 'זוגיות', 'שיחה', 'מגע'). Avoid using sentences, descriptions, or connector words like 'באמצעות', 'על ידי', 'של'.")

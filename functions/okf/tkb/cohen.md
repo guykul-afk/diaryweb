@@ -1,13 +1,38 @@
 ---
 type: concept
 title: כמיהה, רוחניות ומשמעות מתוך השברים
-tags: ['personality', 'poetry', 'cohen', 'longing', 'spirituality', 'depression', 'meaning', 'acceptance', 'imperfection', 'resilience', 'existentialism', 'vulnerability', 'suffering']
-trigger_phrases: ["אני מרגיש שבור", "אני מחפש משמעות", "כואב לי ואני לא רואה את האור", "אני מתמודד עם דיכאון", "אני רוצה להרגיש יותר חיבור", "האם יש יופי בכישלונות שלי?", "אני לא שלם", "אני כל הזמן כמה למשהו"]
-core_conflicts: ["התמודדות עם חוסר שלמות ופגיעות ככישלון במקום כהזדמנות לצמיחה", "הדחקה או התנגדות לכמיהה וגעגוע במקום קבלתם כמצב קיומי טבעי", "ראיית דיכאון או עצבות כאויב שיש להביס במקום כחלק מהחוויה האנושית שיכולה להעניק תובנות"]
-domain: inner_self
+tags:
+- personality
+- poetry
+- cohen
+- longing
+- spirituality
+- depression
+- meaning
+- acceptance
+- imperfection
+- resilience
+- existentialism
+- vulnerability
+- suffering
+trigger_phrases:
+- אני מרגיש שבור
+- אני מחפש משמעות
+- כואב לי ואני לא רואה את האור
+- אני מתמודד עם דיכאון
+- אני רוצה להרגיש יותר חיבור
+- האם יש יופי בכישלונות שלי?
+- אני לא שלם
+- אני כל הזמן כמה למשהו
+core_conflicts:
+- התמודדות עם חוסר שלמות ופגיעות ככישלון במקום כהזדמנות לצמיחה
+- הדחקה או התנגדות לכמיהה וגעגוע במקום קבלתם כמצב קיומי טבעי
+- ראיית דיכאון או עצבות כאויב שיש להביס במקום כחלק מהחוויה האנושית שיכולה להעניק תובנות
+domain: עולם_פנימי
 source: Leonard Cohen's Book of Longing, Beautiful Losers, Selected Songs
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # כמיהה, רוחניות ומשמעות מתוך השברים (לאונרד כהן)
 
 ## הגדרה

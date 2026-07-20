@@ -1,13 +1,37 @@
 ---
 type: concept
 title: Self-Determination Theory (SDT)
-tags: [motivation, productivity, autonomy, psychology, well_being, intrinsic_motivation, personal_growth, relationships, competence, relatedness, self_direction, psychological_needs]
-trigger_phrases: ["אין לי חשק לעשות את זה", "מרגיש שזה לא באמת שלי", "אני לא רואה את עצמי מצליח בזה", "למה אני עושה את כל זה?", "מרגיש מנותק מאחרים", "חסר לי סיפוק בעשייה"]
-core_conflicts: ["מוטיבציה חיצונית מול מוטיבציה פנימית", "תחושת כפייה וחוסר שליטה מול רצון לחופש בחירה", "תסכול וחוסר מסוגלות מול שאיפה ליעילות", "בדידות וניתוק מול צורך בקשרים משמעותיים"]
-domain: inner_self
-source: Ryan, R. M., & Deci, E. L. (2000). Self-determination theory and the facilitation of intrinsic motivation, social development, and well-being. American Psychologist.
+tags:
+- motivation
+- productivity
+- autonomy
+- psychology
+- well_being
+- intrinsic_motivation
+- personal_growth
+- relationships
+- competence
+- relatedness
+- self_direction
+- psychological_needs
+trigger_phrases:
+- אין לי חשק לעשות את זה
+- מרגיש שזה לא באמת שלי
+- אני לא רואה את עצמי מצליח בזה
+- למה אני עושה את כל זה?
+- מרגיש מנותק מאחרים
+- חסר לי סיפוק בעשייה
+core_conflicts:
+- מוטיבציה חיצונית מול מוטיבציה פנימית
+- תחושת כפייה וחוסר שליטה מול רצון לחופש בחירה
+- תסכול וחוסר מסוגלות מול שאיפה ליעילות
+- בדידות וניתוק מול צורך בקשרים משמעותיים
+domain: עולם_פנימי
+source: Ryan, R. M., & Deci, E. L. (2000). Self-determination theory and the facilitation
+  of intrinsic motivation, social development, and well-being. American Psychologist.
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # תיאוריית ההכוונה העצמית (Self-Determination Theory)
 
 ## הגדרה

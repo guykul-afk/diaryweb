@@ -1,11 +1,16 @@
 ---
-title: "Existential Psychotherapy (Irvin Yalom)"
-domain: "רוחניות_ומשמעות"
-maps_to_patterns: ["התנגדות_למציאות", "Overthinking"]
-counterpart: "cbt.md"
-trigger_phrases: ["משמעות החיים", "פחד מוות", "בדידות קיומית", "חופש"]
+title: Existential Psychotherapy (Irvin Yalom)
+domain: רוחניות_ומשמעות
+maps_to_patterns:
+- התנגדות_למציאות
+- חשיבת_יתר
+counterpart: cbt.md
+trigger_phrases:
+- משמעות החיים
+- פחד מוות
+- בדידות קיומית
+- חופש
 ---
-
 # Existential Psychotherapy
 
 ## TheoryConcept

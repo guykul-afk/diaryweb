@@ -1,13 +1,35 @@
 ---
 type: concept
 title: הבניית התשוקה ופנטזיה אידיאולוגית
-tags: [personality, philosophy, zizek, desire, lacan, ideology, psychoanalysis, critical_theory, self-perception, identity, consumerism, authenticity, societal_expectations]
-trigger_phrases: ["אני מרגיש שאני רודף אחרי משהו אבל לא בטוח מהו", "אני מצליח להשיג דברים, אבל עדיין מרגיש ריקנות", "אני חושב שאני רוצה [X], אבל אולי זה רק מה שאמרו לי לרצות?", "הפנטזיות שלי על אושר נראות רחוקות מהמציאות", "אני מוצא את עצמי מצטט סיסמאות או רעיונות שאני לא באמת מבין לעומק"]
-core_conflicts: ["התמודדות עם ריקנות קיומית וחוסר אותנטיות של תשוקות", "ההבדל בין ה'עצמי' האמיתי לבין הדימוי החברתי והאידיאולוגי", "הכשל שבמרדף אינסופי אחר אובייקטים חיצוניים ללא מימוש פנימי"]
-domain: inner_self
+tags:
+- personality
+- philosophy
+- zizek
+- desire
+- lacan
+- ideology
+- psychoanalysis
+- critical_theory
+- self-perception
+- identity
+- consumerism
+- authenticity
+- societal_expectations
+trigger_phrases:
+- אני מרגיש שאני רודף אחרי משהו אבל לא בטוח מהו
+- אני מצליח להשיג דברים, אבל עדיין מרגיש ריקנות
+- אני חושב שאני רוצה [X], אבל אולי זה רק מה שאמרו לי לרצות?
+- הפנטזיות שלי על אושר נראות רחוקות מהמציאות
+- אני מוצא את עצמי מצטט סיסמאות או רעיונות שאני לא באמת מבין לעומק
+core_conflicts:
+- התמודדות עם ריקנות קיומית וחוסר אותנטיות של תשוקות
+- ההבדל בין ה'עצמי' האמיתי לבין הדימוי החברתי והאידיאולוגי
+- הכשל שבמרדף אינסופי אחר אובייקטים חיצוניים ללא מימוש פנימי
+domain: עולם_פנימי
 source: Slavoj Zizek's The Sublime Object of Ideology, How to Read Lacan
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # הבניית התשוקה ופנטזיה אידיאולוגית (סלבוי ז'יז'ק)
 
 ## הגדרה

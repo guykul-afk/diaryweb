@@ -1,11 +1,15 @@
 ---
-title: "Implementation Intentions (Peter Gollwitzer)"
-domain: "עבודה_וקריירה"
-maps_to_patterns: ["פער_בין_כוונה_לביצוע", "דחיינות"]
-counterpart: "taoism.md"
-trigger_phrases: ["אם-אז", "תכנון ביצוע", "להוציא לפועל"]
+title: Implementation Intentions (Peter Gollwitzer)
+domain: עבודה_וקריירה
+maps_to_patterns:
+- פער_בין_כוונה_לביצוע
+- דחיינות
+counterpart: taoism.md
+trigger_phrases:
+- אם-אז
+- תכנון ביצוע
+- להוציא לפועל
 ---
-
 # Implementation Intentions
 
 ## TheoryConcept

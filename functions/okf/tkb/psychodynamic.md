@@ -1,22 +1,43 @@
 ---
 type: concept
 title: מנגנוני הגנה ותהליכים פסיכודינמיים
-tags: [personality, psychoanalysis, freud, kleins, jung, attachment, defense_mechanisms, psychodynamic, unconscious, ego, object_relations, transference, repression, projection, intellectualization, rationalization, shadow, inner_conflict]
+tags:
+- personality
+- psychoanalysis
+- freud
+- kleins
+- jung
+- attachment
+- defense_mechanisms
+- psychodynamic
+- unconscious
+- ego
+- object_relations
+- transference
+- repression
+- projection
+- intellectualization
+- rationalization
+- shadow
+- inner_conflict
 trigger_phrases:
-  - "אני לא רוצה לחשוב על זה"
-  - "זה תמיד קורה לי עם אנשים כאלה"
-  - "הוא סתם מקנא בי"
-  - "אני מנתח את זה באופן אובייקטיבי"
-  - "הרגשה שחוזרת על עצמה מול סמכות"
-  - "אני כועס/ת עליו בלי סיבה ברורה"
+- אני לא רוצה לחשוב על זה
+- זה תמיד קורה לי עם אנשים כאלה
+- הוא סתם מקנא בי
+- אני מנתח את זה באופן אובייקטיבי
+- הרגשה שחוזרת על עצמה מול סמכות
+- אני כועס/ת עליו בלי סיבה ברורה
 core_conflicts:
-  - קונפליקטים לא מודעים בין דחפים, פחדים ומשאלות לבין דרישות המציאות והמוסר.
-  - דפוסים בין-אישיים חוזרים ומזיקים הנובעים מיחסי עבר מופנמים.
-  - חרדה ותסכול הנגרמים מהדחקה או התעלמות מרגשות קשים.
-domain: [inner_self, relationships]
+- קונפליקטים לא מודעים בין דחפים, פחדים ומשאלות לבין דרישות המציאות והמוסר.
+- דפוסים בין-אישיים חוזרים ומזיקים הנובעים מיחסי עבר מופנמים.
+- חרדה ותסכול הנגרמים מהדחקה או התעלמות מרגשות קשים.
+domain:
+- עולם_פנימי
+- זוגיות_ומשפחה
 source: Sigmund Freud, Melanie Klein, Carl Jung
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # מנגנוני הגנה ותהליכים פסיכודינמיים
 
 ## הגדרה

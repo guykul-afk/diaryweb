@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { getAuth, signInAnonymously } from 'firebase/auth';
@@ -6,7 +8,7 @@ const firebaseConfig = {
   projectId: "mindcloud-8ccc6",
   appId: "1:961085343809:web:a7c8c68360c3d820f21ec0",
   storageBucket: "mindcloud-8ccc6.firebasestorage.app",
-  apiKey: "AIzaSyDAPtxu-nJO7VDdI7OwJY7e7QFl6hrzLY0",
+  apiKey: process.env.FIREBASE_API_KEY,
   authDomain: "mindcloud-8ccc6.firebaseapp.com",
   messagingSenderId: "961085343809",
   measurementId: "G-J766284FQK"

@@ -122,6 +122,16 @@ export function DiaryDataProvider({ children, uid }) {
 
   // Helper to determine node type
   const getNodeType = useCallback((node) => {
+    // Explicit types from DB matching new OKF ontology
+    if (node.type === 'Domain') return 'Domain';
+    if (node.type === 'Person') return 'Person';
+    if (node.type === 'Goal') return 'Goal';
+    if (node.type === 'Pattern') return 'Pattern';
+    if (node.type === 'Strategy') return 'Strategy';
+    if (node.type === 'Emotion') return 'Emotion';
+    if (node.type === 'Event') return 'Event';
+    if (node.type === 'Insight') return 'Insight';
+
     const type = (node.type || '').toLowerCase();
     if (type === 'person' || type === 'people' || type === 'name' || node.id.match(/^[A-Z][a-z]+ [A-Z][a-z]+$/)) return 'Person';
     if (type === 'emotion' || type === 'mood' || type === 'feeling') return 'Emotion';
@@ -130,14 +140,17 @@ export function DiaryDataProvider({ children, uid }) {
     const nodeIdLower = node.id.toLowerCase();
     const nodeLabelLower = (node.name || node.id).toLowerCase();
     const HEBREW_PERSON_NAMES = ['גיא', 'טלי', 'גיל', 'איתן', 'יוגב', 'שמואל', 'נוה', 'נווה', 'אבא', 'אמא', 'אימא', 'אסף', 'ילדים', 'הילדים', 'בן של'];
-    const HEBREW_EMOTION_KEYWORDS = ['לחץ', 'חרדה', 'עצב', 'כעס', 'שמחה', 'פחד', 'דאגה', 'אהבה', 'תסכול', 'עומס', 'מתח', 'רגש'];
+    const HEBREW_EMOTION_KEYWORDS = ['לחץ', 'חרדה', 'עצב', 'כעס', 'שמחה', 'פחד', 'דאגה', 'אהבה', 'תסכול', 'עומס', 'מתח', 'רגש', 'דיכאון', 'תסכול'];
+    const HEBREW_DOMAINS = ['עולם פנימי', 'בריאות ותזונה', 'עבודה וקריירה', 'למידה והתפתחות', 'פיננסים ומקורות הכנסה', 'פנאי ותחביבים', 'יחסים חברתיים וזוגיים', 'הורות ומשפחה', 'סביבה פיזית ומגורים', 'ניהול שוטף ומנהלות'];
 
+    if (HEBREW_DOMAINS.some(domain => nodeIdLower === domain || nodeLabelLower === domain)) return 'Domain';
     if (HEBREW_PERSON_NAMES.some(name => nodeIdLower.includes(name) || nodeLabelLower.includes(name))) return 'Person';
     if (HEBREW_EMOTION_KEYWORDS.some(keyword => nodeIdLower.includes(keyword) || nodeLabelLower.includes(keyword))) return 'Emotion';
     if (uniqueTopics.some(t => t.toLowerCase() === node.id.toLowerCase())) return 'Topic';
     if (uniqueMoods.some(m => m.toLowerCase() === node.id.toLowerCase())) return 'Emotion';
 
-    return 'Concept';
+    // Fallback legacy Concept -> Pattern (דפוסי התנהגות) so they don't disappear from the UI
+    return 'Pattern';
   }, [uniqueTopics, uniqueMoods]);
 
   const rawNodeDegrees = useMemo(() => {

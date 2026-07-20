@@ -1,16 +1,49 @@
 ---
 type: concept
 title: טיפול קוגניטיבי התנהגותי ועיוותי חשיבה
-tags: [personality, cbt, cognitive, behavioral, distortion, self-help, emotions, thoughts, relationships, inner_self, anxiety, depression, automatic_thoughts, core_beliefs, Aaron_Beck, Albert_Ellis, therapy, mental_health, maladaptive_patterns, thinking_patterns, emotional_regulation, psychological_flexibility]
-trigger_phrases: ["אני מרגיש שאני תקוע בלופ מחשבות שלילי", "אני מגיב בצורה קיצונית לדברים קטנים", "הרגשות שלי מנהלים אותי", "אני מרבה לבקר את עצמי או אחרים", "אני מרגיש שהכישלונות שלי מגדירים אותי", "אני חושש ממה שאחרים חושבים עלי", "אני חושב שאני כישלון", "אני תמיד רואה את הרע", "למה אני תמיד עושה טעויות כאלה?", "אני לא מספיק טוב/מוכשר"]
+tags:
+- personality
+- cbt
+- cognitive
+- behavioral
+- distortion
+- self-help
+- emotions
+- thoughts
+- relationships
+- inner_self
+- anxiety
+- depression
+- automatic_thoughts
+- core_beliefs
+- Aaron_Beck
+- Albert_Ellis
+- therapy
+- mental_health
+- maladaptive_patterns
+- thinking_patterns
+- emotional_regulation
+- psychological_flexibility
+trigger_phrases:
+- אני מרגיש שאני תקוע בלופ מחשבות שלילי
+- אני מגיב בצורה קיצונית לדברים קטנים
+- הרגשות שלי מנהלים אותי
+- אני מרבה לבקר את עצמי או אחרים
+- אני מרגיש שהכישלונות שלי מגדירים אותי
+- אני חושש ממה שאחרים חושבים עלי
+- אני חושב שאני כישלון
+- אני תמיד רואה את הרע
+- למה אני תמיד עושה טעויות כאלה?
+- אני לא מספיק טוב/מוכשר
 core_conflicts:
-  - פער בין המציאות האובייקטיבית לבין פרשנות סובייקטיבית מעוותת ומוגזמת.
-  - קושי בויסות רגשי והתנהגותי הנובע מדפוסי חשיבה נוקשים ושליליים.
-  - התנהגויות לא מסתגלות ורגשות מצוקה המוזנים על ידי אמונות ליבה מגבילות.
-domain: inner_self
+- פער בין המציאות האובייקטיבית לבין פרשנות סובייקטיבית מעוותת ומוגזמת.
+- קושי בויסות רגשי והתנהגותי הנובע מדפוסי חשיבה נוקשים ושליליים.
+- התנהגויות לא מסתגלות ורגשות מצוקה המוזנים על ידי אמונות ליבה מגבילות.
+domain: עולם_פנימי
 source: Aaron Beck & Albert Ellis
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # טיפול קוגניטיבי התנהגותי (CBT)
 
 ## הגדרה

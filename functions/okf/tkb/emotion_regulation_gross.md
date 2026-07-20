@@ -1,11 +1,15 @@
 ---
-title: "Emotion Regulation (James Gross)"
-domain: "עולם_פנימי"
-maps_to_patterns: ["הדחקה_רגשית", "ביקורת_עצמית"]
-counterpart: "radical_acceptance_linehan.md"
-trigger_phrases: ["לווסת רגש", "להדחיק", "שליטה עצמית"]
+title: Emotion Regulation (James Gross)
+domain: עולם_פנימי
+maps_to_patterns:
+- הדחקה_רגשית
+- ביקורת_עצמית
+counterpart: act.md
+trigger_phrases:
+- לווסת רגש
+- להדחיק
+- שליטה עצמית
 ---
-
 # Emotion Regulation (Process Model)
 
 ## TheoryConcept

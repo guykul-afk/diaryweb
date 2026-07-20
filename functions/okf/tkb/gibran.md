@@ -1,13 +1,44 @@
 ---
 type: concept
 title: אהבה קוסמית, חירות והכאב כמעטפת הנפש
-tags: [personality, poetry, gibran, love, freedom, pain, spirituality, suffering, self-discovery, growth, humanism, interpersonal_relationships, philosophy, authenticity, meaning_in_suffering, self_realization]
-trigger_phrases: [כואב לי, אני לא מבין למה, מרגיש לכוד במערכת יחסים, רוצה להיות חופשי, מחפש משמעות בכאב, אני מרגיש שאני לא עצמי, אני עובר תקופה קשה, אני מתקשה להרפות, איך צומחים מתוך קושי?, אני רוצה לאהוב באמת, אני רוצה להיות נאמן לעצמי]
-core_conflicts: [התמודדות עם כאב כרע שיש להימנע ממנו לעומת קבלתו ככלי לצמיחה והתפתחות, הרצון לחיבור עמוק במערכות יחסים מול הצורך בחירות ועצמאות אישית, הקונפליקט בין דרישות וציפיות חיצוניות לבין האמת הפנימית והצורך באותנטיות]
-domain: inner_self
+tags:
+- personality
+- poetry
+- gibran
+- love
+- freedom
+- pain
+- spirituality
+- suffering
+- self-discovery
+- growth
+- humanism
+- interpersonal_relationships
+- philosophy
+- authenticity
+- meaning_in_suffering
+- self_realization
+trigger_phrases:
+- כואב לי
+- אני לא מבין למה
+- מרגיש לכוד במערכת יחסים
+- רוצה להיות חופשי
+- מחפש משמעות בכאב
+- אני מרגיש שאני לא עצמי
+- אני עובר תקופה קשה
+- אני מתקשה להרפות
+- איך צומחים מתוך קושי?
+- אני רוצה לאהוב באמת
+- אני רוצה להיות נאמן לעצמי
+core_conflicts:
+- התמודדות עם כאב כרע שיש להימנע ממנו לעומת קבלתו ככלי לצמיחה והתפתחות
+- הרצון לחיבור עמוק במערכות יחסים מול הצורך בחירות ועצמאות אישית
+- הקונפליקט בין דרישות וציפיות חיצוניות לבין האמת הפנימית והצורך באותנטיות
+domain: עולם_פנימי
 source: Kahlil Gibran's The Prophet, The Madman
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # אהבה קוסמית, חירות והכאב כמעטפת הנפש (ח'ליל ג'ובראן)
 
 ## הגדרה

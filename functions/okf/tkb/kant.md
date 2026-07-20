@@ -1,21 +1,36 @@
 ---
 type: concept
 title: הצו הקטגורי והאדם כתכלית (Kant)
-tags: [relationships, kant, ethics, categorical-imperative, autonomy, dignity, respect, morality, reason, philosophy, self-worth, manipulation, consent, duty]
+tags:
+- relationships
+- kant
+- ethics
+- categorical-imperative
+- autonomy
+- dignity
+- respect
+- morality
+- reason
+- philosophy
+- self-worth
+- manipulation
+- consent
+- duty
 trigger_phrases:
-  - "אני מרגיש/ה שמנצלים אותי"
-  - "אני מתלבט/ת איך לנהוג ביושר במצב הזה"
-  - "האם אני משתמש/ת באנשים כדי להשיג את המטרות שלי?"
-  - "אני רוצה להבין מהו יחס מכבד באמת"
-  - "קשה לי להבחין בין טוב ורע"
+- אני מרגיש/ה שמנצלים אותי
+- אני מתלבט/ת איך לנהוג ביושר במצב הזה
+- האם אני משתמש/ת באנשים כדי להשיג את המטרות שלי?
+- אני רוצה להבין מהו יחס מכבד באמת
+- קשה לי להבחין בין טוב ורע
 core_conflicts:
-  - מתח בין אינטרסים אישיים לכבוד הזולת וזכויותיו.
-  - התמודדות עם דילמות מוסריות הדורשות הכרעה אוניברסלית ולא תועלתנית.
-  - קושי לראות את הערך הפנימי של האחר או של עצמי, מעבר לתועלתם או תפקודם.
-domain: relationships
+- מתח בין אינטרסים אישיים לכבוד הזולת וזכויותיו.
+- התמודדות עם דילמות מוסריות הדורשות הכרעה אוניברסלית ולא תועלתנית.
+- קושי לראות את הערך הפנימי של האחר או של עצמי, מעבר לתועלתם או תפקודם.
+domain: זוגיות_ומשפחה
 source: Groundwork of the Metaphysics of Morals (Immanuel Kant)
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # הצו הקטגורי והאדם כתכלית (Kant)
 
 ## הגדרה

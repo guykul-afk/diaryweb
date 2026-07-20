@@ -1,13 +1,40 @@
 ---
 type: concept
 title: קונאטוס, תבונה ומערכות יחסים
-tags: [personality, spinoza, emotions, conatus, ethics, determinism, self_improvement, well_being, philosophy, rational_thinking, emotional_regulation, human_nature, free_will]
-trigger_phrases: ["אני מרגיש שאני מובל על ידי הרגשות שלי", "למה אני תמיד מגיב ככה?", "אני רוצה להרגיש יותר בשליטה על חיי", "איך אפשר לחיות חיים שמחים ומלאים יותר?", "אני נאבק עם מערכות יחסים מתישות", "אני רוצה להבין טוב יותר את המניעים שלי ושל אחרים"]
-core_conflicts: ["הרגשה של חוסר אונים מול רגשות והשפעות חיצוניות", "התלבטות בין דחפים מיידיים לשאיפה לטוב ארוך טווח", "החיפוש אחר משמעות ויציבות פנימית בעולם משתנה", "הבנת הדינמיקה האמיתית של מערכות יחסים"]
-domain: [inner_self, relationships, meaning]
+tags:
+- personality
+- spinoza
+- emotions
+- conatus
+- ethics
+- determinism
+- self_improvement
+- well_being
+- philosophy
+- rational_thinking
+- emotional_regulation
+- human_nature
+- free_will
+trigger_phrases:
+- אני מרגיש שאני מובל על ידי הרגשות שלי
+- למה אני תמיד מגיב ככה?
+- אני רוצה להרגיש יותר בשליטה על חיי
+- איך אפשר לחיות חיים שמחים ומלאים יותר?
+- אני נאבק עם מערכות יחסים מתישות
+- אני רוצה להבין טוב יותר את המניעים שלי ושל אחרים
+core_conflicts:
+- הרגשה של חוסר אונים מול רגשות והשפעות חיצוניות
+- התלבטות בין דחפים מיידיים לשאיפה לטוב ארוך טווח
+- החיפוש אחר משמעות ויציבות פנימית בעולם משתנה
+- הבנת הדינמיקה האמיתית של מערכות יחסים
+domain:
+- עולם_פנימי
+- זוגיות_ומשפחה
+- רוחניות_ומשמעות
 source: Ethics (Baruch Spinoza)
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # קונאטוס, תבונה ומערכות יחסים (Spinoza)
 
 ## הגדרה

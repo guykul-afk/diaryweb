@@ -1,13 +1,37 @@
 ---
 type: concept
 title: חברת העייפות והישגיות יתר
-tags: [personality, philosophy, byungchulhan, burnout, productivity, modernity, self-exploitation, neoliberalism, well-being, contemplation, anxiety, depression, psychopolitics, positivity-violence]
-trigger_phrases: ["אני מרגיש שאני חייב תמיד להיות בפעולה.", "אני שחוק וריקן, למרות שאני כל הזמן משיג דברים.", "קשה לי להגיד 'לא' להזדמנויות, אפילו כשאני עייף.", "אני מרגיש שאני מתחרה בעצמי כל הזמן.", "למה אני כל כך עייף למרות שאני 'מצליח'?", "אני מרגיש אשמה כשאני נח ולא פרודוקטיבי."]
-core_conflicts: ["הפער בין תחושת החופש המודרני לבין הכפייה הפנימית להישגים בלתי פוסקים.", "ההתנגשות בין הצורך במנוחה ושקט לבין הלחץ התמידי להיות פרודוקטיבי ו'חיובי'.", "הקושי למצוא משמעות וחיבור עמוק בעידן של אופטימיזציה ושטחיות."]
-domain: inner_self
+tags:
+- personality
+- philosophy
+- byungchulhan
+- burnout
+- productivity
+- modernity
+- self-exploitation
+- neoliberalism
+- well-being
+- contemplation
+- anxiety
+- depression
+- psychopolitics
+- positivity-violence
+trigger_phrases:
+- אני מרגיש שאני חייב תמיד להיות בפעולה.
+- אני שחוק וריקן, למרות שאני כל הזמן משיג דברים.
+- קשה לי להגיד 'לא' להזדמנויות, אפילו כשאני עייף.
+- אני מרגיש שאני מתחרה בעצמי כל הזמן.
+- למה אני כל כך עייף למרות שאני 'מצליח'?
+- אני מרגיש אשמה כשאני נח ולא פרודוקטיבי.
+core_conflicts:
+- הפער בין תחושת החופש המודרני לבין הכפייה הפנימית להישגים בלתי פוסקים.
+- ההתנגשות בין הצורך במנוחה ושקט לבין הלחץ התמידי להיות פרודוקטיבי ו'חיובי'.
+- הקושי למצוא משמעות וחיבור עמוק בעידן של אופטימיזציה ושטחיות.
+domain: עולם_פנימי
 source: Byung-Chul Han's The Burnout Society, Psychopolitics
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # חברת העייפות והישגיות יתר (ביונג-צ'ול האן)
 
 ## הגדרה

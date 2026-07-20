@@ -1,11 +1,16 @@
 ---
-title: "WOOP (Gabriele Oettingen)"
-domain: "למידה_והתפתחות"
-maps_to_patterns: ["דחיינות", "פער_בין_כוונה_לביצוע"]
-counterpart: "buddhism.md"
-trigger_phrases: ["איך להתחיל", "חלום", "מכשול", "תכנון"]
+title: WOOP (Gabriele Oettingen)
+domain: למידה_והתפתחות
+maps_to_patterns:
+- דחיינות
+- פער_בין_כוונה_לביצוע
+counterpart: buddhism.md
+trigger_phrases:
+- איך להתחיל
+- חלום
+- מכשול
+- תכנון
 ---
-
 # WOOP (Wish, Outcome, Obstacle, Plan)
 
 ## TheoryConcept

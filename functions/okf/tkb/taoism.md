@@ -1,22 +1,41 @@
 ---
 type: concept
 title: טבעיות, פשטות, ועשייה ללא מאמץ (Wu Wei)
-tags: [personality, taoism, laozi, zhuangzi, wu-wei, nature, authentic-self, flow, acceptance, spontaneity, non-action, surrender, ease, simplicity, balance, mindfulness, inner-peace]
+tags:
+- personality
+- taoism
+- laozi
+- zhuangzi
+- wu-wei
+- nature
+- authentic-self
+- flow
+- acceptance
+- spontaneity
+- non-action
+- surrender
+- ease
+- simplicity
+- balance
+- mindfulness
+- inner-peace
 trigger_phrases:
-  - "אני מרגיש שאני נלחם כל הזמן"
-  - "אני מנסה יותר מדי וזה לא עובד"
-  - "אני מותש ממאמץ בלתי פוסק"
-  - "הייתי רוצה פשוט להיות אני, בלי מסכות"
-  - "אני לא מצליח לשחרר שליטה"
-  - "דברים לא זורמים לי בחיים"
+- אני מרגיש שאני נלחם כל הזמן
+- אני מנסה יותר מדי וזה לא עובד
+- אני מותש ממאמץ בלתי פוסק
+- הייתי רוצה פשוט להיות אני, בלי מסכות
+- אני לא מצליח לשחרר שליטה
+- דברים לא זורמים לי בחיים
 core_conflicts:
-  - מאבק מתמיד מול זרימת החיים הטבעית, תחושת התנגדות פנימית וחיצונית.
-  - ניסיון כפוי לשלוט בתוצאות ובעצמי, המוביל לתסכול, מתח ושחיקה.
-  - התרחקות מהאני האותנטי והפשוט לטובת ציפיות חברתיות או אידיאלים חיצוניים שאינם תואמים את טבענו.
-domain: inner_self
+- מאבק מתמיד מול זרימת החיים הטבעית, תחושת התנגדות פנימית וחיצונית.
+- ניסיון כפוי לשלוט בתוצאות ובעצמי, המוביל לתסכול, מתח ושחיקה.
+- התרחקות מהאני האותנטי והפשוט לטובת ציפיות חברתיות או אידיאלים חיצוניים שאינם תואמים
+  את טבענו.
+domain: עולם_פנימי
 source: Daodejing (Laozi) and Zhuangzi
+maps_to_patterns: []
+counterpart: ''
 ---
-
 # טבעיות, פשטות, ועשייה ללא מאמץ (Wu Wei)
 
 ## הגדרה

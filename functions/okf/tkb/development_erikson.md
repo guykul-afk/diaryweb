@@ -1,11 +1,16 @@
 ---
-title: "Psychosocial Development (Erik Erikson)"
-domain: "למידה_והתפתחות"
-maps_to_patterns: ["תסמונת_המתחזה", "חיפוש_אישורים"]
-counterpart: "jung.md"
-trigger_phrases: ["משבר זהות", "שלבי חיים", "בגרות", "אמון"]
+title: Psychosocial Development (Erik Erikson)
+domain: למידה_והתפתחות
+maps_to_patterns:
+- תסמונת_המתחזה
+- חיפוש_אישורים
+counterpart: jung.md
+trigger_phrases:
+- משבר זהות
+- שלבי חיים
+- בגרות
+- אמון
 ---
-
 # Psychosocial Development
 
 ## TheoryConcept
