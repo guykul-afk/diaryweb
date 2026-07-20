@@ -350,10 +350,10 @@ const network = new vis.Network(container, { nodes: nodesDS, edges: edgesDS }, {
     enabled: true,
     solver: 'forceAtlas2Based',
     forceAtlas2Based: {
-      gravitationalConstant: -180,
-      centralGravity: 0.01,
-      springLength: 220,
-      springConstant: 0.04,
+      gravitationalConstant: -500,
+      centralGravity: 0.005,
+      springLength: 320,
+      springConstant: 0.02,
       damping: 0.4,
       avoidOverlap: 1.0,
     },
@@ -849,7 +849,7 @@ function applyGraphClustering(nodesList, mode) {
         clusterNodeProperties: {
           id: cid,
           borderWidth: 3,
-          shape: 'star',
+          shape: 'dot',
           size: 40,
           label: thinker,
           font: { size: 16, color: '#ffffff', face: 'arial' },
