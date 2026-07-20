@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: מרד נעורים, שיבוש החושים והחיפוש אחר הלא-נודע
 tags: ['personality', 'poetry', 'rimbaud', 'rebellion', 'senses', 'transformation', 'existentialism', 'self-discovery', 'crisis', 'creativity', 'nonconformity', 'individuality']
@@ -18,8 +12,10 @@ core_conflicts:
   - הפער בין המציאות המקובלת והמוסכמות החברתיות לבין השאיפה לאמת עמוקה ובלתי מצונזרת.
   - הצורך בשחרור מוחלט מכל הגבלה פנימית או חיצונית מול הפחד מאי-ודאות ומחוסר יציבות.
   - התמודדות עם כאוס פנימי ומשברים אישיים כדרך הכרחית לצמיחה, התחדשות וגילוי זהות.
-domain: inner_self
+domain: עולם_פנימי
 source: Arthur Rimbaud's A Season in Hell, Illuminations
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # מרד נעורים, שיבוש החושים והחיפוש אחר הלא-נודע (ארתור רמבו)

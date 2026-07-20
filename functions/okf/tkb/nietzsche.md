@@ -1,40 +1,15 @@
 ---
 type: concept
 title: הרצון לעוצמה ויצירת ערכים
-tags:
-- personality
-- existentialism
-- nietzsche
-- power
-- self-overcoming
-- nietzscheanism
-- self-actualization
-- master-morality
-- slave-morality
-- individualism
-- existential_courage
-- meaning_making
-- authenticity
-- freedom
-- values
-trigger_phrases:
-- אני מרגיש כבול
-- אני רוצה לממש את עצמי
-- איך אני פורץ גבולות?
-- האם הערכים שלי באמת שלי?
-- אני רוצה להיות חזק יותר
-- אני רוצה להתגבר על זה
-- אני מחפש משמעות עמוקה יותר
-- אני לא רוצה להיות כמו כולם
-core_conflicts:
-- קונפליקט בין אינדיבידואליזם לשאיפה לקונפורמיות חברתית
-- התמודדות עם סבל וכאב מתוך עמדה של קורבנות לעומת צמיחה
-- חיפוש אחר משמעות פנימית וייעוד אישי אל מול ערכים חיצוניים וכפויים.
+tags: [personality, existentialism, nietzsche, power, self-overcoming, nietzscheanism, self-actualization, master-morality, slave-morality, individualism, existential_courage, meaning_making, authenticity, freedom, values]
+trigger_phrases: ["אני מרגיש כבול", "אני רוצה לממש את עצמי", "איך אני פורץ גבולות?", "האם הערכים שלי באמת שלי?", "אני רוצה להיות חזק יותר", "אני רוצה להתגבר על זה", "אני מחפש משמעות עמוקה יותר", "אני לא רוצה להיות כמו כולם"]
+core_conflicts: [קונפליקט בין אינדיבידואליזם לשאיפה לקונפורמיות חברתית, התמודדות עם סבל וכאב מתוך עמדה של קורבנות לעומת צמיחה, חיפוש אחר משמעות פנימית וייעוד אישי אל מול ערכים חיצוניים וכפויים.]
 domain: עולם_פנימי
 source: Friedrich Nietzsche's Thus Spoke Zarathustra and Beyond Good Good and Evil
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # הרצון לעוצמה ויצירת ערכים (Friedrich Nietzsche)
 
 ## הגדרה

@@ -10,6 +10,7 @@ trigger_phrases:
 - תכנון ביצוע
 - להוציא לפועל
 ---
+
 # Implementation Intentions
 
 ## TheoryConcept

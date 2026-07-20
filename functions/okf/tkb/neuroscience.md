@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: מדעי המוח, ויסות דופמין ואיכות שינה
 tags: ['personality', 'neuroscience', 'sleep', 'dopamine', 'huberman', 'walker', 'mood', 'anxiety', 'cognition', 'motivation', 'circadian_rhythm', 'neuroplasticity', 'well-being', 'self-regulation']
@@ -13,8 +7,10 @@ core_conflicts:
   - התנגשות בין דחפים מיידיים (כמו 'קפיצות דופמין' מהירות) לבין רווחה ארוכת טווח ויציבות פנימית.
   - פער בין הרצון לתפקד היטב לבין מגבלות פיזיולוגיות הנובעות מחוסר שינה או ויסות דופמין לקוי.
   - קושי לשמור על יציבות רגשית ומערכות יחסים הרמוניות עקב תגובתיות פיזיולוגית מוגברת.
-domain: inner_self
+domain: עולם_פנימי
 source: Matthew Walker's Why We Sleep, Andrew Huberman's Podcasts on Neurobiology
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # מדעי המוח, ויסות דופמין ואיכות שינה

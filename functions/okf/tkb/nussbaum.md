@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: תבונה קוגניטיבית של רגשות ופגיעות
 tags: [personality, philosophy, nussbaum, emotions, vulnerability, ethics, חמלה, אבל, כעס, פחד, צדק חברתי, קוגניציה, ערכים, אריסטו, סטוויציזם, פריחה, פגיעות רגשית, קשרים בין אישיים, אינטימיות]
 trigger_phrases: ["אני לא מבין למה אני מרגיש ככה", "הרגשות שלי מבלבלים אותי", "אני פוחד להיפגע מאנשים", "אני מנסה להיות יותר רציונלי אבל הרגשות מציפים אותי", "אני מרגיש פגיע בקשרים שלי", "למה אני כועס על זה? זה לא הגיוני", "איך להתמודד עם סבל ואובדן?"]
 core_conflicts: [התנגשות בין רציונליות לרגשנות או אימפולסיביות, פחד מפגיעות מול הצורך העמוק בקשר וקרבה, תפיסת רגשות כחולשה לעומת מקור מידע חיוני לערכים]
-domain: inner_self
+domain: עולם_פנימי
 source: Martha Nussbaum's Upheavals of Thought, Fragility of Goodness
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # תבונה קוגניטיבית של רגשות ופגיעות (מרתה נוסבאום)

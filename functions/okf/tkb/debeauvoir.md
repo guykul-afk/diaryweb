@@ -1,38 +1,18 @@
 ---
 type: concept
 title: האתיקה של העמימות וחירות הזולת
-tags:
-- personality
-- philosophy
-- debeauvoir
-- existentialism
-- freedom
-- relationship
-- gender
-- identity
-- autonomy
-- responsibility
-- feminism
-- authenticity
-- meaning
-trigger_phrases:
-- אני מרגיש/ה תקוע/ה בתפקיד שלא מתאים לי
-- האם אני באמת חופשי/ה לעשות בחירות בחיים?
-- אני מתלבט/ת בין מה שאני רוצה למה שמצופה ממני
-- היחסים שלי מרגישים כובלים או תלויים מדי
-- אני מחפש/ת משמעות אמיתית בתוך חוסר הוודאות
+tags: [personality, philosophy, debeauvoir, existentialism, freedom, relationship, gender, identity, autonomy, responsibility, feminism, authenticity, meaning]
+trigger_phrases: ["אני מרגיש/ה תקוע/ה בתפקיד שלא מתאים לי", "האם אני באמת חופשי/ה לעשות בחירות בחיים?", "אני מתלבט/ת בין מה שאני רוצה למה שמצופה ממני", "היחסים שלי מרגישים כובלים או תלויים מדי", "אני מחפש/ת משמעות אמיתית בתוך חוסר הוודאות"]
 core_conflicts:
-- ההתמודדות עם העמימות הקיומית והצורך לבחור ערכים אישיים ואותנטיים.
-- הקונפליקט בין אוטונומיה אישית לבין תלות במערכות יחסים וציפיות חברתיות.
-- המאבק להגדרת זהות עצמית מול תפקידים מגדריים וחברתיים כופים.
-domain:
-- עולם_פנימי
-- זוגיות_ומשפחה
-- רוחניות_ומשמעות
+  - ההתמודדות עם העמימות הקיומית והצורך לבחור ערכים אישיים ואותנטיים.
+  - הקונפליקט בין אוטונומיה אישית לבין תלות במערכות יחסים וציפיות חברתיות.
+  - המאבק להגדרת זהות עצמית מול תפקידים מגדריים וחברתיים כופים.
+domain: [עולם_פנימי, זוגיות_ומשפחה, רוחניות_ומשמעות]
 source: Simone de Beauvoir's The Ethics of Ambiguity, The Second Sex
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # האתיקה של העמימות וחירות הזולת (סימון דה בובואר)
 
 ## הגדרה

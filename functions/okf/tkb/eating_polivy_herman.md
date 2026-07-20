@@ -11,6 +11,7 @@ trigger_phrases:
 - צום
 - בולמוס
 ---
+
 # Restrained Eating
 
 ## TheoryConcept

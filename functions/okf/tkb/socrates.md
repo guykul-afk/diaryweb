@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: חקירה עצמית והדיאלקטיקה הסוקרטית
 tags: [personality, socrates, self-knowledge, relationships, philosophy, critical_thinking, ethics, moral_dilemmas, truth, wisdom, meaning, values]
 trigger_phrases: ["אני מרגיש מבולבל לגבי מה נכון לעשות", "אני מטיל ספק באמונות שהיו לי תמיד", "אני רוצה להבין טוב יותר את הערכים שלי", "האם אני חי חיים בעלי משמעות?", "אני מרגיש שאני לא באמת מכיר את עצמי"]
 core_conflicts: [חוסר בהירות לגבי ערכים ומוסר אישי, הרגשה של חיים שטחיים או חסרי משמעות, קונפליקט פנימי בין אמונות קיימות לבין רצון לאמת עמוקה יותר]
-domain: inner_self
+domain: עולם_פנימי
 source: Plato's Socratic Dialogues
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # חקירה עצמית והדיאלקטיקה הסוקרטית

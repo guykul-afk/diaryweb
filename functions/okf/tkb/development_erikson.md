@@ -11,6 +11,7 @@ trigger_phrases:
 - בגרות
 - אמון
 ---
+
 # Psychosocial Development
 
 ## TheoryConcept

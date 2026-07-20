@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: בדידות מרצון, מיקרוסקופיה של הנפש ומוות (אמילי דיקינסון)
 tags: ['personality', 'poetry', 'dickinson', 'solitude', 'introversion', 'death', 'self_reflection', 'existentialism', 'inner_world', 'creativity']
 trigger_phrases: ['מרגיש/ה בודד/ה אבל דווקא נהנה/ית מזה', 'זקוק/ה למרחב פרטי כדי לחשוב', 'מוצא/ת משמעות בדברים קטנים ויומיומיים', 'חושש/ת מהמוות או מהסופיות', 'מתקשה להתחבר עם אחרים ברמה עמוקה', 'מרגיש/ה שהעולם הפנימי שלי עשיר יותר מהחיצוני']
 core_conflicts: ['התמודדות עם ציפיות חברתיות לקשרים אינטנסיביים מול צורך בבדידות', 'הפחד מהמוות והסופיות מול השלמה והבנה שלו כחלק מהקיום', 'תחושת בדידות וחוסר הבנה מול גילוי עולם פנימי עשיר ומשמעותי']
-domain: inner_self
+domain: עולם_פנימי
 source: Emily Dickinson's Complete Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # בדידות מרצון, מיקרוסקופיה של הנפש ומוות (אמילי דיקינסון)

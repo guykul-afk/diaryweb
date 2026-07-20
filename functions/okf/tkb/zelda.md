@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: שלום פנימי, בדידות רוחנית וחמלה קוסמית
 tags: ['personality', 'poetry', 'zelda', 'spirituality', 'compassion', 'peace', 'שירה', 'קבלה', 'התמודדות עם כאב', 'מוות']
@@ -18,8 +12,10 @@ core_conflicts:
   - התמודדות עם בדידות: במקום לחוש נטוש, למצוא בבדידות מרחב למפגש פנימי ורוחני.
   - חרדה מפני כאב ומוות: קבלה ומתן משמעות לסופיות החיים ולסבל.
   - חיפוש אחר משמעות ואותנטיות: התמודדות עם זיוף חברתי וחיבור לגרעין הנשמתי הייחודי.
-domain: inner_self
+domain: עולם_פנימי
 source: Zelda's Pen Selection, The Invisible Carmel, Selected Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # שלום פנימי, בדידות רוחנית וחמלה קוסמית (זלדה)

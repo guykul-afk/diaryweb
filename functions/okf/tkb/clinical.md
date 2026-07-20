@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: מדדים בריאותיים, תפקוד ופסיכיאטריה קלינית
 tags: [personality, clinical, symptoms, dsm-5, health, חרדה, דיכאון, סטרס, שינה, תפקוד, פסיכוסומטי, ויסות רגשי, בריאות הנפש, בריאות גופנית, איכות חיים]
@@ -19,8 +13,10 @@ core_conflicts:
   - חוסר הבנה לקשר הדו-כיווני בין תסמינים פיזיים למצב נפשי ורגשי.
   - פגיעה בתפקוד היומיומי ובאיכות החיים עקב סטרס ותסמינים רפואיים/נפשיים לא מטופלים.
   - קושי בוויסות רגשי והתנהגותי הנובע מחוסר איזון פיזיולוגי ונפשי.
-domain: inner_self
+domain: עולם_פנימי
 source: DSM-5-TR / Clinical Psychiatry
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # מדדים בריאותיים, תפקוד ופסיכיאטריה קלינית

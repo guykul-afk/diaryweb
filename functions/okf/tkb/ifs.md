@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: מערכות משפחה פנימיות ועבודת חלקים
 tags: ['personality', 'psychology', 'ifs', 'parts', 'self', 'subpersonalities', 'internal conflict', 'self-compassion', 'trauma', 'emotional regulation']
@@ -19,8 +13,10 @@ core_conflicts:
   - התמודדות עם קונפליקטים פנימיים והתנגשויות בין צרכים ורצונות סותרים.
   - ריפוי פגיעות עבר ורגשות מודחקים הנושאים כאב, בושה או חרדה.
   - פיתוח מנהיגות עצמית והפחתת השליטה של דפוסי הגנה קשוחים או הרסניים.
-domain: inner_self
+domain: עולם_פנימי
 source: Richard Schwartz's Internal Family Systems Therapy
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # מערכות משפחה פנימיות ועבודת חלקים (IFS)

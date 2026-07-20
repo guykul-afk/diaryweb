@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: שירת החול, האהבה והזמן האישי
 tags: [personality, poetry, amichai, relationships, everyday-life, memory, israel_poetry, existentialism, nostalgia, inner_conflict, acceptance, meaning, self_discovery]
 trigger_phrases: ["אני מרגיש שאני מפספס את הרגעים הקטנים", "קשה לי לשחרר את העבר", "האהבה שלי מרגישה שבירה או חולפת", "אני מנסה למצוא משמעות בדברים פשוטים", "אני מרגיש סתירות פנימיות רבות בתוכי"]
 core_conflicts: ["המאבק למצוא משמעות עמוקה בתוך השגרה והחול", "התמודדות עם השפעת העבר על ההווה והצורך בפיוס", "קבלת הארעיות והשבריריות של אהבה וקשרים אנושיים"]
-domain: inner_self
+domain: עולם_פנימי
 source: Yehuda Amichai's Open Closed Open, Poems of Jerusalem and Love
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # שירת החול, האהבה והזמן האישי (יהודה עמיחי)

@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: מרד, זעקה ואותנטיות רדיקלית
 tags: [personality, society, ginsberg, beat_generation, authenticity, counterculture, emotional_expression, individualism, anti_establishment, spiritual_quest, suffering, alienation, social_criticism, rebellion, free_expression, self_acceptance]
 trigger_phrases: ["אני מרגיש חנוק/מוגבל/מדוכא על ידי הציפיות החברתיות", "אני רוצה לבטא את עצמי באמת, אבל חושש משיפוט", "אני מרגיש מנוכר מהסביבה או מהחברה", "אני מחפש משמעות עמוקה יותר מעבר לחומרנות", "אני חווה כאב או שיגעון שאין להם מקום בעולם", "אני מרגיש שאני צריך להסתיר חלקים מעצמי"]
 core_conflicts: [הצורך בביטוי עצמי אותנטי מול הפחד מדחייה וקונפורמיות, השאיפה למשמעות רוחנית מול הלחץ של חברה חומרנית ומנוכרת, התמודדות עם כאב וטראומה אישיים בתוך תרבות של הדחקה]
-domain: inner_self, meaning, relationships
+domain: עולם_פנימי, רוחניות_ומשמעות, זוגיות_ומשפחה
 source: Allen Ginsberg's Howl and Other Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # מרד, זעקה ואותנטיות רדיקלית (Allen Ginsberg)

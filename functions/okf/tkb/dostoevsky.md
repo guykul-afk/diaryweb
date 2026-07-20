@@ -1,36 +1,23 @@
 ---
 type: concept
 title: פסיכולוגיית המעמקים, רגשות אשם והאדם מן המרתף
-tags:
-- personality
-- literature
-- dostoevsky
-- depth-psychology
-- guilt
-- redemption
-- existentialism
-- suffering
-- self-sabotage
-- free-will
-- morality
-- spirituality
-- russian-literature
+tags: ['personality', 'literature', 'dostoevsky', 'depth-psychology', 'guilt', 'redemption', 'existentialism', 'suffering', 'self-sabotage', 'free-will', 'morality', 'spirituality', 'russian-literature']
 trigger_phrases:
-- אני מרגיש שאני פוגע בעצמי שוב ושוב, למרות שאני יודע שזה רע לי.
-- אני מוצף באשמה או בושה עמוקה על דברים שעשיתי או שאני מרגיש.
-- נדמה לי שאני מחפש סבל, או מוצא בו איזו 'הצדקה' פנימית.
-- אני נאבק עם בחירות מוסריות קשות, ומרגיש את כובד האחריות.
-- הקשרים שלי קיצוניים - פעם אהבה טוטאלית, פעם שנאה.
+  - "אני מרגיש שאני פוגע בעצמי שוב ושוב, למרות שאני יודע שזה רע לי."
+  - "אני מוצף באשמה או בושה עמוקה על דברים שעשיתי או שאני מרגיש."
+  - "נדמה לי שאני מחפש סבל, או מוצא בו איזו 'הצדקה' פנימית."
+  - "אני נאבק עם בחירות מוסריות קשות, ומרגיש את כובד האחריות."
+  - "הקשרים שלי קיצוניים - פעם אהבה טוטאלית, פעם שנאה."
 core_conflicts:
-- המאבק הפנימי בין הרצון לחופש מוחלט ואינדיבידואליות לבין הצורך בגאולה מוסרית וקבלה.
-- הקושי להתמודד עם דחפים הרסניים ואשמה עמוקה, ולמצוא דרך לסליחה וריפוי עצמי.
-- המתח בין קבלת הסבל כחלק בלתי נפרד מהקיום לבין השאיפה לאושר ושלווה.
+  - המאבק הפנימי בין הרצון לחופש מוחלט ואינדיבידואליות לבין הצורך בגאולה מוסרית וקבלה.
+  - הקושי להתמודד עם דחפים הרסניים ואשמה עמוקה, ולמצוא דרך לסליחה וריפוי עצמי.
+  - המתח בין קבלת הסבל כחלק בלתי נפרד מהקיום לבין השאיפה לאושר ושלווה.
 domain: עולם_פנימי
-source: Fyodor Dostoevsky's Crime and Punishment, Notes from Underground, The Brothers
-  Karamazov
+source: Fyodor Dostoevsky's Crime and Punishment, Notes from Underground, The Brothers Karamazov
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # פסיכולוגיית המעמקים, רגשות אשם והאדם מן המרתף (פיודור דוסטויבסקי)
 
 ## הגדרה

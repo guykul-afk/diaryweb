@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: חברות ומידות טובות
 tags: [relationships, aristotle, friendship, philosophy, virtue, אתיקה, אושר, אודאימוניה, פילוסופיה יוונית, קשרים בין אישיים, פיתוח אישיות, מוסר, Eudaimonia, Philia]
@@ -18,8 +12,10 @@ core_conflicts:
   - המתח בין כמיהה לקשרים עמוקים לבין ההשקעה בקשרים שטחיים מבוססי תועלת או הנאה.
   - הקושי לזהות ולהבחין בין חברות אמיתית מבוססת אופי לבין קשרים מזדמנים.
   - התסכול מחוסר היכולת לממש פוטנציאל אישי ומוסרי ללא סביבה חברתית תומכת ומאתגרת.
-domain: relationships
+domain: זוגיות_ומשפחה
 source: Aristotle's Nicomachean Ethics
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # חברות ומידות טובות (אריסטו)

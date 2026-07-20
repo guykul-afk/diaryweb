@@ -11,6 +11,7 @@ trigger_phrases:
 - מכשול
 - תכנון
 ---
+
 # WOOP (Wish, Outcome, Obstacle, Plan)
 
 ## TheoryConcept

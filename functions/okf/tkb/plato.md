@@ -1,40 +1,15 @@
 ---
 type: concept
 title: המבנה המשולש של הנפש ואהבה אפלטונית
-tags:
-- personality
-- relationships
-- plato
-- philosophy
-- soul
-- self-control
-- ethics
-- desire
-- reason
-- emotion
-- idealism
-- self-improvement
-- internal-conflict
-- virtue
-- eros
-- spiritual-growth
-trigger_phrases:
-- אני מרגיש קרוע בין מה שבא לי למה שאני יודע שנכון
-- קשה לי לשלוט בדחפים שלי
-- אני מחפש משמעות עמוקה יותר במערכות היחסים שלי
-- הרגשות שלי משתלטים עליי
-- איך אני יכול להיות אדם טוב יותר?
-- תסכול מול רצונות גשמיים
-- רוצה להתחבר למשהו גדול ממני
-core_conflicts:
-- המאבק הפנימי בין הרציונל, הרגש והיצר
-- הניגוד בין תשוקה חומרית לאהבה רוחנית ומוסרית
-- החיפוש אחר איזון פנימי וחיים מודרכים על ידי תבונה ואמת
+tags: [personality, relationships, plato, philosophy, soul, self-control, ethics, desire, reason, emotion, idealism, self-improvement, internal-conflict, virtue, eros, spiritual-growth]
+trigger_phrases: ["אני מרגיש קרוע בין מה שבא לי למה שאני יודע שנכון", "קשה לי לשלוט בדחפים שלי", "אני מחפש משמעות עמוקה יותר במערכות היחסים שלי", "הרגשות שלי משתלטים עליי", "איך אני יכול להיות אדם טוב יותר?", "תסכול מול רצונות גשמיים", "רוצה להתחבר למשהו גדול ממני"]
+core_conflicts: ["המאבק הפנימי בין הרציונל, הרגש והיצר", "הניגוד בין תשוקה חומרית לאהבה רוחנית ומוסרית", "החיפוש אחר איזון פנימי וחיים מודרכים על ידי תבונה ואמת"]
 domain: עולם_פנימי
 source: Plato's The Republic and The Symposium
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # המבנה המשולש של הנפש ואהבה אפלטונית (Plato)
 
 ## הגדרה

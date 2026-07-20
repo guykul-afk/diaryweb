@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: חינוך אסתטי ויצר המשחק
 tags: [personality, aesthetics, schiller, freedom, play, creativity, balance, humanism, art, self-actualization, philosophy, joy, expression]
@@ -13,8 +7,10 @@ core_conflicts:
   - המתח בין הדחפים החומריים (היצר החושי) לבין הדרישות השכליות והרציונליות.
   - תחושת כבילות וחוסר חופש הנובעת מהכרח או חוקים נוקשים, המונעת הגשמה עצמית מלאה.
   - חוסר הרמוניה פנימית וקושי לאזן בין צרכים גופניים ורוחניים.
-domain: inner_self
+domain: עולם_פנימי
 source: Friedrich Schiller's Letters on the Aesthetic Education of Man
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # חינוך אסתטי ויצר המשחק (Friedrich Schiller)

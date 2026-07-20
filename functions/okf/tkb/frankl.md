@@ -1,34 +1,15 @@
 ---
 type: concept
 title: מציאת משמעות ולוגותרפיה
-tags:
-- personality
-- existentialism
-- frankl
-- meaning
-- resilience
-- responsibility
-- suffering
-- purpose
-- values
-- self-transcendence
-- logotherapy
-trigger_phrases:
-- אני מרגיש ריקנות
-- החיים שלי חסרי מטרה
-- איך אני יכול למצוא משמעות בסבל הזה?
-- אני מחפש את התכלית שלי
-- יש לי הכל אבל אני עדיין לא מסופק
-- אני מרגיש חוסר אונים מול הנסיבות
-core_conflicts:
-- התמודדות עם ריקנות קיומית וחוסר תכלית
-- השאיפה למשמעות מול סבל בלתי נמנע
-- חוסר יכולת למצוא מנוע פנימי מול פיתויים חיצוניים
+tags: [personality, existentialism, frankl, meaning, resilience, responsibility, suffering, purpose, values, self-transcendence, logotherapy]
+trigger_phrases: ["אני מרגיש ריקנות", "החיים שלי חסרי מטרה", "איך אני יכול למצוא משמעות בסבל הזה?", "אני מחפש את התכלית שלי", "יש לי הכל אבל אני עדיין לא מסופק", "אני מרגיש חוסר אונים מול הנסיבות"]
+core_conflicts: [התמודדות עם ריקנות קיומית וחוסר תכלית, השאיפה למשמעות מול סבל בלתי נמנע, חוסר יכולת למצוא מנוע פנימי מול פיתויים חיצוניים]
 domain: רוחניות_ומשמעות
 source: Viktor Frankl's Man's Search for Meaning
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # מציאת משמעות ולוגותרפיה (Viktor Frankl)
 
 ## הגדרה

@@ -24,7 +24,7 @@ async function main() {
     await signInAnonymously(auth);
     console.log("Authenticated successfully!");
     
-    const uid = 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
+    const uid = process.env.VITE_FIREBASE_UID || 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
     const entriesRef = collection(db, `users/${uid}/entries`);
     const q = query(entriesRef, orderBy('timestamp', 'desc'), limit(10));
     console.log("Fetching entries...");

@@ -1,40 +1,18 @@
 ---
 type: concept
 title: Attachment Theory in Adult Relationships
-tags:
-- interpersonal
-- relationships
-- attachment_theory
-- psychology
-- adult_relationships
-- intimacy
-- conflict
-- childhood_patterns
-- emotional_regulation
-- secure_attachment
-- anxious_attachment
-- avoidant_attachment
-- disorganized_attachment
-- self_awareness
-- communication
-- vulnerability
-- trust
-trigger_phrases:
-- אני מרגיש/ה חוסר ביטחון בקשר שלי
-- אני תמיד חושש/ת שינטשו אותי
-- קשה לי עם קירבה ואני מתרחק/ת כשהדברים נהיים רציניים
-- היחסים שלי מרגישים כמו רכבת הרים של התקרבות והתרחקות
-- אני לא מצליח/ה לבקש עזרה או תמיכה מבן/בת הזוג
+tags: [interpersonal, relationships, attachment_theory, psychology, adult_relationships, intimacy, conflict, childhood_patterns, emotional_regulation, secure_attachment, anxious_attachment, avoidant_attachment, disorganized_attachment, self_awareness, communication, vulnerability, trust]
+trigger_phrases: ["אני מרגיש/ה חוסר ביטחון בקשר שלי", "אני תמיד חושש/ת שינטשו אותי", "קשה לי עם קירבה ואני מתרחק/ת כשהדברים נהיים רציניים", "היחסים שלי מרגישים כמו רכבת הרים של התקרבות והתרחקות", "אני לא מצליח/ה לבקש עזרה או תמיכה מבן/בת הזוג"]
 core_conflicts:
-- הצורך העמוק באינטימיות וקרבה מול הפחד מדחייה, נטישה או פגיעה.
-- השאיפה לעצמאות ואוטונומיה מול החשש מבדידות או תלות מוגזמת.
-- הקושי לבטוח באחר וביכולתו להיות זמין רגשית, או לחלופין לבטוח בעצמי כראוי לאהבה.
+  - הצורך העמוק באינטימיות וקרבה מול הפחד מדחייה, נטישה או פגיעה.
+  - השאיפה לעצמאות ואוטונומיה מול החשש מבדידות או תלות מוגזמת.
+  - הקושי לבטוח באחר וביכולתו להיות זמין רגשית, או לחלופין לבטוח בעצמי כראוי לאהבה.
 domain: זוגיות_ומשפחה
-source: Bowlby, J. (1982). Attachment and loss; Hazan, C., & Shaver, P. (1987). Romantic
-  love as an attachment process. Journal of Personality and Social Psychology.
+source: Bowlby, J. (1982). Attachment and loss; Hazan, C., & Shaver, P. (1987). Romantic love as an attachment process. Journal of Personality and Social Psychology.
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # תיאוריית ההיקשרות במערכות יחסים בוגרות (Attachment Theory)
 
 ## הגדרה

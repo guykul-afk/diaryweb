@@ -10,6 +10,7 @@ trigger_phrases:
 - להדחיק
 - שליטה עצמית
 ---
+
 # Emotion Regulation (Process Model)
 
 ## TheoryConcept

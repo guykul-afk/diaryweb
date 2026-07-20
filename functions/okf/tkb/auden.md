@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: עידן החרדה, אבל אישי והתפכחות חברתית
 tags: ['personality', 'poetry', 'auden', 'anxiety', 'grief', 'disillusionment', 'מודרניות', 'קיום', 'בדידות', 'אובדן', 'אחריות אישית', 'אכזבה', 'משמעות']
@@ -13,8 +7,10 @@ core_conflicts:
   - המתח בין הצורך בקשר ואהבה לבין הפחד מפגיעה ואובדן חופש.
   - ההתמודדות עם חרדה קיומית ואובדן משמעות מול דרישה לאחריות אישית.
   - האכזבה מאשליות חברתיות ופוליטיות מול הצורך למצוא אמת אישית.
-domain: inner_self
+domain: עולם_פנימי
 source: W.H. Auden's The Age of Anxiety, Funeral Blues, Selected Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # עידן החרדה, אבל אישי והתפכחות חברתית (ו.ה. אודן)

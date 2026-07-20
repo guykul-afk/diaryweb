@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: פירמידת הצרכים ומימוש עצמי
 tags: [personality, humanism, maslow, motivation, needs, self-actualization, hierarchy, growth, relationships, inner_self, fulfillment, well-being, psychology, development]
@@ -18,8 +12,10 @@ core_conflicts:
   - המתח בין צרכים בסיסיים (קיום, ביטחון, שייכות) לבין שאיפות גבוהות יותר (הערכה, מימוש עצמי, משמעות).
   - הפער בין חיפוש הערכה ואישור חיצוניים לבין פיתוח הערכה וכבוד עצמי פנימיים.
   - הקונפליקט בין "אהבת חסר" המונעת מפחד ומחסור לבין "אהבת הוויה" המבוססת על שפע ועצמאות.
-domain: inner_self
+domain: עולם_פנימי
 source: Abraham Maslow's Motivation and Personality
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # פירמידת הצרכים ומימוש עצמי (Abraham Maslow)

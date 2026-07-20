@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: קוביזם, פרספקטיבות מרובות ותקופות רגשיות
 tags: ['personality', 'art', 'picasso', 'cubism', 'perspective', 'emotional-states', 'self-expression', 'change', 'emotional-cycles', 'creativity', 'destruction', 'self-discovery', 'inner-conflict', 'fluidity', 'holistic-view']
@@ -18,8 +12,10 @@ core_conflicts:
   - קיבעון מחשבתי והיצמדות לפרספקטיבה אחת
   - קושי לקבל ולבטא את מנעד הרגשות המשתנה
   - פחד משינוי ומהרס של הקיים לצורך צמיחה
-domain: inner_self
+domain: עולם_פנימי
 source: Pablo Picasso's Selected Writings and Statements
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # קוביזם, פרספקטיבות מרובות ותקופות רגשיות (פבלו פיקאסו)

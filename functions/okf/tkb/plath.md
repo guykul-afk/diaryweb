@@ -1,37 +1,18 @@
 ---
 type: concept
 title: שירה וידויית, דיכאון קליני וקונפליקט תפקידים
-tags:
-- personality
-- poetry
-- plath
-- confessional
-- depression
-- roles
-- anxiety
-- self-expression
-- identity
-- feminism
-- mental health
-- creativity
-- vulnerability
-- internal conflict
-- perfectionism
-trigger_phrases:
-- אני מרגיש/ה לכוד/ה
-- אני לא מצליח/ה למצוא את הקול שלי
-- הרגשות שלי חונקים אותי מבפנים
-- אני נקרע/ת בין מה שמצפים ממני לבין מי שאני באמת
-- העולם נראה אפור וחסר חיים
+tags: ['personality', 'poetry', 'plath', 'confessional', 'depression', 'roles', 'anxiety', 'self-expression', 'identity', 'feminism', 'mental health', 'creativity', 'vulnerability', 'internal conflict', 'perfectionism']
+trigger_phrases: ["אני מרגיש/ה לכוד/ה", "אני לא מצליח/ה למצוא את הקול שלי", "הרגשות שלי חונקים אותי מבפנים", "אני נקרע/ת בין מה שמצפים ממני לבין מי שאני באמת", "העולם נראה אפור וחסר חיים"]
 core_conflicts:
-- המתח בין שאיפה עזה להגשמה אישית ויצירתית לבין ציפיות חברתיות ותפקידים מגדריים.
-- התמודדות עם דיכאון חמור וקשיי התחברות לעולם החיצוני, הנתפס כזר ומאיים.
-- הקונפליקט הפנימי בין כמיהה לאישור ואהבה לבין זעם על אובדן החופש והזהות העצמאית.
+  - המתח בין שאיפה עזה להגשמה אישית ויצירתית לבין ציפיות חברתיות ותפקידים מגדריים.
+  - התמודדות עם דיכאון חמור וקשיי התחברות לעולם החיצוני, הנתפס כזר ומאיים.
+  - הקונפליקט הפנימי בין כמיהה לאישור ואהבה לבין זעם על אובדן החופש והזהות העצמאית.
 domain: עולם_פנימי
 source: Sylvia Plath's Ariel, The Bell Jar, Journals
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # שירה וידויית, דיכאון קליני וקונפליקט תפקידים (סילביה פלאת')
 
 ## הגדרה

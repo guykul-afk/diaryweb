@@ -1,36 +1,18 @@
 ---
 type: concept
 title: פילוסופיית הדיאלוג ויחסי אני-אתה
-tags:
-- relationships
-- existentialism
-- buber
-- communication
-- connection
-- authenticity
-- self-discovery
-- presence
-- meaning
-- spirituality
-- empathy
-- human-to-human
-- intersubjectivity
-trigger_phrases:
-- אני מרגיש מנוכר לאנשים
-- השיחות שלי שטחיות ולא מספקות
-- קשה לי להתחבר באמת לאחרים
-- אני מרגיש שאני רק מנצל אנשים או מנוצל
-- מחפש משמעות עמוקה יותר בקשרים שלי
-- רוצה לחוות קרבה ואותנטיות רבה יותר
+tags: [relationships, existentialism, buber, communication, connection, authenticity, self-discovery, presence, meaning, spirituality, empathy, human-to-human, intersubjectivity]
+trigger_phrases: ["אני מרגיש מנוכר לאנשים", "השיחות שלי שטחיות ולא מספקות", "קשה לי להתחבר באמת לאחרים", "אני מרגיש שאני רק מנצל אנשים או מנוצל", "מחפש משמעות עמוקה יותר בקשרים שלי", "רוצה לחוות קרבה ואותנטיות רבה יותר"]
 core_conflicts:
-- התמודדות עם תחושת ניכור, בדידות ושטחיות במערכות יחסים, למרות קיומם של קשרים רבים.
-- חיפוש אחר משמעות עמוקה וחיבור אותנטי בעולם המתמקד בתועלתנות ובהישגיות.
-- קונפליקט בין הרצון לקרבה אינטימית לבין החשש מפגיעות, איבוד שליטה או שיפוטיות ביחסים.
+  - התמודדות עם תחושת ניכור, בדידות ושטחיות במערכות יחסים, למרות קיומם של קשרים רבים.
+  - חיפוש אחר משמעות עמוקה וחיבור אותנטי בעולם המתמקד בתועלתנות ובהישגיות.
+  - קונפליקט בין הרצון לקרבה אינטימית לבין החשש מפגיעות, איבוד שליטה או שיפוטיות ביחסים.
 domain: זוגיות_ומשפחה
 source: Martin Buber's I and Thou
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # פילוסופיית הדיאלוג ויחסי אני-אתה (Martin Buber)
 
 ## הגדרה

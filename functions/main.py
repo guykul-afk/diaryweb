@@ -1722,8 +1722,8 @@ Only suggest merges/clusters that are highly relevant. Do not force them if not 
 @scheduler_fn.on_schedule(schedule="59 23 * * *")
 def scheduled_sync_isa_data(event: scheduler_fn.ScheduledEvent) -> None:
     logger.info("Starting scheduled sync of ISA data...")
-    isa_uid = "yxF7bHYMpWTayDjTfoYPEyfVTVd2"
-    diary_uid = "K9j4Nx0WK7NKYJs6iDUz35LXFai1"
+    isa_uid = os.getenv("ISA_UID", "yxF7bHYMpWTayDjTfoYPEyfVTVd2")
+    diary_uid = os.getenv("DEFAULT_UID", "K9j4Nx0WK7NKYJs6iDUz35LXFai1")
     
     url = f"https://firestore.googleapis.com/v1/projects/lifetracker-guy-2026/databases/(default)/documents/users/{isa_uid}"
     try:

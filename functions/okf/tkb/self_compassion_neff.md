@@ -10,6 +10,7 @@ trigger_phrases:
 - הייתי צריך
 - כישלון
 ---
+
 # Self-Compassion
 
 ## TheoryConcept

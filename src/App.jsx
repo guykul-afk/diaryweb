@@ -11,7 +11,7 @@ import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 
-const FIREBASE_UID_FALLBACK = 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
+const FIREBASE_UID_FALLBACK = import.meta.env.VITE_FIREBASE_UID || 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
 
 function PasscodeGate({ onVerified }) {
   const [passcode, setPasscode] = useState('');

@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: כוחה של פגיעות והתמודדות עם בושה
 tags: [relationships, psychology, brene_brown, vulnerability, courage, shame, empathy, authenticity, self_worth, communication, emotional_intelligence, personal_growth, imperfection]
 trigger_phrases: ["אני חושש/ת שישפטו אותי", "קשה לי לבקש עזרה", "אני מתבייש/ת במי שאני", "אני מרגיש/ה לא ראוי/ה לאהבה", "אני מנסה להיות מושלם/ת כל הזמן", "אני מסתיר/ה את עצמי האמיתי/ת", "אני מפחד/ת להיפגע"]
 core_conflicts: ["הפחד מדחייה וביקורת מול הרצון העמוק לקשר, שייכות ואהבה", "השאיפה לפרפקציוניזם ושלמות מול הצורך בקבלה עצמית ואימוץ חוסר השלמות", "תחושת הבושה וה'לא מספיק טוב' מול השאיפה לאותנטיות וערך עצמי פנימי"]
-domain: inner_self
+domain: עולם_פנימי
 source: Brené Brown's Daring Greatly and The Gifts of Imperfection
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # כוחה של פגיעות והתמודדות עם בושה (Brené Brown)

@@ -1,38 +1,18 @@
 ---
 type: concept
 title: הסער והפרץ והשאיפה הבלתי פוסקת
-tags:
-- personality
-- poetry
-- goethe
-- romanticism
-- striving
-- emotion
-- reason
-- nature
-- self-discovery
-- meaning
-- struggle
-- authenticity
-- existentialism
-- inner_conflict
-trigger_phrases:
-- שאיפה אינסופית
-- קונפליקט פנימי
-- רגשות סוערים
-- חיפוש משמעות
-- חוסר שקט
-- דרמה פנימית
-- מאבק תמידי
+tags: [personality, poetry, goethe, romanticism, striving, emotion, reason, nature, self-discovery, meaning, struggle, authenticity, existentialism, inner_conflict]
+trigger_phrases: ["שאיפה אינסופית", "קונפליקט פנימי", "רגשות סוערים", "חיפוש משמעות", "חוסר שקט", "דרמה פנימית", "מאבק תמידי"]
 core_conflicts:
-- המתח התמידי בין הדחף לביטוי רגשי עוצמתי לבין הצורך בהיגיון ובשליטה עצמית.
-- חוסר שקט פנימי ושאיפה בלתי פוסקת להגשמה, ידע ומשמעות, מול מגבלות הקיום האנושי.
-- הקונפליקט בין עצמאות אישית ומרדנות לבין הכוחות החיצוניים או הסמכות.
+  - המתח התמידי בין הדחף לביטוי רגשי עוצמתי לבין הצורך בהיגיון ובשליטה עצמית.
+  - חוסר שקט פנימי ושאיפה בלתי פוסקת להגשמה, ידע ומשמעות, מול מגבלות הקיום האנושי.
+  - הקונפליקט בין עצמאות אישית ומרדנות לבין הכוחות החיצוניים או הסמכות.
 domain: עולם_פנימי
 source: Johann Wolfgang von Goethe's Faust
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # הסער והפרץ והשאיפה הבלתי פוסקת (Johann Wolfgang von Goethe)
 
 ## הגדרה

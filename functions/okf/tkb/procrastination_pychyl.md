@@ -10,6 +10,7 @@ trigger_phrases:
 - אין לי כוח עכשיו
 - דחיינות
 ---
+
 # Procrastination
 
 ## TheoryConcept

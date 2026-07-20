@@ -83,7 +83,7 @@ def extract_from_file(file_path: str):
         return local_graph
 
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         prompt = f"""
         Analyze the following psychological/philosophical document.
         Extract the key TheoryConcepts, Techniques, Questions, and Quotes as nodes.

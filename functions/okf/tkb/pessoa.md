@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: פיצול האני, ייאוש קיומי ואדישות פילוסופית
 tags: ['personality', 'poetry', 'pessoa', 'fragmentation', 'existential-dread', 'apathy', 'identity', 'self-discovery', 'meaninglessness', 'inner-world', 'detachment', 'disquiet', 'existentialism']
@@ -18,8 +12,10 @@ core_conflicts:
   - התמודדות עם פיצול פנימי עמוק וחוסר אחדות של העצמי.
   - חיפוש משמעות וערך בעולם הנתפס כחסר טעם ומוביל לייאוש קיומי.
   - מתח בין עולם פנימי עשיר של מחשבות וחלומות למציאות חיצונית מאכזבת ולא מספקת.
-domain: inner_self
+domain: עולם_פנימי
 source: Fernando Pessoa's The Book of Disquiet, Selected Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # פיצול האני, ייאוש קיומי ואדישות פילוסופית (פרננדו פסואה)

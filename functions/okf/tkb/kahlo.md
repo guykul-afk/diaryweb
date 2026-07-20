@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: חוסן נפשי, כאב פיזי ופיענוח זהות עצמית
 tags: ['personality', 'art', 'kahlo', 'resilience', 'physical-pain', 'identity', 'self-expression', 'trauma', 'art-therapy', 'suffering', 'body-image', 'autonomy', 'feminism']
@@ -13,8 +7,10 @@ core_conflicts:
   - קבלה מול התנגדות לכאב פיזי/נפשי כרוני.
   - שמירה על זהות עצמית מול השפעת מערכות יחסים מורכבות או הרסניות.
   - מציאת משמעות וחיוניות בחיים למרות סבל מתמשך.
-domain: inner_self
+domain: עולם_פנימי
 source: Frida Kahlo's Diary, Selected Letters
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # חוסן נפשי, כאב פיזי ופיענוח זהות עצמית (פרידה קאלו)

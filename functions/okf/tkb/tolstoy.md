@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: משבר קיומי, מוסריות נוקשה וחיפוש אחר פשטות
 tags: ['personality', 'literature', 'tolstoy', 'existential-crisis', 'morality', 'simplicity', 'meaning', 'authenticity', 'society', 'values', 'spiritual', 'confession']
@@ -19,8 +13,10 @@ core_conflicts:
   - התנגשות בין הצלחה חומרית/חברתית לבין תחושת ריקנות קיומית פנימית.
   - מתח בין ציפיות חברתיות ומוסכמות לבין חיפוש אחר אותנטיות, משמעות וערכים אישיים.
   - הצורך במוסריות עמוקה ובלתי מתפשרת מול הפשרות והשקרים של העולם המודרני.
-domain: meaning
+domain: רוחניות_ומשמעות
 source: Leo Tolstoy's A Confession, War and Peace, Anna Karenina
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # משבר קיומי, מוסריות נוקשה וחיפוש אחר פשטות (לב טולסטוי)

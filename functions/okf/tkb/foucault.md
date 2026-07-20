@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: טכנולוגיות של העצמי ופיקוח עצמי
 tags: [personality, philosophy, foucault, self-surveillance, power, self-care, autonomy, ethics, discipline, power_dynamics, subjectivity, freedom]
@@ -18,8 +12,10 @@ core_conflicts:
   - המתח בין החופש האישי לבין ההפנמה של נורמות וציפיות חברתיות (פיקוח עצמי).
   - התמודדות עם תחושה שהאישיות היא תכתיב חיצוני, אל מול השאיפה לעיצוב עצמי אקטיבי.
   - הקונפליקט בין "ידע את עצמך" כחקירה פסיכולוגית, לבין "דאגה לעצמי" כפרקטיקה אתית מתמשכת.
-domain: inner_self
+domain: עולם_פנימי
 source: Michel Foucault's Discipline and Punish, The Care of the Self
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # טכנולוגיות של העצמי ופיקוח עצמי (מישל פוקו)

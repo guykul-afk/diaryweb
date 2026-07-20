@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: רן (Ren) וחמש מערכות היחסים
 tags: [relationships, confucius, virtue, society, harmony, ethics, philosophy, interpersonal, hierarchy, family, East_Asian, duty, respect, reciprocity, moral_development, filial_piety]
@@ -18,8 +12,10 @@ core_conflicts:
   - המתח בין חירות הפרט לבין המחויבויות החברתיות והמשפחתיות.
   - בלבול או תסכול מחוסר בהירות לגבי תפקידים וציפיות במערכות יחסים.
   - קושי ביצירת הרמוניה ושיתוף פעולה בסביבה חברתית או משפחתית.
-domain: relationships
+domain: זוגיות_ומשפחה
 source: The Analects of Confucius
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # רן וחמש מערכות היחסים (קונפוציוס)

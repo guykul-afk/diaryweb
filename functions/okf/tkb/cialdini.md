@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: Cialdini's Six Principles of Persuasion
 tags: [persuasion, influence, psychology, social_influence, decision_making, marketing, communication, ethics, behavioral_economics, reciprocity, consistency, social_proof, liking, authority, scarcity]
@@ -18,8 +12,10 @@ core_conflicts:
   - קונפליקט בין רצון אישי לציפיות חברתיות או לחצים חיצוניים.
   - קושי להבין ולנהל אינטראקציות חברתיות בהן מתרחשת השפעה.
   - התמודדות עם תחושת ניצול או חוסר אונים מול טכניקות שכנוע.
-domain: [work, relationships, inner_self]
+domain: [עבודה_וקריירה, זוגיות_ומשפחה, עולם_פנימי]
 source: Cialdini, R. B. (2001). Influence: Science and practice. Allyn and Bacon.
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # ששת עקרונות השכנוע של צ'אלדיני (Cialdini's Six Principles of Persuasion)

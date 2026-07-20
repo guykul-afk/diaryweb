@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: טיפול בקבלה ומחויבות וגמישות פסיכולוגית (ACT)
 tags: ['personality', 'psychology', 'act', 'flexibility', 'mindfulness', 'values', 'CBT', 'גמישות פסיכולוגית', 'קבלה', 'מחויבות', 'ערכים', 'מיינדפולנס', 'הווה', 'קוגניציה', 'הימנעות חווייתית', 'סבל']
@@ -18,8 +12,10 @@ core_conflicts:
   - המאבק הפנימי בין הרצון לחיות חיים מלאים ומשמעותיים לבין ההימנעות מחוויות פנימיות קשות.
   - זיהוי עצמי חזק עם מחשבות ורגשות שליליים שמונע פעולה ותנועה לעבר מה שחשוב.
   - הפער בין הערכים החשובים לאדם לבין הפעולות ההתנהגותיות בפועל.
-domain: inner_self
+domain: עולם_פנימי
 source: Steven Hayes' Acceptance and Commitment Therapy
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # טיפול בקבלה ומחויבות וגמישות פסיכולוגית (ACT)

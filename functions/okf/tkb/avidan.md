@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: פוטוריזם, מגלומניה הגנתית והזדקנות הזמן
 tags: ['personality', 'poetry', 'avidan', 'futurism', 'ego', 'aging', 'חרדה קיומית', 'הגנה פסיכולוגית', 'התמודדות עם מוות', 'טכנולוגיה', 'אינטימיות', 'שליטה רגשית', 'דימוי עצמי']
@@ -18,8 +12,10 @@ core_conflicts:
   - הצורך החזק להיתפס כחזק, מוכשר ובלתי פגיע מול הפחד העמוק מפני חולשה, כישלון וחוסר משמעות.
   - החרדה הקיומית מפני חלוף הזמן, הזדקנות ומוות, מול השאיפה לשלוט, להתעלות ולהותיר חותם.
   - הקושי המובנה באינטימיות רגשית ופגיעות מול הצורך האנושי בקשר וחיבור.
-domain: inner_self
+domain: עולם_פנימי
 source: David Avidan's Something for Someone, Selected Poems, Play of Words
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # פוטוריזם, מגלומניה הגנתית והזדקנות הזמן

@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: סכמה תרפיה ודפוסי חיים מוקדמים
 tags: ['personality', 'psychology', 'schema-therapy', 'early-maladaptive-schemas', 'coping-modes', 'טיפול רגשי', 'ילדות', 'דפוסי התנהגות', 'מערכות יחסים', 'מודעות עצמית', 'קונפליקטים פנימיים']
@@ -18,8 +12,10 @@ core_conflicts:
   - התנגשות בין צרכים רגשיים בסיסיים שמעולם לא סופקו לבין דפוסי התמודדות הרסניים בהווה.
   - מאבק בין החלקים הפגיעים והילדיים שבתוכנו לבין ניסיונות נוקשים של הגנה עצמית (כמו פיצוי יתר או הימנעות).
   - חוסר היכולת לשבור מעגל של מערכות יחסים או מצבים שליליים שחוזרים על עצמם למרות הרצון בשינוי.
-domain: inner_self
+domain: עולם_פנימי
 source: Jeffrey Young's Schema Therapy: A Practitioner's Guide
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # סכמה תרפיה ודפוסי חיים מוקדמים

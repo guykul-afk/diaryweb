@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: Temporal Motivation Theory (TMT)
 tags: [motivation, productivity, procrastination, psychology, self-regulation, time-management, decision-making, goal-setting, self-efficacy, learned-helplessness, impulsivity]
@@ -18,8 +12,10 @@ core_conflicts:
   - ההתנגשות בין סיפוקים מיידיים למטרות ארוכות טווח.
   - הפער בין כוונות לפעולות (Knowing what to do vs. doing it).
   - התמודדות עם חוסר ביטחון (חוללות עצמית נמוכה) מול הצורך לבצע.
-domain: inner_self
+domain: עולם_פנימי
 source: Steel, P. (2007). The nature of procrastination: A meta-analytic and theoretical integration of quintessential self-regulatory failure. Psychological Bulletin.
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # תיאוריית המוטיבציה הטמפורלית (Temporal Motivation Theory)

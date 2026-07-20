@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: מלנכוליה מעודנת, זרות ואהבת החיים
 tags: ['personality', 'poetry', 'goldberg', 'melancholy', 'nature', 'alienation', 'שירה', 'בדידות', 'קיום', 'הודיה', 'חמלה עצמית', 'קשר עם הטבע', 'הגירה', 'אינטימיות', 'פיוס', 'אמנות']
 trigger_phrases: ['אני מרגיש/ה זר/ה', 'יש בי עצב שקט', 'לפעמים הלב כואב אבל אני מוצא/ת יופי קטן', 'געגוע למקום שאינו קיים', 'תחושת בדידות עמוקה', 'מחפש/ת נחמה בדברים פשוטים', 'אני מתמודד/ת עם תחושת חוסר שייכות']
 core_conflicts: ['המתח בין תחושת שייכות לזרות קיומית', 'קבלת העצב כחלק טבעי מהחיים לעומת הצורך לתקן אותו', 'התמודדות עם כאב לב או אכזבה תוך מציאת יכולת להמשיך להודות על החיים']
-domain: inner_self
+domain: עולם_פנימי
 source: Leah Goldberg's With This Night, Shibolet, Selected Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # מלנכוליה מעודנת, זרות ואהבת החיים (לאה גולדברג)

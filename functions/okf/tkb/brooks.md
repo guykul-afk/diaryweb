@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: דיוויד ברוקס (David Brooks) - ההר השני ואופי מוסרי
 tags:
@@ -30,8 +24,10 @@ core_conflicts:
   - התנגשות בין כמיהה להישגים חיצוניים (קורות חיים) לבין צורך פנימי באופי ומשמעות (הספד).
   - בדידות הנובעת מאינדיבידואליזם יתר מול הצורך בחיבור עמוק ומחויבות לאחרים.
   - תחושת ריקנות ואי-סיפוק למרות הצלחה אובייקטיבית.
-domain: meaning
+domain: רוחניות_ומשמעות
 source: David Brooks - The Second Mountain, The Road to Character, How to Know a Person
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # דיוויד ברוקס (David Brooks) - ההר השני ואופי מוסרי

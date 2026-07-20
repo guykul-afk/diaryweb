@@ -1,39 +1,18 @@
 ---
 type: concept
 title: מודרניזם, עמל והתמודדות עם הריק הקיומי
-tags:
-- personality
-- poetry
-- shlonsky
-- creation
-- existential-dread
-- action
-- meaning
-- purpose
-- work
-- labor
-- modernity
-- alienation
-- language
-- renewal
-- existentialism
-trigger_phrases:
-- אני מרגיש ריקנות פנימית
-- אין לי מטרה או כיוון
-- אני חווה תחושת ניכור
-- אני משתוקק ליצור משהו בעל ערך
-- העולם נראה לי כאוטי וחסר פשר
+tags: ['personality', 'poetry', 'shlonsky', 'creation', 'existential-dread', 'action', 'meaning', 'purpose', 'work', 'labor', 'modernity', 'alienation', 'language', 'renewal', 'existentialism']
+trigger_phrases: ["אני מרגיש ריקנות פנימית", "אין לי מטרה או כיוון", "אני חווה תחושת ניכור", "אני משתוקק ליצור משהו בעל ערך", "העולם נראה לי כאוטי וחסר פשר"]
 core_conflicts:
-- ריקנות קיומית מול צורך עמוק במשמעות ובקיום בעל תכלית.
-- פסיביות וחוסר אונים מול דחף פנימי לפעולה, יצירה ובריאה עצמית.
-- חרדה מפני אובדן וכיליון מול חיפוש אחר התחדשות ושפה מרפאת.
-domain:
-- עולם_פנימי
-- רוחניות_ומשמעות
+  - ריקנות קיומית מול צורך עמוק במשמעות ובקיום בעל תכלית.
+  - פסיביות וחוסר אונים מול דחף פנימי לפעולה, יצירה ובריאה עצמית.
+  - חרדה מפני אובדן וכיליון מול חיפוש אחר התחדשות ושפה מרפאת.
+domain: [עולם_פנימי, רוחניות_ומשמעות]
 source: Abraham Shlonsky's Toil, Selected Poems
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # מודרניזם, עמל והתמודדות עם הריק הקיומי (אברהם שלונסקי)
 
 ## הגדרה

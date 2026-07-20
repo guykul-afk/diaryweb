@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: הצל, הפרסונה ותהליך האינדיבידואציה
 tags: [personality, psychoanalysis, jung, shadow, identity, individuation, persona, self, archetypes, psychological_growth, unconscious, projection, wholeness, authenticity, meaning]
 trigger_phrases: [מרגיש מזויף, לא אני עצמי, כעס בלתי מוסבר על אחרים, רואה ביטויים שליליים באחרים, מחפש משמעות עמוקה, קונפליקט פנימי, מרגיש תקוע, רוצה להבין את עצמי טוב יותר, מתקשה לקבל ביקורת]
 core_conflicts: [חוסר אותנטיות וניכור מהעצמי האמיתי, הטלת אחריות על אחרים דרך השלכה, קונפליקטים פנימיים לא פתורים המעכבים התפתחות, חיפוש אחר שלמות ומשמעות קיומית]
-domain: inner_self
+domain: עולם_פנימי
 source: Carl Jung's Collected Works
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # הצל, הפרסונה ותהליך האינדיבידואציה

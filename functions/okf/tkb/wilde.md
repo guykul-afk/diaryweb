@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: אסתטיציזם, מסכות והחיים כאמנות
 tags: [personality, society, wilde, aesthetics, masks, authenticity, suffering, beauty, identity, self-expression, inner-world, hypocrisy, social-roles, self-discovery, depth, meaning]
 trigger_phrases: ["אני מרגיש שאני מציג כל הזמן משהו שאני לא", "אני מוטרד מהמחיר שאני משלם על שמירה על תדמית חיצונית", "אני מחפש יופי או משמעות גם כשאני סובל", "יש לי תחושה שהחיים שלי הם סוג של הצגה", "אני מתלבט בין הצורך להשתלב בחברה לבין הרצון לבטא את האני האמיתי שלי"]
 core_conflicts: ["הפער בין האני האמיתי לבין המסכה החברתית", "ההתמודדות עם ההשלכות ההרסניות של מרדף אחר תדמית חיצונית", "הצורך למצוא משמעות ועומק בתוך סבל וכאב"]
-domain: inner_self
+domain: עולם_פנימי
 source: Oscar Wilde's The Picture of Dorian Gray and De Profundis
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # אסתטיציזם, מסכות והחיים כאמנות (Oscar Wilde)

@@ -1,34 +1,18 @@
 ---
 type: concept
 title: תיאוריית הפוליווגל וויסות מערכת העצבים
-tags:
-- personality
-- neuroscience
-- polyvagal
-- autonomic-nervous-system
-- safety
-- stress
-- anxiety
-- trauma
-- emotional_regulation
-- attachment
-- interpersonal_neurobiology
-trigger_phrases:
-- תחושת ניתוק
-- קפאון וחוסר אונים
-- חרדה גבוהה ודופק מהיר
-- קושי להירגע
-- מרגיש/ה שאני חייב/ת לברוח או להילחם
-- קושי להרגיש בטוח/ה במערכות יחסים
+tags: ['personality', 'neuroscience', 'polyvagal', 'autonomic-nervous-system', 'safety', 'stress', 'anxiety', 'trauma', 'emotional_regulation', 'attachment', 'interpersonal_neurobiology']
+trigger_phrases: ['תחושת ניתוק', 'קפאון וחוסר אונים', 'חרדה גבוהה ודופק מהיר', 'קושי להירגע', 'מרגיש/ה שאני חייב/ת לברוח או להילחם', 'קושי להרגיש בטוח/ה במערכות יחסים']
 core_conflicts:
-- הפער בין הרצון לקשר לבין חוסר היכולת להיפתח.
-- חוסר הבנה מדוע הגוף מגיב בקיצוניות למצבים לא מאיימים.
-- הקושי לווסת רגשות עוצמתיים ולחזור למצב של רוגע.
+  - הפער בין הרצון לקשר לבין חוסר היכולת להיפתח.
+  - חוסר הבנה מדוע הגוף מגיב בקיצוניות למצבים לא מאיימים.
+  - הקושי לווסת רגשות עוצמתיים ולחזור למצב של רוגע.
 domain: עולם_פנימי
 source: Stephen Porges' The Polyvagal Theory
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # תיאוריית הפוליווגל וויסות מערכת העצבים (סטיבן פורג'ס)
 
 ## הגדרה

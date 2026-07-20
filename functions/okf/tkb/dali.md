@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: סוריאליזם, פיענוח חלומות ונזילות הזמן
 tags: ['personality', 'art', 'dali', 'surrealism', 'dreams', 'unconscious', 'symbols', 'psychoanalysis', 'creativity', 'fear', 'anxiety', 'identity', 'relationship_dynamics', 'self_exploration']
@@ -19,8 +13,10 @@ core_conflicts:
   - המתח בין תפיסת המציאות הרציונלית לבין העושר והכאוס של התת-מודע.
   - הקושי להתמודד עם פחדים קמאיים וחרדות קיומיות, והצורך למצוא להם ביטוי.
   - התשוקה לחקור את עומק הנפש והאישיות אל מול חשש מאיבוד שליטה או שפיות.
-domain: inner_self
+domain: עולם_פנימי
 source: Salvador Dali's The Secret Life of Salvador Dali
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # סוריאליזם, פיענוח חלומות ונזילות הזמן

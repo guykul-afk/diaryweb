@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: קיום קודם למהות וחירות מוחלטת
 tags: [personality, existentialism, sartre, freedom, responsibility, authenticity, bad_faith, anxiety, choice, meaning, subjective_experience, self_creation, free_will]
@@ -18,8 +12,10 @@ core_conflicts:
   - המתח בין השאיפה לברוח מאחריות לבין הכורח האנושי לבחור וליצור משמעות.
   - הקונפליקט הפנימי בין הרצון להיות "מישהו" מוגדר לבין ההכרה בחירות המוחלטת ליצור את העצמי בכל רגע נתון.
   - ההתמודדות עם חרדת החירות והאחריות העצומה על יצירת ערכים וזהות עצמית בעולם חסר משמעות מובנית.
-domain: inner_self
+domain: עולם_פנימי
 source: Jean-Paul Sartre's Being and Nothingness
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # קיום קודם למהות וחירות מוחלטת (Jean-Paul Sartre)

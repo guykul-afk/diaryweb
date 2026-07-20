@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: פגיעות קיצונית, טראומה והערכה עצמית שבירה
 tags: ['personality', 'poetry', 'ravikovitch', 'trauma', 'vulnerability', 'depression', 'פוסט-טראומה', 'אובדן', 'ביטחון_עצמי', 'יחסים', 'משוררים', 'פגיעות_נפשית', 'חרדה_מנטישה', 'דימוי_עצמי']
@@ -13,8 +7,10 @@ core_conflicts:
   - המתח התמידי בין פגיעות עמוקה וחסרת הגנות לבין שאיפה לכוח פנימי ושליטה.
   - ההתמודדות עם משקעי טראומה ואובדן מהעבר, המעצבים את חוויית הביטחון העצמי והאמון בעולם.
   - הקונפליקט בין צורך עז לקשר וביטחון במערכות יחסים, לבין פחד מנטישה ומהאכזבה הבלתי נמנעת.
-domain: inner_self
+domain: עולם_פנימי
 source: Dahlia Ravikovitch's The Love of an Orange, Selected Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # פגיעות קיצונית, טראומה והערכה עצמית שבירה (דליה רביקוביץ)

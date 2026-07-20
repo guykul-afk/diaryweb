@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: שירת טבע קשובה, מיינדפולנס והודיה קיומית (מרי אוליבר)
 tags: ['personality', 'poetry', 'oliver', 'nature', 'mindfulness', 'gratitude', 'personal growth', 'spirituality', 'acceptance', 'authenticity', 'anxiety relief', 'simplicity', 'meaning in life', 'self-compassion']
 trigger_phrases: ['אני מרגיש/ה שחוק/ה ומנותק/ת מהחיים', 'אני מותש/ת מהמרדף אחרי ציפיות של אחרים', 'אני מרגיש/ה אשמה על מי שאני או על מה שאני לא עושה', 'אני מחפש/ת משמעות ושלווה בחיי היומיום', 'אני רוצה להרגיש יותר מחובר/ת לעצמי ולעולם סביבי', 'אני מרגיש/ה לכוד/ה בתוך לולאת מחשבה']
 core_conflicts: ['ניכור וניתוק מהעצמי ומהסביבה הטבעית', 'רגשות אשמה וחוסר קבלה עצמית כתוצאה מלחצים חברתיים', 'חוסר משמעות ותחושת ריקנות מול תהפוכות החיים']
-domain: meaning
+domain: רוחניות_ומשמעות
 source: Mary Oliver's Wild Geese, Selected Poems, Devotions
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # שירת טבע קשובה, מיינדפולנס והודיה קיומית (מרי אוליבר)

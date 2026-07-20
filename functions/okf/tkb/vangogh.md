@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: סערה רגשית, בדידות והתמרת כאב לצבע
 tags: [personality, art, vangogh, passion, loneliness, mental-illness, creativity, suffering, expression, resilience, mental_health, sublimation, nature, beauty, meaning, connection]
 trigger_phrases: ["אני מרגיש לבד בעולם, אבל עדיין יש בי תשוקה בוערת ליצור.", "איך אני יכול להפוך את הכאב והסבל שלי למשהו יפה או משמעותי?", "אני נמשך ליופי ופרטים קטנים בטבע וזה מעורר בי רגשות עזים.", "אני מרגיש מנותק או חסר הערכה, אך עדיין כמיהה עמוקה לקשר אנושי.", "רגשות סוערים מציפים אותי ואני מחפש דרך לתעל אותם."]
 core_conflicts: ["התמודדות עם בדידות קיומית וכיצד למצוא קשר למרות הניתוק.", "תעלול סבל פסיכולוגי עמוק לאפיקים יצירתיים ומועילים.", "מציאת משמעות ויופי בעולם, גם מול כאב נפשי מתמשך."]
-domain: inner_self
+domain: עולם_פנימי
 source: Vincent van Gogh's Letters to Theo
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # סערה רגשית, בדידות והתמרת כאב לצבע (וינסנט ואן גוך)

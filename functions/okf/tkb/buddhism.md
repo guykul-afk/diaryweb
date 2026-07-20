@@ -1,34 +1,18 @@
 ---
 type: concept
 title: העדר עצמי (Anatta) וחמלה (Karuna)
-tags:
-- personality
-- buddhism
-- self
-- compassion
-- interconnectedness
-- spirituality
-- suffering
-- ego
-- interbeing
-- altruism
-- mindfulness
-- liberation
-trigger_phrases:
-- אני מרגיש מנותק מאחרים
-- האגו שלי מפריע לי ביחסים
-- אני נאבק בתחושות תחרותיות או קנאה
-- הסבל שלי נראה לי אישי וכבד מדי
-- אני רוצה להרגיש יותר חיבור וחמלה
+tags: [personality, buddhism, self, compassion, interconnectedness, spirituality, suffering, ego, interbeing, altruism, mindfulness, liberation]
+trigger_phrases: ["אני מרגיש מנותק מאחרים", "האגו שלי מפריע לי ביחסים", "אני נאבק בתחושות תחרותיות או קנאה", "הסבל שלי נראה לי אישי וכבד מדי", "אני רוצה להרגיש יותר חיבור וחמלה"]
 core_conflicts:
-- היאחזות בזהות "עצמית" קבועה ומבודדת הגורמת לסבל.
-- תחושת ניכור ובדידות הנובעת מהתפיסה של נפרדות מהזולת.
-- נטייה לאגואיזם ותחרותיות הפוגעת ביחסים וברווחה הכללית.
+  - היאחזות בזהות "עצמית" קבועה ומבודדת הגורמת לסבל.
+  - תחושת ניכור ובדידות הנובעת מהתפיסה של נפרדות מהזולת.
+  - נטייה לאגואיזם ותחרותיות הפוגעת ביחסים וברווחה הכללית.
 domain: עולם_פנימי
 source: Early Buddhist Teachings (Siddhartha Gautama)
 maps_to_patterns: []
-counterpart: ''
+counterpart: ""
 ---
+
 # העדר עצמי וחמלה (Buddhism)
 
 ## הגדרה

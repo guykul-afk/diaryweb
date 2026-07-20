@@ -1,10 +1,4 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: קבלה חיובית והגשמה עצמית
 tags: [personality, humanism, rogers, psychology, self, self-acceptance, authenticity, personal-growth, incongruence, ideal-self, real-self, unconditional-positive-regard, client-centered-therapy]
@@ -18,8 +12,10 @@ core_conflicts:
   - הפער בין העצמי הריאלי (מי שאני באמת) לבין העצמי האידיאלי (מי שאני שואף/ת להיות או חושב/ת שצריך/ה להיות), המוביל לחרדה וחוסר שביעות רצון.
   - המאבק להיות נאמן/ה לעצמי אל מול הצורך בקבלה ואהבה חיצונית, המוביל להתנהגות לא אותנטית.
   - תנאי ערך פנימיים שהופנמו ומונעים מהאדם חופש ביטוי וצמיחה מלאה.
-domain: inner_self
+domain: עולם_פנימי
 source: Carl Rogers' Client-Centered Therapy and On Becoming a Person
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # קבלה חיובית והגשמה עצמית (Carl Rogers)

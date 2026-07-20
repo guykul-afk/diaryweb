@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: יכולת שלילית, יופי חולף ומלנכוליה אסתטית
 tags: ['personality', 'poetry', 'keats', 'negative-capability', 'beauty', 'melancholy', 'romanticism', 'acceptance', 'uncertainty', 'emotions', 'philosophy', 'literature', 'transience', 'grief']
 trigger_phrases: ["אני מרגיש/ה אבוד/ה באי-ודאות", "קשה לי לקבל את חוסר השליטה", "היופי סביבי מרגש אותי אבל גם מעציב", "אני חווה עצב עמוק שמגיע ממקור לא ברור", "אני מתקשה עם שינויים ופרידות", "אני נמשך/ת לדברים חולפים ויפים", "אני מנסה להבין דברים שאי אפשר להבין"]
 core_conflicts: ['חרדה וקושי להתמודד עם אי-ודאות וספקות', 'התנגדות לקבלה של חוסר שליטה וארעיות בחיים ובמערכות יחסים', 'ניסיון נואש לכפות היגיון על רגשות וחוויות סובייקטיביות', 'התמודדות עם מלנכוליה הנובעת מהכרה ביופי חולף']
-domain: inner_self
+domain: עולם_פנימי
 source: John Keats' Odes, Letters, Selected Poems
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # יכולת שלילית, יופי חולף ומלנכוליה אסתטית (ג'ון קיטס)

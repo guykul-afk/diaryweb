@@ -1,17 +1,13 @@
 ---
-type: Uncategorized
-maps_to_patterns: []
-counterpart: ''
----
-```yaml
----
 type: concept
 title: אהבה עצמית טבעית מול גאווה
 tags: [personality, rousseau, society, nature, authenticity, self_worth, comparison, validation, envy, identity, social_pressure]
 trigger_phrases: ["אני מרגיש/ה שאני כל הזמן משווה את עצמי לאחרים.", "ההרגשה שלי תלויה במה שאחרים חושבים עליי.", "אני מרגיש/ה שאני לא באמת אני בחברת אנשים.", "קשה לי למצוא סיפוק בדברים בלי אישור חיצוני.", "אני מקנא/ה בהצלחה של אחרים."]
 core_conflicts: ["הצורך באישור חיצוני מול חיפוש סיפוק פנימי.", "המאבק לשמור על אותנטיות מול דרישות החברה והקונפורמיות.", "חיפוש ערך עצמי דרך השוואה מול קבלה עצמית בלתי תלויה."]
-domain: inner_self
+domain: עולם_פנימי
 source: Discourse on Inequality and Emile (Jean-Jacques Rousseau)
+maps_to_patterns: []
+counterpart: ""
 ---
 
 # אהבה עצמית טבעית מול גאווה (Rousseau)
