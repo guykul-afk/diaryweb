@@ -306,14 +306,9 @@ export function DiaryDataProvider({ children, uid }) {
       finalNodes = baseFiltered.filter(node => finalActiveNodeIds.has(node.id));
     }
 
-    // Sort by weight/relevance and slice to limitEntities
-    let limitedNodes = finalNodes
-      .sort((a, b) => (b.weight || 0) - (a.weight || 0))
-      .slice(0, limitEntities);
-
-    // K-Core Filter: iteratively remove nodes that do not meet minDegree in the VISUAL graph
+    // K-Core Filter: iteratively remove nodes that do not meet minDegree in the base graph
+    let currentNodes = finalNodes;
     if (minDegree > 0) {
-      let currentNodes = limitedNodes;
       let keepFiltering = true;
       while (keepFiltering) {
         keepFiltering = false;
@@ -338,8 +333,12 @@ export function DiaryDataProvider({ children, uid }) {
           keepFiltering = true;
         }
       }
-      return currentNodes;
     }
+
+    // Sort by weight/relevance and slice to limitEntities
+    let limitedNodes = currentNodes
+      .sort((a, b) => (b.weight || 0) - (a.weight || 0))
+      .slice(0, limitEntities);
 
     return limitedNodes;
   }, [
