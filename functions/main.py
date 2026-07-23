@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional, Literal
 import google.generativeai as genai
 from pydantic import BaseModel, Field
 
-from firebase_functions import https_fn, scheduler_fn
+from firebase_functions import https_fn, scheduler_fn, firestore_fn
 from firebase_admin import initialize_app, firestore
 import urllib.request
 
@@ -1769,4 +1769,126 @@ def scheduled_sync_isa_data(event: scheduler_fn.ScheduledEvent) -> None:
         logger.error(f"Failed to synchronize ISA data: {e}")
 
 
+@firestore_fn.on_document_created(document="users/{uid}/entries/{entryId}", region="us-central1")
+def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | None]) -> None:
+    """
+    Automatic trigger when a new diary entry document is created.
+    Extracts tags (topics) and mood/sentiment if missing, and increments new_entries counter.
+    """
+    if event.data is None:
+        return
+    
+    data = event.data.to_dict() or {}
+    uid = event.params.get("uid")
+    entry_id = event.params.get("entryId")
+    
+    text = data.get("transcript") or data.get("content") or ""
+    
+    # Increment new_entries_since_last_analysis counter on user doc
+    if uid:
+        try:
+            user_ref = get_db().collection("users").document(uid)
+            user_ref.set({"new_entries_since_last_analysis": firestore.Increment(1)}, merge=True)
+        except Exception as e:
+            logger.error(f"Failed to increment new_entries_since_last_analysis: {e}")
 
+    if not text:
+        return
+
+    has_topics = bool(data.get("topics"))
+    has_mood = bool(data.get("mood") or data.get("sentiment"))
+
+    if has_topics and has_mood:
+        return
+
+    try:
+        system_prompt = (
+            "You are an expert NLP Entity and Sentiment Extractor. Analyze the Hebrew journal entry.\n"
+            "Extract:\n"
+            "1. 'topics': 3-8 concise Hebrew tags/concepts (strings) describing key subjects, themes, activities, and entities.\n"
+            "2. 'mood': A short Hebrew phrase (2-6 words) describing the emotional state, feelings, and tone.\n"
+            "Output strictly valid JSON object with keys 'topics' (list of strings) and 'mood' (string). Do not include markdown formatting or explanations."
+        )
+        prompt = f"Journal Entry Content:\n{text}\n\nOutput JSON:"
+        
+        response = run_agent("EntityExtractor", system_prompt, prompt)
+        clean_json = response.strip().strip('`').replace('json\n', '')
+        extracted = json.loads(clean_json)
+        
+        update_payload = {}
+        if not has_topics and "topics" in extracted and isinstance(extracted["topics"], list):
+            update_payload["topics"] = [str(t).strip() for t in extracted["topics"] if str(t).strip()]
+            
+        if not has_mood and "mood" in extracted and extracted["mood"]:
+            mood_str = str(extracted["mood"]).strip()
+            update_payload["mood"] = mood_str
+            update_payload["sentiment"] = mood_str
+            
+        if update_payload:
+            event.data.reference.update(update_payload)
+            logger.info(f"Successfully auto-extracted tags/mood for entry {entry_id} of user {uid}: {update_payload}")
+    except Exception as e:
+        logger.error(f"Error auto-extracting tags/mood for entry {entry_id}: {e}")
+
+
+@https_fn.on_call(timeout_sec=300)
+def backfill_entries_tags(req: https_fn.CallableRequest) -> dict:
+    """
+    Callable Cloud Function to backfill missing topics and mood for all existing entries of a user.
+    """
+    uid = extract_authenticated_uid(req)
+    db = get_db()
+    entries_ref = db.collection('users').document(uid).collection('entries')
+    snapshot = entries_ref.stream()
+    
+    updated_count = 0
+    total_count = 0
+    
+    system_prompt = (
+        "You are an expert NLP Entity and Sentiment Extractor. Analyze the Hebrew journal entry.\n"
+        "Extract:\n"
+        "1. 'topics': 3-8 concise Hebrew tags/concepts (strings) describing key subjects, themes, activities, and entities.\n"
+        "2. 'mood': A short Hebrew phrase (2-6 words) describing the emotional state, feelings, and tone.\n"
+        "Output strictly valid JSON object with keys 'topics' (list of strings) and 'mood' (string). Do not include markdown formatting or explanations."
+    )
+    
+    for doc in snapshot:
+        total_count += 1
+        data = doc.to_dict()
+        text = data.get("transcript") or data.get("content") or ""
+        if not text:
+            continue
+            
+        has_topics = bool(data.get("topics"))
+        has_mood = bool(data.get("mood") or data.get("sentiment"))
+        
+        if has_topics and has_mood:
+            continue
+            
+        try:
+            prompt = f"Journal Entry Content:\n{text}\n\nOutput JSON:"
+            response = run_agent("EntityExtractor", system_prompt, prompt)
+            clean_json = response.strip().strip('`').replace('json\n', '')
+            extracted = json.loads(clean_json)
+            
+            update_payload = {}
+            if not has_topics and "topics" in extracted and isinstance(extracted["topics"], list):
+                update_payload["topics"] = [str(t).strip() for t in extracted["topics"] if str(t).strip()]
+                
+            if not has_mood and "mood" in extracted and extracted["mood"]:
+                mood_str = str(extracted["mood"]).strip()
+                update_payload["mood"] = mood_str
+                update_payload["sentiment"] = mood_str
+                
+            if update_payload:
+                doc.reference.update(update_payload)
+                updated_count += 1
+                logger.info(f"Backfilled entry {doc.id}: {update_payload}")
+        except Exception as e:
+            logger.error(f"Failed backfill for entry {doc.id}: {e}")
+            
+    return {
+        "status": "success",
+        "total_entries": total_count,
+        "updated_entries": updated_count
+    }
