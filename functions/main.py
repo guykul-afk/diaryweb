@@ -744,11 +744,10 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         )
 
     # 9. Persist Personality Analysis Document & Reading Recommendations
-    analysis_doc_id = datetime.datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    readings_data = [r.model_dump() for r in orchestrator_output.recommended_readings]
-    
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
     analysis_payload = {
-        "timestamp": firestore.SERVER_TIMESTAMP,
+        "timestamp": now_utc,
+        "created_at_ms": int(now_utc.timestamp() * 1000),
         "executive_summary": orchestrator_output.executive_summary,
         "reports": orchestrator_output.reports.model_dump(),
         "metrics": orchestrator_output.metrics.model_dump(),

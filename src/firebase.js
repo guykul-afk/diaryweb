@@ -175,7 +175,8 @@ export async function fetchPersonalityAnalysis(uid) {
     const data = doc.data();
     analyses.push({
       id: doc.id,
-      timestamp: data.timestamp,
+      timestamp: data.timestamp || data.created_at_ms || null,
+      created_at_ms: data.created_at_ms || (data.timestamp ? (data.timestamp.toDate ? data.timestamp.toDate().getTime() : new Date(data.timestamp).getTime()) : 0),
       executive_summary: data.executive_summary || '',
       reports: data.reports || {},
       metrics: data.metrics || {},

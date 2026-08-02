@@ -27,11 +27,20 @@ export default function PersonalityAnalysisView({ uid }) {
   const [newEntriesCount, setNewEntriesCount] = useState(0);
   const [lastFullAnalysisDate, setLastFullAnalysisDate] = useState(null);
 
+  const getTimestampMs = (ts) => {
+    if (!ts) return 0;
+    if (typeof ts === 'number') return ts;
+    if (ts.toDate && typeof ts.toDate === 'function') return ts.toDate().getTime();
+    if (ts.seconds) return ts.seconds * 1000;
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  };
+
   const formatDate = (ts) => {
     if (!ts) return null;
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    if (isNaN(d.getTime())) return null;
-    return d.toLocaleString('he-IL', {
+    const ms = getTimestampMs(ts);
+    if (!ms) return null;
+    return new Date(ms).toLocaleString('he-IL', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -50,9 +59,10 @@ export default function PersonalityAnalysisView({ uid }) {
         const latest = results[0];
         setAnalysisData(latest);
         const fullAnalysis = results.find(r => r.is_full || r.analysis_type === 'full') || latest;
-        if (fullAnalysis && fullAnalysis.timestamp) {
-          setLastFullAnalysisDate(fullAnalysis.timestamp);
-          lastFullAnalysisTimeMs = fullAnalysis.timestamp.toDate ? fullAnalysis.timestamp.toDate().getTime() : new Date(fullAnalysis.timestamp).getTime();
+        const tsTarget = fullAnalysis.timestamp || fullAnalysis.created_at_ms;
+        if (tsTarget) {
+          setLastFullAnalysisDate(tsTarget);
+          lastFullAnalysisTimeMs = getTimestampMs(tsTarget);
         } else {
           setLastFullAnalysisDate(null);
         }
@@ -64,9 +74,10 @@ export default function PersonalityAnalysisView({ uid }) {
       // Dynamically fetch entries and calculate new entries count since last FULL analysis
       const entries = await fetchFirebaseEntries(uid);
       const newEntries = entries.filter(entry => {
-        if (!entry.rawTimestamp) return false;
-        const entryTime = entry.rawTimestamp.toDate ? entry.rawTimestamp.toDate().getTime() : new Date(entry.rawTimestamp).getTime();
-        return entryTime > lastFullAnalysisTimeMs;
+        const entryTime = getTimestampMs(entry.rawTimestamp || entry.timestamp);
+        if (!entryTime) return false;
+        // Adding 1 second tolerance to ensure entries created at or before analysis time are excluded
+        return entryTime > (lastFullAnalysisTimeMs + 1000);
       });
       setNewEntriesCount(newEntries.length);
     } catch (err) {
