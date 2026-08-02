@@ -7,7 +7,7 @@ const firebaseConfig = {
   projectId: "mindcloud-8ccc6",
   appId: "1:961085343809:web:a7c8c68360c3d820f21ec0",
   storageBucket: "mindcloud-8ccc6.firebasestorage.app",
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDAPtxu-nJO7VDdI7OwJY7e7QFl6hrzLY0",
   authDomain: "mindcloud-8ccc6.firebaseapp.com",
   messagingSenderId: "961085343809",
   measurementId: "G-J766284FQK"
@@ -153,7 +153,8 @@ export async function fetchFirebaseEntries(uid) {
         date: data.timestamp ? new Date(data.timestamp).toISOString().split('T')[0] : 'תאריך לא ידוע',
         topics: data.topics || [],
         open_threads: (data.openThreads || data.open_threads || []).map(t => typeof t === 'string' ? t : t.text || ''),
-        mood: data.mood || data.sentiment || 'ניטרלי'
+        mood: data.mood || data.sentiment || 'ניטרלי',
+        tkb_reference: data.tkb_reference || null
       },
       content: data.transcript || data.content || '',
       rawTimestamp: data.timestamp
@@ -178,6 +179,8 @@ export async function fetchPersonalityAnalysis(uid) {
       executive_summary: data.executive_summary || '',
       reports: data.reports || {},
       metrics: data.metrics || {},
+      is_full: data.is_full !== undefined ? data.is_full : true,
+      analysis_type: data.analysis_type || 'full',
       new_entries_since_last_analysis: data.new_entries_since_last_analysis || 0
     });
   });

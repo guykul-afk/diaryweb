@@ -21,29 +21,48 @@ export default function PersonalityAnalysisView({ uid }) {
   const [analysisData, setAnalysisData] = useState(null);
   const [activeAgentTab, setActiveAgentTab] = useState('clinical');
   const [newEntriesCount, setNewEntriesCount] = useState(0);
+  const [lastFullAnalysisDate, setLastFullAnalysisDate] = useState(null);
+
+  const formatDate = (ts) => {
+    if (!ts) return null;
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString('he-IL', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
 
   const loadAnalysis = async () => {
     setLoading(true);
     setError(null);
     try {
       const results = await fetchPersonalityAnalysis(uid);
-      let lastAnalysisTime = 0;
+      let lastFullAnalysisTimeMs = 0;
       if (results && results.length > 0) {
         const latest = results[0];
         setAnalysisData(latest);
-        if (latest.timestamp) {
-          lastAnalysisTime = latest.timestamp.toDate ? latest.timestamp.toDate().getTime() : new Date(latest.timestamp).getTime();
+        const fullAnalysis = results.find(r => r.is_full || r.analysis_type === 'full') || latest;
+        if (fullAnalysis && fullAnalysis.timestamp) {
+          setLastFullAnalysisDate(fullAnalysis.timestamp);
+          lastFullAnalysisTimeMs = fullAnalysis.timestamp.toDate ? fullAnalysis.timestamp.toDate().getTime() : new Date(fullAnalysis.timestamp).getTime();
+        } else {
+          setLastFullAnalysisDate(null);
         }
       } else {
         setAnalysisData(getMockData());
+        setLastFullAnalysisDate(null);
       }
 
-      // Dynamically fetch entries and calculate new entries count
+      // Dynamically fetch entries and calculate new entries count since last FULL analysis
       const entries = await fetchFirebaseEntries(uid);
       const newEntries = entries.filter(entry => {
         if (!entry.rawTimestamp) return false;
         const entryTime = entry.rawTimestamp.toDate ? entry.rawTimestamp.toDate().getTime() : new Date(entry.rawTimestamp).getTime();
-        return entryTime > lastAnalysisTime;
+        return entryTime > lastFullAnalysisTimeMs;
       });
       setNewEntriesCount(newEntries.length);
     } catch (err) {
@@ -245,21 +264,28 @@ export default function PersonalityAnalysisView({ uid }) {
             <Brain style={{ color: 'var(--accent-color)' }} />
             ניתוח אישיות רב-סוכני (MAS)
           </h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Clock size={14} />
-            ניתוח אחרון: {timestamp ? new Date(timestamp).toLocaleDateString('he-IL') : 'לא בוצע ניתוח'}
-          </p>
+          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '6px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Clock size={14} style={{ color: 'var(--accent-color)' }} />
+              <span><strong>ניתוח מלא אחרון:</strong> {lastFullAnalysisDate ? formatDate(lastFullAnalysisDate) : (timestamp ? formatDate(timestamp) : 'לא בוצע ניתוח מלא')}</span>
+            </div>
+            {analysisData && (analysisData.is_full === false || analysisData.analysis_type === 'delta') && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                <RefreshCw size={12} />
+                <span><strong>עדכון תקופתי (Delta) אחרון:</strong> {formatDate(timestamp)}</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sync / Progress Indicator */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', backgroundColor: 'var(--accent-light)', padding: '10px 16px', borderRadius: 'var(--radius-lg)' }}>
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>רשומות מאז הניתוח האחרון</div>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)' }}>רשומות מאז הניתוח המלא האחרון</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-              <div style={{ width: '120px', height: '6px', backgroundColor: 'var(--border-color)', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min((newEntriesCount / 30) * 100, 100)}%`, height: '100%', backgroundColor: 'var(--accent-color)' }} />
-              </div>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, direction: 'ltr', display: 'inline-block' }}>{newEntriesCount} / 30</span>
+              <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-color)', direction: 'rtl' }}>
+                {newEntriesCount} רשומות
+              </span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>

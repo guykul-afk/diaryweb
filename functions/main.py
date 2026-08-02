@@ -753,6 +753,8 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         "reports": orchestrator_output.reports.model_dump(),
         "metrics": orchestrator_output.metrics.model_dump(),
         "recommended_readings": readings_data,
+        "is_full": is_full,
+        "analysis_type": "full" if is_full else ("delta" if is_delta else "full"),
         "new_entries_since_last_analysis": 0
     }
     
@@ -1768,6 +1770,31 @@ def scheduled_sync_isa_data(event: scheduler_fn.ScheduledEvent) -> None:
     except Exception as e:
         logger.error(f"Failed to synchronize ISA data: {e}")
 
+TKB_CONCEPTS_CACHE = None
+
+def get_tkb_concepts_list(db):
+    global TKB_CONCEPTS_CACHE
+    if TKB_CONCEPTS_CACHE is not None:
+        return TKB_CONCEPTS_CACHE
+    try:
+        docs = db.collection("theoretical_concepts").stream()
+        concepts = []
+        for doc in docs:
+            d = doc.to_dict()
+            title = d.get("title", d.get("label", doc.id))
+            concepts.append({"id": doc.id, "title": title})
+        TKB_CONCEPTS_CACHE = concepts
+        return concepts
+    except Exception as e:
+        logger.error(f"Failed to fetch tkb concepts: {e}")
+        return []
+
+def format_tkb_concepts_for_prompt(db):
+    concepts = get_tkb_concepts_list(db)
+    if not concepts:
+        return "None available"
+    return "\n".join([f"- {c['title']} (ID: {c['id']})" for c in concepts])
+
 
 @firestore_fn.on_document_created(document="users/{uid}/entries/{entryId}", region="us-central1")
 def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | None]) -> None:
@@ -1792,22 +1819,26 @@ def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         except Exception as e:
             logger.error(f"Failed to increment new_entries_since_last_analysis: {e}")
 
-    if not text:
-        return
-
     has_topics = bool(data.get("topics"))
-    has_mood = bool(data.get("mood") or data.get("sentiment"))
+    raw_mood = str(data.get("mood") or data.get("sentiment") or "").strip()
+    has_mood = bool(raw_mood) and raw_mood not in ["ניטרלי", "neutral", "Neutral", "N/A", "null", "None"]
+    has_tkb = bool(data.get("tkb_reference"))
 
-    if has_topics and has_mood:
+    if has_topics and has_mood and has_tkb:
         return
 
     try:
+        tkb_concepts_text = format_tkb_concepts_for_prompt(db)
+        
         system_prompt = (
             "You are an expert NLP Entity and Sentiment Extractor. Analyze the Hebrew journal entry.\n"
             "Extract:\n"
             "1. 'topics': 3-8 concise Hebrew tags/concepts (strings) describing key subjects, themes, activities, and entities.\n"
             "2. 'mood': A short Hebrew phrase (2-6 words) describing the emotional state, feelings, and tone.\n"
-            "Output strictly valid JSON object with keys 'topics' (list of strings) and 'mood' (string). Do not include markdown formatting or explanations."
+            "3. 'tkb_reference': The ID of the single most relevant theoretical concept from the TKB list below. If none are a good fit, return null.\n\n"
+            "TKB Concepts:\n"
+            f"{tkb_concepts_text}\n\n"
+            "Output strictly valid JSON object with keys 'topics' (list of strings), 'mood' (string), and 'tkb_reference' (string or null). Do not include markdown formatting or explanations."
         )
         prompt = f"Journal Entry Content:\n{text}\n\nOutput JSON:"
         
@@ -1824,9 +1855,14 @@ def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             update_payload["mood"] = mood_str
             update_payload["sentiment"] = mood_str
             
+        if not has_tkb and "tkb_reference" in extracted and extracted["tkb_reference"]:
+            tkb_ref_str = str(extracted["tkb_reference"]).strip()
+            if tkb_ref_str != "null" and tkb_ref_str != "None":
+                update_payload["tkb_reference"] = tkb_ref_str
+            
         if update_payload:
             event.data.reference.update(update_payload)
-            logger.info(f"Successfully auto-extracted tags/mood for entry {entry_id} of user {uid}: {update_payload}")
+            logger.info(f"Successfully auto-extracted tags/mood/tkb for entry {entry_id} of user {uid}: {update_payload}")
     except Exception as e:
         logger.error(f"Error auto-extracting tags/mood for entry {entry_id}: {e}")
 
@@ -1860,8 +1896,9 @@ def backfill_entries_tags(req: https_fn.CallableRequest) -> dict:
             continue
             
         has_topics = bool(data.get("topics"))
-        has_mood = bool(data.get("mood") or data.get("sentiment"))
-        
+        raw_mood = str(data.get("mood") or data.get("sentiment") or "").strip()
+        has_mood = bool(raw_mood) and raw_mood not in ["ניטרלי", "neutral", "Neutral", "N/A", "null", "None"]
+
         if has_topics and has_mood:
             continue
             
