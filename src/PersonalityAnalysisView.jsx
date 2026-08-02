@@ -11,13 +11,17 @@ import {
   Clock,
   Sparkles,
   ChevronLeft,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle,
+  X
 } from 'lucide-react';
 
 export default function PersonalityAnalysisView({ uid }) {
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzingType, setAnalyzingType] = useState(null); // 'full' | 'delta' | null
   const [error, setError] = useState(null);
+  const [notification, setNotification] = useState(null); // { type: 'info'|'success'|'error', message, detail }
   const [analysisData, setAnalysisData] = useState(null);
   const [activeAgentTab, setActiveAgentTab] = useState('clinical');
   const [newEntriesCount, setNewEntriesCount] = useState(0);
@@ -75,14 +79,36 @@ export default function PersonalityAnalysisView({ uid }) {
 
   const handleTriggerAnalysis = async (isFull = false) => {
     setIsAnalyzing(true);
+    setAnalyzingType(isFull ? 'full' : 'delta');
+    setNotification({
+      type: 'info',
+      message: isFull 
+        ? 'מריץ ניתוח פסיכולוגי מלא (Multi-Agent System)...' 
+        : 'מריץ עדכון תקופתי (Delta)...',
+      detail: 'סוכני ה-AI מנתחים את הנתונים ומעדכנים את גרף הידע. תהליך זה עשוי להימשך כ-1–2 דקות.'
+    });
+
     try {
       await triggerPersonalityAnalysis(uid, isFull);
       await loadAnalysis();
+      setNotification({
+        type: 'success',
+        message: isFull ? 'הניתוח הפסיכולוגי המלא הושלם בהצלחה!' : 'העדכון התקופתי (Delta) הושלם בהצלחה!',
+        detail: 'תוצאות הניתוח והתובנות החדשות עודכנו בהצלחה במערכת.'
+      });
+      setTimeout(() => {
+        setNotification(prev => prev?.type === 'success' ? null : prev);
+      }, 10000);
     } catch (err) {
       console.error(err);
-      alert('שגיאה בהפעלת הניתוח מהשרת: ' + err.message);
+      setNotification({
+        type: 'error',
+        message: 'שגיאה בביצוע הניתוח מהשרת',
+        detail: err.message || 'אירעה שגיאה בעיבוד הניתוח. אנא נסה שוב.'
+      });
     } finally {
       setIsAnalyzing(false);
+      setAnalyzingType(null);
     }
   };
 
@@ -309,8 +335,8 @@ export default function PersonalityAnalysisView({ uid }) {
               }}
               title="עדכון הניתוח הקיים באמצעות הרשומות החדשות בלבד"
             >
-              <RefreshCw size={14} className={isAnalyzing ? "spin" : ""} />
-              עדכון תקופתי (Delta)
+              <RefreshCw size={14} className={isAnalyzing && analyzingType === 'delta' ? "spin" : ""} />
+              {isAnalyzing && analyzingType === 'delta' ? 'מריץ עדכון...' : 'עדכון תקופתי (Delta)'}
             </button>
 
             {/* Full Analysis Button */}
@@ -334,8 +360,12 @@ export default function PersonalityAnalysisView({ uid }) {
               }}
               title="ביצוע ניתוח מקיף מחדש של כל הרשומות לאורך כל ההיסטוריה"
             >
-              <Sparkles size={14} />
-              ביצוע ניתוח פסיכולוגי מלא
+              {isAnalyzing && analyzingType === 'full' ? (
+                <RefreshCw size={14} className="spin" />
+              ) : (
+                <Sparkles size={14} />
+              )}
+              {isAnalyzing && analyzingType === 'full' ? 'מריץ ניתוח מלא...' : 'ביצוע ניתוח פסיכולוגי מלא'}
             </button>
           </div>
           <button onClick={loadAnalysis} className="sidebar-btn" style={{ width: '32px', height: '32px', border: '1px solid var(--border-color)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="רענן נתונים">
@@ -343,6 +373,65 @@ export default function PersonalityAnalysisView({ uid }) {
           </button>
         </div>
       </header>
+
+      {/* Process Notification Banner (Running / Success / Error) */}
+      {notification && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          padding: '14px 18px',
+          borderRadius: 'var(--radius-md)',
+          backgroundColor: notification.type === 'info' 
+            ? 'rgba(59, 130, 246, 0.08)' 
+            : notification.type === 'success' 
+              ? 'rgba(16, 185, 129, 0.08)' 
+              : 'rgba(239, 68, 68, 0.08)',
+          border: `1px solid ${
+            notification.type === 'info' 
+              ? '#3b82f6' 
+              : notification.type === 'success' 
+                ? '#10b981' 
+                : '#ef4444'
+          }`,
+          color: notification.type === 'info' 
+            ? '#1e40af' 
+            : notification.type === 'success' 
+              ? '#065f46' 
+              : '#991b1b',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+          animation: 'fadeIn 0.3s ease-in-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+            {notification.type === 'info' && (
+              <RefreshCw size={20} className="spin" style={{ color: '#3b82f6', flexShrink: 0, marginTop: '2px' }} />
+            )}
+            {notification.type === 'success' && (
+              <CheckCircle2 size={20} style={{ color: '#10b981', flexShrink: 0, marginTop: '2px' }} />
+            )}
+            {notification.type === 'error' && (
+              <AlertCircle size={20} style={{ color: '#ef4444', flexShrink: 0, marginTop: '2px' }} />
+            )}
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>{notification.message}</div>
+              {notification.detail && (
+                <div style={{ fontSize: '0.85rem', marginTop: '4px', opacity: 0.9, lineHeight: '1.4' }}>
+                  {notification.detail}
+                </div>
+              )}
+            </div>
+          </div>
+          {notification.type !== 'info' && (
+            <button 
+              onClick={() => setNotification(null)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: '4px', display: 'flex', alignItems: 'center' }}
+              title="סגור הודעה"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Main Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px', flexGrow: 1 }}>
