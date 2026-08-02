@@ -256,7 +256,7 @@ def get_okf_generative_model(api_key: str, system_prompt: str) -> genai.Generati
         if len(PSYCHOLOGY_KNOWLEDGE_BASE) > 500:
             logger.info("Creating Gemini Context Cache for OKF Psychology Base...")
             _okf_cache_object = caching.CachedContent.create(
-                model='models/gemini-2.5-flash',
+                model='models/gemini-2.0-flash',
                 display_name='okf_psychology_base_cache',
                 system_instruction=system_prompt,
                 contents=[f"=== PSYCHOLOGICAL KNOWLEDGE BASE (OKF) ===\n{PSYCHOLOGY_KNOWLEDGE_BASE}"],
@@ -268,7 +268,7 @@ def get_okf_generative_model(api_key: str, system_prompt: str) -> genai.Generati
         logger.warning(f"Gemini Context Caching fallback to standard model generation: {e}")
         
     return genai.GenerativeModel(
-        model_name="gemini-2.5-flash",
+        model_name="gemini-2.0-flash",
         system_instruction=system_prompt
     )
 
@@ -356,7 +356,7 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_toke
         
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
+            model_name="gemini-2.0-flash",
             system_instruction=system_prompt
         )
         generation_config = {"temperature": 0.2}
@@ -538,7 +538,7 @@ def get_subgraph_by_semantic_search(nodes_data: list, query_text: str, top_k: in
 # Cloud Function Definition
 # =====================================================================
 
-@https_fn.on_call(timeout_sec=120)
+@https_fn.on_call(timeout_sec=300)
 def analyze_personality(req: https_fn.CallableRequest) -> dict:
     """
     Firebase Cloud Function Gen 2 callable to analyze personality using Multi-Agent System.
