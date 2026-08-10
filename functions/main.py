@@ -331,7 +331,94 @@ Write the summary in HEBREW.
 # API Execution Helpers
 # =====================================================================
 
-def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_tokens: int = None, is_json: bool = False) -> str:
+def log_token_usage(uid: str, feature_name: str, response):
+    """Calculates cost and logs input/output tokens in Firestore for daily/weekly/monthly tracking."""
+    if not uid or not response:
+        return
+    try:
+        meta = getattr(response, 'usage_metadata', None)
+        if not meta:
+            return
+        
+        input_tokens = getattr(meta, 'prompt_token_count', 0) or 0
+        output_tokens = getattr(meta, 'candidates_token_count', 0) or 0
+        
+        if input_tokens == 0 and output_tokens == 0:
+            return
+
+        # Pricing Gemini 2.5 Flash:
+        # Input: $0.075 per 1,000,000 tokens ($0.000000075 / token)
+        # Output: $0.30 per 1,000,000 tokens ($0.00000030 / token)
+        input_cost = input_tokens * 0.000000075
+        output_cost = output_tokens * 0.00000030
+        total_cost_usd = input_cost + output_cost
+        
+        now = datetime.datetime.now(datetime.timezone.utc)
+        today_str = now.strftime('%Y-%m-%d')
+        year_week_str = f"{now.year}-W{now.isocalendar()[1]:02d}"
+        year_month_str = now.strftime('%Y-%m')
+        
+        # 1. Add log entry
+        get_db().collection('users').document(uid).collection('token_logs').add({
+            "timestamp": firestore.SERVER_TIMESTAMP,
+            "feature": feature_name,
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "cost_usd": total_cost_usd,
+            "date": today_str,
+            "week": year_week_str,
+            "month": year_month_str
+        })
+        
+        # 2. Update aggregated stats doc
+        stats_ref = get_db().collection('users').document(uid).collection('stats').document('token_usage')
+        stats_doc = stats_ref.get()
+        stats_data = stats_doc.to_dict() if stats_doc.exists else {}
+        
+        updates = {
+            "total_input_tokens": firestore.Increment(input_tokens),
+            "total_output_tokens": firestore.Increment(output_tokens),
+            "total_cost_usd": firestore.Increment(total_cost_usd),
+            "updated_at": firestore.SERVER_TIMESTAMP
+        }
+        
+        # Check resets
+        if stats_data.get('last_day') != today_str:
+            updates['day_input_tokens'] = input_tokens
+            updates['day_output_tokens'] = output_tokens
+            updates['day_cost_usd'] = total_cost_usd
+            updates['last_day'] = today_str
+        else:
+            updates['day_input_tokens'] = firestore.Increment(input_tokens)
+            updates['day_output_tokens'] = firestore.Increment(output_tokens)
+            updates['day_cost_usd'] = firestore.Increment(total_cost_usd)
+            
+        if stats_data.get('last_week') != year_week_str:
+            updates['week_input_tokens'] = input_tokens
+            updates['week_output_tokens'] = output_tokens
+            updates['week_cost_usd'] = total_cost_usd
+            updates['last_week'] = year_week_str
+        else:
+            updates['week_input_tokens'] = firestore.Increment(input_tokens)
+            updates['week_output_tokens'] = firestore.Increment(output_tokens)
+            updates['week_cost_usd'] = firestore.Increment(total_cost_usd)
+            
+        if stats_data.get('last_month') != year_month_str:
+            updates['month_input_tokens'] = input_tokens
+            updates['month_output_tokens'] = output_tokens
+            updates['month_cost_usd'] = total_cost_usd
+            updates['last_month'] = year_month_str
+        else:
+            updates['month_input_tokens'] = firestore.Increment(input_tokens)
+            updates['month_output_tokens'] = firestore.Increment(output_tokens)
+            updates['month_cost_usd'] = firestore.Increment(total_cost_usd)
+            
+        stats_ref.set(updates, merge=True)
+        logger.info(f"Logged token usage for {uid} [{feature_name}]: In={input_tokens}, Out={output_tokens}, Cost=${total_cost_usd:.6f}")
+    except Exception as e:
+        logger.error(f"Error logging token usage: {e}")
+
+def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_tokens: int = None, is_json: bool = False, uid: str = None) -> str:
     """Helper function to call Gemini model for an individual agent."""
     try:
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -359,12 +446,14 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_toke
             contents=prompt_content,
             config=config
         )
+        if uid:
+            log_token_usage(uid, f"agent_{agent_name}", response)
+
         try:
             if response.candidates:
                 candidate = response.candidates[0]
                 finish_reason = candidate.finish_reason
                 logger.info(f"Gemini agent {agent_name} finish reason: {finish_reason}")
-                # In google-generativeai, finish_reason can be an enum or int. STOP is typically represented as STOP or 1
                 if str(finish_reason) not in ("FinishReason.STOP", "STOP", "1", "FinishReason.1"):
                     logger.warning(f"Gemini agent {agent_name} finished abnormally! Full candidate info: {candidate}")
         except Exception as le:
@@ -738,6 +827,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             contents=common_prompt,
             config=metrics_config
         )
+        log_token_usage(uid, "personality_metrics", metrics_resp)
         metrics_output = MetricsOutput.model_validate_json(metrics_resp.text)
     except Exception as e:
         logger.error(f"Error during metrics extraction: {e}")
@@ -760,6 +850,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             contents=common_prompt,
             config=nodes_config
         )
+        log_token_usage(uid, "personality_nodes", nodes_resp)
         nodes_output = GraphNodesOutput.model_validate_json(nodes_resp.text)
     except Exception as e:
         logger.error(f"Error during graph nodes extraction: {e}")
@@ -782,6 +873,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             contents=common_prompt,
             config=summary_config
         )
+        log_token_usage(uid, "personality_summary", summary_resp)
         summary_output = SummaryOutput.model_validate_json(summary_resp.text)
     except Exception as e:
         logger.error(f"Error during executive summary generation: {e}")
@@ -795,7 +887,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         try:
             logger.info(f"Running agent: {approach}")
             agent_sys = f"{okf_core}\nYou are a {approach} specialist. Write a concise {approach} assessment report in Hebrew (under 100 words) based on the user's entries."
-            report_text = run_agent(approach, agent_sys, common_prompt, max_tokens=8192, is_json=False)
+            report_text = run_agent(approach, agent_sys, common_prompt, max_tokens=8192, is_json=False, uid=uid)
             
             key = approach.lower().replace(" philosophy", "").replace("far east", "fareast").replace(" ", "")
             if report_text:

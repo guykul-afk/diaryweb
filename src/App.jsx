@@ -8,6 +8,7 @@ import QuotesView from './QuotesView';
 import MindMapBuilderView from './MindMapBuilderView';
 import KnowledgeBaseGraphView from './KnowledgeBaseGraphView';
 import RecommendedReadingsCard from './components/RecommendedReadingsCard';
+import TokenCostTracker from './components/TokenCostTracker';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 
@@ -258,6 +259,10 @@ function App() {
           <div className="sidebar-logo" style={{ gap: '10px' }}>
             <img src="/logo.png" alt="לוגו זריחה בים" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
             <span>צלילה עמוקה</span>
+          </div>
+
+          <div style={{ padding: '8px 12px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '8px' }}>
+            <TokenCostTracker uid={uid} />
           </div>
 
           <nav className="sidebar-nav">
