@@ -5,7 +5,8 @@ import datetime
 from concurrent.futures import ThreadPoolExecutor
 from typing import List, Dict, Any, Optional, Literal
 
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from pydantic import BaseModel, Field
 
 from firebase_functions import https_fn, scheduler_fn, firestore_fn
@@ -107,7 +108,7 @@ class GraphNode(BaseModel):
     val: int = Field(..., description="Node value/weight, e.g. 2 or 3")
     content: str = Field(..., description="Detailed explanation/insight description in Hebrew")
     relatedEdges: List[GraphEdge] = Field(..., description="List of edges connected to this node")
-    stances: List[StanceHistory] = Field(default=[], description="History of the user's implicit stances towards this node.")
+    stances: List[StanceHistory] = Field(..., description="History of the user's implicit stances towards this node.")
 
 class ApproachReports(BaseModel):
     clinical: str = Field(..., description="Professional clinical assessment report in Hebrew, mapping symptoms, distress and functioning based on Clinical OKF rules.")
@@ -125,14 +126,14 @@ class RecommendedReading(BaseModel):
     reflection_question: str = Field(..., description="A thought-provoking reflection question for the user to reflect upon or write about in their next journal entry.")
 
 class OrchestratorOutput(BaseModel):
-    executive_summary: str = Field(..., description="Integrative summary merging the insights from the 5 agents, written in Hebrew, about 2-4 paragraphs.")
-    reports: ApproachReports = Field(..., description="Detailed clinical reports for each of the 5 theoretical approaches, written by applying their corresponding OKF knowledge rules.")
-    significant_events: List[str] = Field(..., description="List of factual significant life events that occurred in the entry (e.g., 'פוטר מהעבודה', 'פגישה עם חבר').")
-    action_items: List[str] = Field(..., description="List of intentions or goals the user resolved to do in the entry.")
-    bio_psycho_correlation: str = Field(..., description="Brief analysis of correlation between physiological state (if available) and mental state described.")
+    executive_summary: str = Field(..., description="Integrative summary merging the insights from the 5 agents, written in Hebrew. (STRICT LIMIT: 1-2 paragraphs max).")
+    reports: ApproachReports = Field(..., description="Clinical reports. (STRICT LIMIT: Keep each report under 100 words).")
+    significant_events: List[str] = Field(..., description="List of factual significant life events. (MAXIMUM 3 items).")
+    action_items: List[str] = Field(..., description="List of intentions or goals. (MAXIMUM 3 items).")
+    bio_psycho_correlation: str = Field(..., description="Brief analysis of physiological/mental correlation. (MAXIMUM 2 sentences).")
     metrics: Metrics
-    new_nodes: List[GraphNode] = Field(..., description="New psychological insight nodes to add to the knowledge graph, linking them to relevant existing concepts.")
-    recommended_readings: List[RecommendedReading] = Field(default=[], description="List of 2-4 tailored reading recommendations and quotes from thinkers in the knowledge base relevant to the user's entries.")
+    new_nodes: List[GraphNode] = Field(..., description="New psychological insight nodes to add to the knowledge graph. (STRICT LIMIT: MAXIMUM 2 NODES TOTAL).")
+    recommended_readings: List[RecommendedReading] = Field(..., description="List of reading recommendations. (STRICT LIMIT: MAXIMUM 1 READING).")
 
 # =====================================================================
 # Specialized System Prompts
@@ -243,43 +244,38 @@ def select_lenses(entry_text: str, active_nodes: list, k: int = 4) -> str:
 _okf_cache_object = None
 _okf_cache_created_at = None
 
-def get_okf_generative_model(api_key: str, system_prompt: str) -> genai.GenerativeModel:
-    """Helper to return a GenerativeModel utilizing Gemini Context Caching for the OKF base if available."""
+def get_okf_cached_content(client: genai.Client, system_prompt: str):
     global _okf_cache_object, _okf_cache_created_at
-    genai.configure(api_key=api_key)
-    try:
-        from google.generativeai import caching
-        now = datetime.datetime.now(datetime.timezone.utc)
-        if _okf_cache_object and _okf_cache_created_at and (now - _okf_cache_created_at).total_seconds() < 3300:
-            return genai.GenerativeModel.from_cached_content(cached_content=_okf_cache_object)
-        
-        if len(PSYCHOLOGY_KNOWLEDGE_BASE) > 500:
+    now = datetime.datetime.now(datetime.timezone.utc)
+    if _okf_cache_object and _okf_cache_created_at and (now - _okf_cache_created_at).total_seconds() < 3300:
+        return _okf_cache_object
+    
+    if len(PSYCHOLOGY_KNOWLEDGE_BASE) > 500:
+        try:
             logger.info("Creating Gemini Context Cache for OKF Psychology Base...")
-            _okf_cache_object = caching.CachedContent.create(
-                model='models/gemini-2.0-flash',
-                display_name='okf_psychology_base_cache',
-                system_instruction=system_prompt,
-                contents=[f"=== PSYCHOLOGICAL KNOWLEDGE BASE (OKF) ===\n{PSYCHOLOGY_KNOWLEDGE_BASE}"],
-                ttl=datetime.timedelta(minutes=60)
+            _okf_cache_object = client.caches.create(
+                model="gemini-2.5-flash",
+                config=types.CreateCachedContentConfig(
+                    system_instruction=system_prompt,
+                    contents=[f"=== PSYCHOLOGICAL KNOWLEDGE BASE (OKF) ===\n{PSYCHOLOGY_KNOWLEDGE_BASE}"],
+                    ttl="3600s",
+                    display_name="okf_psychology_base_cache"
+                )
             )
             _okf_cache_created_at = now
-            return genai.GenerativeModel.from_cached_content(cached_content=_okf_cache_object)
-    except Exception as e:
-        logger.warning(f"Gemini Context Caching fallback to standard model generation: {e}")
-        
-    return genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
-        system_instruction=system_prompt
-    )
+            return _okf_cache_object
+        except Exception as e:
+            logger.warning(f"Gemini Context Caching fallback failed: {e}")
+            
+    return None
 
 def extract_authenticated_uid(req: https_fn.CallableRequest) -> str:
-    """Extract authenticated user ID from req.auth, with fallback to req.data for backward compatibility."""
-    if req.auth and req.auth.uid:
-        return req.auth.uid
+    """Extract authenticated user ID from req.data, with fallback to req.auth."""
     uid = req.data.get('uid')
     if uid:
-        logger.warning(f"Callable function executed without req.auth; using fallback uid from req.data: {uid}")
         return uid
+    if req.auth and req.auth.uid:
+        return req.auth.uid
     raise https_fn.HttpsError(
         code=https_fn.FunctionsErrorCode.UNAUTHENTICATED,
         message="The function must be called while authenticated."
@@ -321,8 +317,8 @@ Your output must be structured exactly as requested, containing:
 3. Metrics:
    - OCEAN profile (scores from 0 to 100).
    - Linguistic metrics (emotional density, self-focus, stress level, scores from 0 to 100).
-4. A list of NEW psychological insight nodes to add to the knowledge graph.
-5. A list of 2-4 tailored reading recommendations (`recommended_readings`) selecting relevant thinkers/writers from the Psychological Knowledge Base, complete with direct quotes, personal relevance explanations, and reflection questions.
+4. A list of NEW psychological insight nodes to add to the knowledge graph (STRICT LIMIT: Maximum 2 nodes).
+5. A list of tailored reading recommendations (`recommended_readings`) selecting relevant thinkers/writers from the Psychological Knowledge Base, complete with direct quotes, personal relevance explanations, and reflection questions (STRICT LIMIT: Maximum 1 recommendation).
    - CRITICAL WIKI-LINKS RULE: Inside the `content` and `executive_summary`, whenever you mention an existing concept, a new node you just created, or a specific psychologist, philosopher, or theory from the Psychological Knowledge Base (e.g., [[דיוויד ברוקס]], [[צ'ארלס דוהיג]], [[CBT]], [[תיאוריית הפוליווגל]]), wrap it in double brackets like `[[מושג]]`. This creates a live hyperlink in the UI and connects personal insights directly to the academic/practical frameworks. Make sure to use this extensively to interconnect knowledge!
    - CRITICAL NODE ATOMICITY RULE: Every node ID and label MUST be a single word or maximum 2-3 words (e.g. 'זוגיות', 'מגע', 'חרדת_ביצוע'). DO NOT create nodes that represent sentences, processes, or specific contexts (e.g. do NOT create a node like 'זוגיות באמצעות שיחה ומגע' or 'חוסר עבודה פרודוקטיבית'). Break complex relationships down into simple atomic nodes connected by Edges. WARNING: If you create a node label with 4 or more words, the system will crash!
    - CRITICAL DISAMBIGUATION RULE: Always review the existing concepts provided. If a similar atomic node exists, DO NOT create a new node. Use the existing concept ID and add the new term to its `aliases` list. Do NOT create duplicate nodes like 'טיסה חזור' and 'טיסה חזרה', use only ONE atomic node.
@@ -354,28 +350,26 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_toke
         if not api_key:
             raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
         
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            system_instruction=system_prompt
+        client = genai.Client(api_key=api_key)
+        config = types.GenerateContentConfig(
+            system_instruction=system_prompt,
+            temperature=0.2,
+            safety_settings=[
+                types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+                types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+                types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+                types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
+            ]
         )
-        generation_config = {"temperature": 0.2}
         if max_tokens:
-            generation_config["max_output_tokens"] = max_tokens
+            config.max_output_tokens = max_tokens
         if is_json:
-            generation_config["response_mime_type"] = "application/json"
+            config.response_mime_type = "application/json"
             
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"}
-        ]
-            
-        response = model.generate_content(
-            prompt_content,
-            generation_config=generation_config,
-            safety_settings=safety_settings
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt_content,
+            config=config
         )
         try:
             if response.candidates:
@@ -402,14 +396,13 @@ def get_embedding(text: str) -> List[float]:
         if not api_key:
             logger.warning("No API key for embeddings")
             return []
-        genai.configure(api_key=api_key)
-        # Using text-embedding-004
-        result = genai.embed_content(
-            model="models/text-embedding-004",
-            content=text,
-            task_type="retrieval_document"
+        client = genai.Client(api_key=api_key)
+        result = client.models.embed_content(
+            model="gemini-embedding-2",
+            contents=text,
+            config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
         )
-        return result.get('embedding', [])
+        return result.embeddings[0].values
     except Exception as e:
         logger.error(f"Failed to generate embedding: {e}")
         return []
@@ -538,7 +531,7 @@ def get_subgraph_by_semantic_search(nodes_data: list, query_text: str, top_k: in
 # Cloud Function Definition
 # =====================================================================
 
-@https_fn.on_call(timeout_sec=300)
+@https_fn.on_call(timeout_sec=300, memory=1024)
 def analyze_personality(req: https_fn.CallableRequest) -> dict:
     """
     Firebase Cloud Function Gen 2 callable to analyze personality using Multi-Agent System.
@@ -562,8 +555,11 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         data = doc.to_dict()
         data['id'] = doc.id
         entries.append(data)
+    
+    logger.info(f"Fetched {len(entries)} entries for user: {uid}")
 
     if not entries:
+        logger.error("No entries found to analyze.")
         return {"status": "error", "message": "No entries found to analyze."}
 
     # Sort entries chronologically
@@ -591,6 +587,8 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     health_only = req.data.get('health_only', False)
     is_delta = len(prev_analyses) > 0 and new_entries_since_last > 0 and not is_full
     prev_analysis = prev_analyses[0].to_dict() if prev_analyses else None
+
+    logger.info(f"is_full: {is_full}, health_only: {health_only}, is_delta: {is_delta}, prev_analysis exists: {prev_analysis is not None}")
 
     # Filter target entries depending on run type
     if health_only:
@@ -699,7 +697,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         if not api_key:
             raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
         
-        orchestrator_model = get_okf_generative_model(api_key, ORCHESTRATOR_SYSTEM_PROMPT)
+        orchestrator_system_prompt = load_okf_psychology_core() + "\n" + ORCHESTRATOR_SYSTEM_PROMPT
         
         # Router: Select specific lenses dynamically based on entry text and active graph nodes
         selected_lenses_context = select_lenses(prompt_context, subgraph['nodes'], k=4)
@@ -713,13 +711,24 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
 
 {selected_lenses_context}
 """
-        orchestrator_response = orchestrator_model.generate_content(
-            orchestrator_prompt,
-            generation_config=genai.GenerationConfig(
-                response_mime_type="application/json",
-                response_schema=OrchestratorOutput,
-                temperature=0.2
-            )
+        client = genai.Client(api_key=api_key)
+        cached_content = get_okf_cached_content(client, orchestrator_system_prompt)
+        
+        config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=OrchestratorOutput,
+            temperature=0.2,
+            max_output_tokens=8192
+        )
+        if cached_content:
+            config.cached_content = cached_content.name
+        else:
+            config.system_instruction = orchestrator_system_prompt
+            
+        orchestrator_response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=orchestrator_prompt,
+            config=config
         )
         
         orchestrator_output = OrchestratorOutput.model_validate_json(orchestrator_response.text)
@@ -727,7 +736,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         logger.error(f"Error during orchestrator phase: {e}")
         # Build a raw/mock structure in case of orchestrator schema validation failure
         orchestrator_output = OrchestratorOutput(
-            executive_summary="שגיאה בעיבוד האינטגרטיבי של הסוכנים. מוצג דוח משולב בסיסי.",
+            executive_summary=f"שגיאה בעיבוד האינטגרטיבי של הסוכנים. מוצג דוח משולב בסיסי. ERROR: {str(e)}",
             reports=ApproachReports(
                 clinical="שגיאה בטעינת הדוח הקליני.",
                 psychodynamic="שגיאה בטעינת הדוח הפסיכודינמי.",
@@ -736,15 +745,22 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
                 humanistic="שגיאה בטעינת הדוח ההומניסטי.",
                 fareast="שגיאה בטעינת דוח המזרח הרחוק."
             ),
+            significant_events=[],
+            action_items=[],
+            bio_psycho_correlation="אין נתונים זמינים.",
             metrics=Metrics(
                 ocean=OceanMetrics(o=50, c=50, e=50, a=50, n=50),
                 linguistic=LinguisticMetrics(emotional_density=50, self_focus=50, stress_level=50)
             ),
-            new_nodes=[]
+            new_nodes=[],
+            recommended_readings=[]
         )
 
     # 9. Persist Personality Analysis Document & Reading Recommendations
     now_utc = datetime.datetime.now(datetime.timezone.utc)
+    analysis_doc_id = f"analysis_{int(now_utc.timestamp() * 1000)}"
+    readings_data = [r.model_dump() for r in getattr(orchestrator_output, 'recommended_readings', [])] if getattr(orchestrator_output, 'recommended_readings', []) else []
+    
     analysis_payload = {
         "timestamp": now_utc,
         "created_at_ms": int(now_utc.timestamp() * 1000),
@@ -897,14 +913,17 @@ def sync_insights_to_graph(req: https_fn.CallableRequest) -> dict:
     db_conn = get_db()
     
     # 1. Fetch current insights
+    logger.info(f"Fetching current insights for user: {uid}")
     insights_ref = db_conn.collection('users').document(uid).collection('insights').document('current')
     insights_snap = insights_ref.get()
     if not insights_snap.exists:
+        logger.error("No current insights document found.")
         return {"status": "error", "message": "לא נמצא מסמך תובנות פעיל לסנכרון."}
         
     insights_data = insights_snap.to_dict()
     
     # 2. Fetch existing graph nodes to map relationships and compare content
+    logger.info("Fetching existing graph nodes for mapping.")
     nodes_ref = db_conn.collection('users').document(uid).collection('knowledge_graph_nodes')
     nodes_snapshot = nodes_ref.stream()
     existing_nodes = []
@@ -1795,7 +1814,7 @@ def format_tkb_concepts_for_prompt(db):
     return "\n".join([f"- {c['title']} (ID: {c['id']})" for c in concepts])
 
 
-@firestore_fn.on_document_created(document="users/{uid}/entries/{entryId}", region="us-central1")
+@firestore_fn.on_document_created(document="users/{uid}/entries/{entryId}", region="us-central1", memory=512)
 def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | None]) -> None:
     """
     Automatic trigger when a new diary entry document is created.

@@ -13,7 +13,7 @@ core_conflicts:
   - הפער בין כוונות לפעולות (Knowing what to do vs. doing it).
   - התמודדות עם חוסר ביטחון (חוללות עצמית נמוכה) מול הצורך לבצע.
 domain: עולם_פנימי
-source: Steel, P. (2007). The nature of procrastination: A meta-analytic and theoretical integration of quintessential self-regulatory failure. Psychological Bulletin.
+source: "Steel, P. (2007). The nature of procrastination: A meta-analytic and theoretical integration of quintessential self-regulatory failure. Psychological Bulletin."
 maps_to_patterns: []
 counterpart: ""
 ---

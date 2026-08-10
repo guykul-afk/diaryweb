@@ -100,7 +100,10 @@ export default function PersonalityAnalysisView({ uid }) {
     });
 
     try {
-      await triggerPersonalityAnalysis(uid, isFull);
+      const result = await triggerPersonalityAnalysis(uid, isFull);
+      if (result && result.status === 'error') {
+        throw new Error(result.message || 'Unknown error occurred during analysis on server.');
+      }
       await loadAnalysis();
       setNotification({
         type: 'success',

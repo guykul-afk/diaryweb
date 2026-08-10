@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Calendar, Tag, RefreshCw, Search, BookOpen, Activity, Heart, Moon, Zap, Sparkles } from 'lucide-react';
-import { fetchFirebaseEntries, fetchFirebaseGraph } from './firebase';
+import { fetchFirebaseEntries, fetchFirebaseGraph, fetchTheoreticalConcepts } from './firebase';
 import LocalGraph from './LocalGraph';
 
 const getHebrewDayOfWeek = (dateStr) => {
@@ -46,10 +46,48 @@ const getHrvBadgeStyle = (hrv) => {
   if (val >= 29) return { color: '#b45309', backgroundColor: '#fef3c7', border: '1px solid #fde68a' };
   return { color: '#b91c1c', backgroundColor: '#fee2e2', border: '1px solid #fca5a5' };
 };
+const findBestConceptMatch = (refId, concepts) => {
+  if (!refId) return null;
+  const ref = refId.toLowerCase().trim();
+  
+  // 1. Exact match
+  let match = concepts.find(c => c.id.toLowerCase() === ref);
+  if (match) return match;
+  
+  // 2. Contains match (concept ID contains ref, or ref contains concept ID)
+  match = concepts.find(c => {
+    const cid = c.id.toLowerCase();
+    return cid.includes(ref) || ref.includes(cid);
+  });
+  if (match) return match;
+  
+  // 3. Match by cleaning up prefixes and comparing
+  const clean = (str) => str.replace(/knowledge_base_/g, '').replace(/_/g, ' ').replace(/[a-zA-Z]/g, '').trim();
+  const cleanRef = clean(ref);
+  if (cleanRef) {
+    match = concepts.find(c => {
+      const cleanCid = clean(c.id);
+      return cleanCid && (cleanCid.includes(cleanRef) || cleanRef.includes(cleanCid));
+    });
+  }
+  
+  return match || null;
+};
 
-export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEntry, isaData }) {
+const cleanConceptId = (ref) => {
+  if (!ref) return '';
+  let name = ref.replace(/^knowledge_base_(personality_|productivity_|motivation_|relationships_)?/i, '');
+  name = name.replace(/\.md$/i, '');
+  name = name.replace(/_/g, ' ');
+  return name.trim();
+};
+
+
+export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEntry, isaData, onNavigateToTab }) {
   const [entries, setEntries] = useState([]);
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+  const [concepts, setConcepts] = useState([]);
+  const [activeConceptDetail, setActiveConceptDetail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -131,12 +169,14 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
       if (!uid) {
         throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
       }
-      const [entriesData, graphDataRes] = await Promise.all([
+      const [entriesData, graphDataRes, theoreticalRes] = await Promise.all([
         fetchFirebaseEntries(uid),
-        fetchFirebaseGraph(uid)
+        fetchFirebaseGraph(uid),
+        fetchTheoreticalConcepts()
       ]);
       setEntries(entriesData);
       setGraphData(graphDataRes);
+      setConcepts(theoreticalRes.nodes || []);
 
       // Auto-select first entry if none selected
       if (entriesData.length > 0 && !selectedEntryId) {
@@ -414,6 +454,39 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--accent-light)', padding: '2px 8px', borderRadius: '10px' }}>
                           רגש: {entry.frontmatter.mood}
                         </span>
+                      )}
+                      {entry.frontmatter.tkb_reference && (
+                        <button 
+                          onClick={() => {
+                            const match = findBestConceptMatch(entry.frontmatter.tkb_reference, concepts);
+                            setActiveConceptDetail(match || { id: entry.frontmatter.tkb_reference, title: cleanConceptId(entry.frontmatter.tkb_reference) });
+                          }}
+                          style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--accent-color)',
+                            backgroundColor: 'rgba(255, 126, 64, 0.1)',
+                            border: '1px solid rgba(255, 126, 64, 0.25)',
+                            padding: '2px 8px',
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontFamily: 'inherit'
+                          }}
+                        >
+                          <BookOpen size={12} />
+                          מושג: {(() => {
+                            const ref = entry.frontmatter.tkb_reference;
+                            const match = findBestConceptMatch(ref, concepts);
+                            if (match) {
+                              // If matched, use title/label. Clean up if it ends with .md
+                              const title = match.title || match.label || ref;
+                              return title.replace(/\.md$/i, '').trim();
+                            }
+                            return cleanConceptId(ref);
+                          })()}
+                        </button>
                       )}
                     </div>
 
@@ -844,6 +917,112 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
           })}
         </div>
       </aside>
+
+      {/* Concept Detail Modal */}
+      {activeConceptDetail && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          direction: 'rtl'
+        }} onClick={() => setActiveConceptDetail(null)}>
+          <div style={{
+            width: '90%',
+            maxWidth: '520px',
+            backgroundColor: '#1e293b',
+            border: '1px solid #334155',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#f8fafc' }}>
+                {activeConceptDetail.title || activeConceptDetail.label || activeConceptDetail.id}
+              </h3>
+              <button 
+                onClick={() => setActiveConceptDetail(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  fontSize: '1.2rem',
+                  padding: '4px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div style={{ 
+              maxHeight: '300px', 
+              overflowY: 'auto', 
+              fontSize: '0.85rem', 
+              lineHeight: '1.6', 
+              color: '#cbd5e1',
+              whiteSpace: 'pre-wrap',
+              borderTop: '1px solid #334155',
+              borderBottom: '1px solid #334155',
+              padding: '12px 0',
+              textAlign: 'right'
+            }}>
+              {activeConceptDetail.content ? 
+                activeConceptDetail.content.replace(/^```yaml[\s\S]*?```/g, '').replace(/^[#-\s*]+/g, '').trim() 
+                : 'אין תוכן מפורט זמין עבור מושג זה.'
+              }
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '8px' }}>
+              <button 
+                onClick={() => {
+                  setActiveConceptDetail(null);
+                  if (onNavigateToTab) {
+                    onNavigateToTab('knowledge');
+                  }
+                }}
+                style={{
+                  backgroundColor: 'var(--accent-color)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '8px 16px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'opacity 0.15s'
+                }}
+              >
+                צפה בגרף הידע האקדמי
+              </button>
+              <button 
+                onClick={() => setActiveConceptDetail(null)}
+                style={{
+                  backgroundColor: 'transparent',
+                  color: '#94a3b8',
+                  border: '1px solid #334155',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '8px 16px',
+                  fontSize: '0.8rem',
+                  cursor: 'pointer'
+                }}
+              >
+                סגור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

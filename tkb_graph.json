@@ -2,9 +2,9 @@
   "nodes": [
     {
       "id": "act",
-      "label": "act",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: טיפול בקבלה ומחויבות וגמישות פסיכולוגית (ACT)\ntags: ['personality', 'psychology', 'act', 'flexibility', 'mindfulness', 'values', 'CBT', 'גמישות פסיכולוגית', 'קבלה', 'מ..."
+      "label": "טיפול בקבלה ומחויבות וגמישות פסיכולוגית (ACT)",
+      "type": "concept",
+      "content": "# טיפול בקבלה ומחויבות וגמישות פסיכולוגית (ACT)\n\n## הגדרה\nACT (Acceptance and Commitment Therapy) היא גישה טיפולית מהגל השלישי של ה-CBT, שפותחה על ידי סטיבן הייז. בניגוד ל-CBT קלאסי שמנסה לשנות או לאת..."
     },
     {
       "id": "alterman",
@@ -14,9 +14,9 @@
     },
     {
       "id": "amichai",
-      "label": "amichai",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: שירת החול, האהבה והזמן האישי\ntags: [personality, poetry, amichai, relationships, everyday-life, memory, israel_poetry, existentialism, nostalgia, inner_conflict, accep..."
+      "label": "שירת החול, האהבה והזמן האישי",
+      "type": "concept",
+      "content": "# שירת החול, האהבה והזמן האישי (יהודה עמיחי)\n\n## הגדרה\nיהודה עמיחי נחשב לאחד מגדולי המשוררים העבריים המודרניים. שירתו חוללה מהפכה בלשון השירה העברית על ידי שילוב של מילים יומיומיות, דימויים מעולם החול..."
     },
     {
       "id": "ariel",
@@ -26,9 +26,15 @@
     },
     {
       "id": "aristotle",
-      "label": "aristotle",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: חברות ומידות טובות\ntags: [relationships, aristotle, friendship, philosophy, virtue, אתיקה, אושר, אודאימוניה, פילוסופיה יוונית, קשרים בין אישיים, פיתוח אישיות, מוסר, Eu..."
+      "label": "חברות ומידות טובות",
+      "type": "concept",
+      "content": "# חברות ומידות טובות (אריסטו)\n\n## הגדרה\nאריסטו רואה בחברות (ביוונית: Philia) רכיב הכרחי וחיוני באופן מוחלט לחיים טובים ולשגשוג אנושי (Eudaimonia). בספרו המכונן \"האתיקה הניקומכאית\", הוא טוען ש\"איש לא י..."
+    },
+    {
+      "id": "arthur_brooks",
+      "label": "ארתור ברוקס (Arthur Brooks) - מאינטליגנציה נוזלית למגובשת ואושר",
+      "type": "concept",
+      "content": "# ארתור ברוקס (Arthur Brooks) - מאינטליגנציה נוזלית למגובשת ואושר\n\n## הגדרה\nארתור ס. ברוקס הוא פנטקוסטל-קתולי, סוציולוג ומדען חברתי אמריקאי, פרופסור באוניברסיטת הרווארד, ומומחה לחקר האושר והפסיכולוגיה..."
     },
     {
       "id": "attachment",
@@ -38,15 +44,21 @@
     },
     {
       "id": "auden",
-      "label": "auden",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: עידן החרדה, אבל אישי והתפכחות חברתית\ntags: ['personality', 'poetry', 'auden', 'anxiety', 'grief', 'disillusionment', 'מודרניות', 'קיום', 'בדידות', 'אובדן', 'אחריות איש..."
+      "label": "עידן החרדה, אבל אישי והתפכחות חברתית",
+      "type": "concept",
+      "content": "# עידן החרדה, אבל אישי והתפכחות חברתית (ו.ה. אודן)\n\n## הגדרה\nו.ה. אודן היה משורר ומבקר חברתי אנגלי-אמריקאי משפיע במאה ה-20, ששירתו שיקפה את המצב הקיומי של האדם המודרני. הוא טבע את המונח \"עידן החרדה\" כ..."
     },
     {
       "id": "avidan",
-      "label": "avidan",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: פוטוריזם, מגלומניה הגנתית והזדקנות הזמן\ntags: ['personality', 'poetry', 'avidan', 'futurism', 'ego', 'aging', 'חרדה קיומית', 'הגנה פסיכולוגית', 'התמודדות עם מוות', 'טכ..."
+      "label": "פוטוריזם, מגלומניה הגנתית והזדקנות הזמן",
+      "type": "concept",
+      "content": "# פוטוריזם, מגלומניה הגנתית והזדקנות הזמן\n\n## הגדרה\nדוד אבידן, משורר, סופר, מחזאי וצייר ישראלי בולט בשנות ה-60 וה-70, הציע גישה ייחודית להתמודדות עם הקיום האנושי. שירתו ומחשבתו התאפיינו בפוטוריזם (אור..."
+    },
+    {
+      "id": "backwards_law_watts",
+      "label": "חוק המאמץ ההפוך ושחרור משליטה (Alan Watts)",
+      "type": "concept",
+      "content": "# חוק המאמץ ההפוך ושחרור משליטה (Alan Watts)\n\n## הגדרה\nהפילוסוף והמרצה אלן ווטס (Alan Watts), שהנגיש את הפילוסופיה המזרחית (זן, דאואיזם, הינדואיזם) למערב, ניסח את **\"חוק המאמץ ההפוך\" (The Law of Rever..."
     },
     {
       "id": "baudelaire",
@@ -62,9 +74,9 @@
     },
     {
       "id": "borges",
-      "label": "borges",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מבוכים, זיכרון אינסופי וזהות כחלום\ntags: ['personality', 'literature', 'borges', 'labyrinth', 'memory', 'identity', 'פילוסופיה', 'מטאפיזיקה', 'קיום', 'בלבול', 'תקיעות ..."
+      "label": "מבוכים, זיכרון אינסופי וזהות כחלום",
+      "type": "concept",
+      "content": "# מבוכים, זיכרון אינסופי וזהות כחלום (חורחה לואיס בורחס)\n\n## הגדרה\nחורחה לואיס בורחס היה סופר, משורר ומסאי ארגנטינאי, הנחשב לאחד מגדולי הספרות במאה ה-20. כתיבתו הייחודית משלבת פילוסופיה, מטאפיזיקה, פנ..."
     },
     {
       "id": "brecht",
@@ -74,15 +86,15 @@
     },
     {
       "id": "brooks",
-      "label": "brooks",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: דיוויד ברוקס (David Brooks) - ההר השני ואופי מוסרי\ntags:\n  - דיוויד ברוקס\n  - אופי מוסרי\n  - משמעות חיים\n  - התפתחות אישית\n  - ערכים\n  - ענווה\n  - קהילה\n  - משבר אמצע ..."
+      "label": "דיוויד ברוקס (David Brooks) - ההר השני ואופי מוסרי",
+      "type": "concept",
+      "content": "# דיוויד ברוקס (David Brooks) - ההר השני ואופי מוסרי\n\n## הגדרה\nדיוויד ברוקס הוא פובליציסט, הוגה ומחברם של רבי מכר כמו \"בדרך אל האופי\" ו\"ההר השני\". הגותו מתמקדת במעבר מהחתירה אחר הישגים אישיים וטיפוח א..."
     },
     {
       "id": "brown",
-      "label": "brown",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: כוחה של פגיעות והתמודדות עם בושה\ntags: [relationships, psychology, brene_brown, vulnerability, courage, shame, empathy, authenticity, self_worth, communication, emotio..."
+      "label": "כוחה של פגיעות והתמודדות עם בושה",
+      "type": "concept",
+      "content": "# כוחה של פגיעות והתמודדות עם בושה (Brené Brown)\n\n## הגדרה\nפרופסור ברנה בראון היא חוקרת מודרנית העוסקת בנושאים של אומץ, פגיעות (Vulnerability), בושה, ואמפתיה. בניגוד לתפיסה החברתית שרואה בפגיעות חולשה..."
     },
     {
       "id": "buber",
@@ -97,10 +109,22 @@
       "content": "# העדר עצמי וחמלה (Buddhism)\n\n## הגדרה\nליבת תורתו של סידהארתא גאוטמה (הבודהה) עוסקת בשחרור מסבל (Dukkha). הבודהיזם מציע גישה פילוסופית רדיקלית בכל הנוגע לאישיות: הוא שולל את קיומו של \"אני\" קבוע, מהותי..."
     },
     {
+      "id": "burkeman",
+      "label": "אוליבר בורקמן (Oliver Burkeman) - קבלת סופיות החיים ופרודוקטיביות ריאליסטית",
+      "type": "concept",
+      "content": "# אוליבר בורקמן (Oliver Burkeman) - קבלת סופיות החיים ופרודוקטיביות ריאליסטית\n\n## הגדרה\nאוליבר בורקמן הוא עיתונאי וסופר בריטי הכותב על פסיכולוגיה, ניהול זמן ופילוסופיה קיומית. ספרו המפורסם *Four Thous..."
+    },
+    {
       "id": "byungchulhan",
       "label": "חברת העייפות והישגיות יתר",
       "type": "concept",
       "content": "# חברת העייפות והישגיות יתר (ביונג-צ'ול האן)\n\n## הגדרה\nביונג-צ'ול האן הוא פילוסוף תרבות דרום-קוריאני-גרמני בן זמננו. הגותו מתמקדת בניתוח מצבו של האדם בעידן הניאו-ליברלי והדיגיטלי, תוך הגדרת החברה המוד..."
+    },
+    {
+      "id": "capitalist_realism_fisher",
+      "label": "ריאליזם קפיטליסטי והפרטת המצוקה (Mark Fisher)",
+      "type": "concept",
+      "content": "# ריאליזם קפיטליסטי והפרטת המצוקה (Mark Fisher)\n\n## הגדרה\nהמבקר והפילוסוף מארק פישר (Mark Fisher) טבע את המושג **\"ריאליזם קפיטליסטי\" (Capitalist Realism)** כדי לתאר את התחושה הרווחת בחברה המודרנית לפי..."
     },
     {
       "id": "cbt",
@@ -110,15 +134,15 @@
     },
     {
       "id": "cialdini",
-      "label": "cialdini",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: Cialdini's Six Principles of Persuasion\ntags: [persuasion, influence, psychology, social_influence, decision_making, marketing, communication, ethics, behavioral_econo..."
+      "label": "Cialdini's Six Principles of Persuasion",
+      "type": "concept",
+      "content": "# ששת עקרונות השכנוע של צ'אלדיני (Cialdini's Six Principles of Persuasion)\n\n## הגדרה\nרוברט צ'אלדיני, פסיכולוג חברתי, הגדיר שישה עקרונות אוניברסליים של שכנוע והשפעה. עקרונות אלו מתארים קיצורי דרך קוגני..."
     },
     {
       "id": "clinical",
-      "label": "clinical",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מדדים בריאותיים, תפקוד ופסיכיאטריה קלינית\ntags: [personality, clinical, symptoms, dsm-5, health, חרדה, דיכאון, סטרס, שינה, תפקוד, פסיכוסומטי, ויסות רגשי, בריאות הנפש, ..."
+      "label": "מדדים בריאותיים, תפקוד ופסיכיאטריה קלינית",
+      "type": "concept",
+      "content": "# מדדים בריאותיים, תפקוד ופסיכיאטריה קלינית\n\n## הגדרה\nהגישה הקלינית מתמקדת בזיהוי, מיפוי וניתוח של סימפטומים נפשיים ופיזיולוגיים, סיווגם לפי קריטריונים אבחוניים מדעיים (כגון ה-DSM-5), ובחינת השפעתם על..."
     },
     {
       "id": "cohen",
@@ -128,15 +152,21 @@
     },
     {
       "id": "confucius",
-      "label": "confucius",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: רן (Ren) וחמש מערכות היחסים\ntags: [relationships, confucius, virtue, society, harmony, ethics, philosophy, interpersonal, hierarchy, family, East_Asian, duty, respect,..."
+      "label": "רן (Ren) וחמש מערכות היחסים",
+      "type": "concept",
+      "content": "# רן וחמש מערכות היחסים (קונפוציוס)\n\n## הגדרה\nהפילוסופיה של קונפוציוס מתמקדת בטיפוח אופי מוסרי כדי לייצר הרמוניה חברתית ויציבות. בניגוד לתפיסות המעמידות את האינדיבידואל במרכז, קונפוציוס ראה את אישיות ..."
     },
     {
       "id": "dali",
-      "label": "dali",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: סוריאליזם, פיענוח חלומות ונזילות הזמן\ntags: ['personality', 'art', 'dali', 'surrealism', 'dreams', 'unconscious', 'symbols', 'psychoanalysis', 'creativity', 'fear', 'a..."
+      "label": "סוריאליזם, פיענוח חלומות ונזילות הזמן",
+      "type": "concept",
+      "content": "# סוריאליזם, פיענוח חלומות ונזילות הזמן\n\n## הגדרה\nסלבדור דאלי היה צייר סוריאליסטי ספרדי פורץ דרך ואחד מחלוצי האמנות המודרנית. עבודתו ויצירותיו מבוססות על חקירה שיטתית ונועזת של עולם התת-מודע, פיענוח ח..."
+    },
+    {
+      "id": "dbt_linehan",
+      "label": "טיפול דיאלקטי התנהגותי (DBT) ווויסות רגשי (Linehan)",
+      "type": "concept",
+      "content": "# טיפול דיאלקטי התנהגותי (DBT) ווויסות רגשי (Marsha Linehan)\n\n## הגדרה\nDBT (Dialectical Behavior Therapy) פותח על ידי הפסיכולוגית מרשה לינהאן (Marsha Linehan). השיטה משלבת טכניקות קוגניטיביות-התנהגותי..."
     },
     {
       "id": "debeauvoir",
@@ -151,6 +181,12 @@
       "content": "# חרדת סטטוס ונחמות הפילוסופיה (אלן דה בוטון)\n\n## הגדרה\nאלן דה בוטון הוא פילוסוף וסופר שווייצרי-בריטי בן זמננו, מייסד \"בית הספר לחיים\" (The School of Life). הגותו מתמקדת בהפיכת הפילוסופיה לכלי שימושי ..."
     },
     {
+      "id": "deep_work_newport",
+      "label": "עבודת עומק ומיקוד בעידן מוסח (Cal Newport)",
+      "type": "concept",
+      "content": "# עבודת עומק ומיקוד בעידן מוסח (Cal Newport)\n\n## הגדרה\nפרופסור קאל ניופורט (Cal Newport), מדען מחשב מאוניברסיטת ג'ורג'טאון, הגדיר את המושג **\"עבודת עומק\" (Deep Work)** כפעילות מקצועית המבוצעת במצב של ..."
+    },
+    {
       "id": "development_erikson",
       "label": "Psychosocial Development (Erik Erikson)",
       "type": "Concept",
@@ -158,9 +194,15 @@
     },
     {
       "id": "dickinson",
-      "label": "dickinson",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: בדידות מרצון, מיקרוסקופיה של הנפש ומוות (אמילי דיקינסון)\ntags: ['personality', 'poetry', 'dickinson', 'solitude', 'introversion', 'death', 'self_reflection', 'existent..."
+      "label": "בדידות מרצון, מיקרוסקופיה של הנפש ומוות (אמילי דיקינסון)",
+      "type": "concept",
+      "content": "# בדידות מרצון, מיקרוסקופיה של הנפש ומוות (אמילי דיקינסון)\n\n## הגדרה\nאמילי דיקינסון הייתה משוררת אמריקאית יוצאת דופן במאה ה-19, אשר חיה את מרבית חייה בבדידות מרצון בבית הוריה, וכמעט ולא פרסמה שירים בי..."
+    },
+    {
+      "id": "dopamine_huberman",
+      "label": "ויסות דופמין ומאזן עונג-כאב (Andrew Huberman)",
+      "type": "concept",
+      "content": "# ויסות דופמין ומאזן עונג-כאב (Andrew Huberman)\n\n## הגדרה\nפרופסור אנדרו הוברמן (Andrew Huberman), נוירוביולוג מאוניברסיטת סטנפורד, מנגיש את מנגנוני מדעי המוח המשפיעים על מוטיבציה, ריכוז, מצב רוח ושינה..."
     },
     {
       "id": "dostoevsky",
@@ -188,9 +230,9 @@
     },
     {
       "id": "eliot",
-      "label": "eliot",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: ניכור מודרני, שבריריות וחיפוש רוחני\ntags: [personality, society, eliot, alienation, modernism, ריקנות, חרדה קיומית, משמעות, קיום, בדידות, התפתחות רוחנית, משבר זהות, פח..."
+      "label": "ניכור מודרני, שבריריות וחיפוש רוחני",
+      "type": "concept",
+      "content": "# ניכור מודרני, שבריריות וחיפוש רוחני (T.S. Eliot)\n\n## הגדרה\nת.ס. אליוט, מהבולטים במודרניסטים, תיאר ביצירותיו את משבר התרבות של תחילת המאה ה-20. הוא התמקד בתחושת הריקנות, חוסר התוחלת והניכור העמוק שאפ..."
     },
     {
       "id": "emotion_regulation_gross",
@@ -205,10 +247,16 @@
       "content": "# Existential Psychotherapy\n\n## TheoryConcept\nExistential psychotherapy focuses on four ultimate concerns of existence: death, freedom, existential isolation, and meaninglessness. Addressing these dir..."
     },
     {
+      "id": "flow_csikszentmihalyi",
+      "label": "תורת הזרימה (Flow) וחוויות שיא",
+      "type": "concept",
+      "content": "# תורת הזרימה (Flow) וחוויות שיא\n\n## הגדרה\nחוויית ה\"זרימה\" (Flow), כפי שפותחה על ידי הפסיכולוג מיהאי צ'יקסנטמיהאיי (Mihaly Csikszentmihalyi), היא מצב תודעתי שבו האדם שקוע לחלוטין בפעילות מסוימת עד שאי..."
+    },
+    {
       "id": "foucault",
-      "label": "foucault",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: טכנולוגיות של העצמי ופיקוח עצמי\ntags: [personality, philosophy, foucault, self-surveillance, power, self-care, autonomy, ethics, discipline, power_dynamics, subjectivi..."
+      "label": "טכנולוגיות של העצמי ופיקוח עצמי",
+      "type": "concept",
+      "content": "# טכנולוגיות של העצמי ופיקוח עצמי (מישל פוקו)\n\n## הגדרה\nמישל פוקו היה פילוסוף צרפתי משפיע במאה ה-20, שהתמקד בחקר הקשר שבין ידע, כוח וסובייקטיביות. הגותו מתארת כיצד חברות מפעילות כוח לא רק באמצעות דיכו..."
     },
     {
       "id": "frankl",
@@ -218,21 +266,21 @@
     },
     {
       "id": "garner",
-      "label": "garner",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: אלן גארנר (Alan Garner) - תקשורת בין-אישית ואסרטיביות\ntags: [תקשורת בין-אישית, אסרטיביות, מיומנויות חברתיות, הקשבה פעילה, פתרון קונפליקטים, ביקורת, מניפולציה, חשיפה עצ..."
+      "label": "אלן גארנר (Alan Garner) - תקשורת בין-אישית ואסרטיביות",
+      "type": "concept",
+      "content": "# אלן גארנר (Alan Garner) - תקשורת בין-אישית ואסרטיביות\n\n## הגדרה\nאלן גארנר הוא מומחה בעל שם עולמי לתקשורת בין-אישית ומחבר רב המכר פורץ הדרך \"Conversationally Speaking\". גישתו, המבוססת על מחקרים פסיכו..."
     },
     {
       "id": "gibran",
-      "label": "אהבה קוסמית, חירות והכאב כמעטפת הנפש",
-      "type": "concept",
+      "label": "gibran",
+      "type": "Concept",
       "content": "# אהבה קוסמית, חירות והכאב כמעטפת הנפש (ח'ליל ג'ובראן)\n\n## הגדרה\nח'ליל ג'ובראן היה משורר, סופר ואמן לבנוני-אמריקאי, הידוע בעיקר כמחבר יצירת המופת \"הנביא\". הגותו הפילוסופית משלבת מיסטיקה מזרחית עמוקה ע..."
     },
     {
       "id": "ginsberg",
-      "label": "ginsberg",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מרד, זעקה ואותנטיות רדיקלית\ntags: [personality, society, ginsberg, beat_generation, authenticity, counterculture, emotional_expression, individualism, anti_establishme..."
+      "label": "מרד, זעקה ואותנטיות רדיקלית",
+      "type": "concept",
+      "content": "# מרד, זעקה ואותנטיות רדיקלית (Allen Ginsberg)\n\n## הגדרה\nאלן גינזברג, אחד הקולות הבולטים של דור הביט בארה\"ב, קרא למהפכה תרבותית באמצעות ביטוי עצמי רדיקלי ובלתי מצונזר. בפואמה המונומנטלית \"יללה\" (Howl)..."
     },
     {
       "id": "goethe",
@@ -242,15 +290,27 @@
     },
     {
       "id": "goldberg",
-      "label": "goldberg",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מלנכוליה מעודנת, זרות ואהבת החיים\ntags: ['personality', 'poetry', 'goldberg', 'melancholy', 'nature', 'alienation', 'שירה', 'בדידות', 'קיום', 'הודיה', 'חמלה עצמית', 'ק..."
+      "label": "מלנכוליה מעודנת, זרות ואהבת החיים",
+      "type": "concept",
+      "content": "# מלנכוליה מעודנת, זרות ואהבת החיים (לאה גולדברג)\n\n## הגדרה\nלאה גולדברג (1911-1970) הייתה משוררת, סופרת, מתרגמת וחוקרת ספרות ישראלית, ונחשבת לאחת היוצרות הבולטות והאהובות בשירה העברית המודרנית. עולמה ..."
     },
     {
       "id": "grant",
-      "label": "grant",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: profile\ntitle: אדם גרנט (Adam Grant) - גמישות מחשבתית ומוטיבציה\ntags: [אדם גרנט, גמישות מחשבתית, מוטיבציה, חשיבה מחדש, נתינה ולקיחה, צמיחה אישית, פסיכולוגיה ארגונית, ביקורת בונה, התפ..."
+      "label": "אדם גרנט (Adam Grant) - גמישות מחשבתית ומוטיבציה",
+      "type": "profile",
+      "content": "# אדם גרנט (Adam Grant) - גמישות מחשבתית ומוטיבציה\n\n## הגדרה\nאדם גרנט הוא פסיכולוג ארגוני וחוקר התנהגות מוביל, הידוע במחקריו על מוטיבציה, גמישות מחשבתית, חדשנות ודינמיקת נתינה-לקיחה. גישתו מעודדת הטלת..."
+    },
+    {
+      "id": "growth_mindset_dweck",
+      "label": "דפוס חשיבה מתפתח מול מקובע (Growth vs Fixed Mindset)",
+      "type": "concept",
+      "content": "# דפוס חשיבה מתפתח מול מקובע (Growth vs Fixed Mindset)\n\n## הגדרה\nתאוריית דפוסי החשיבה (Mindsets) של הפסיכולוגית קרול דווק (Carol Dweck) חוקרת את האמונות של אנשים לגבי היכולות והאינטליגנציה שלהם. דווק ..."
+    },
+    {
+      "id": "haidt",
+      "label": "ג'ונתן היידט (Jonathan Haidt) - פסיכולוגיה מוסרית, דור החרדה והשערת האושר",
+      "type": "concept",
+      "content": "# ג'ונתן היידט (Jonathan Haidt) - פסיכולוגיה מוסרית, דור החרדה והשערת האושר\n\n## הגדרה\nג'ונתן היידט הוא פסיכולוג חברתי אמריקאי מוביל, שחוקר את הבסיס האבולוציוני והחברתי של המוסר, את מקורות האושר האנושי..."
     },
     {
       "id": "heine",
@@ -266,21 +326,21 @@
     },
     {
       "id": "ifs",
-      "label": "ifs",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מערכות משפחה פנימיות ועבודת חלקים\ntags: ['personality', 'psychology', 'ifs', 'parts', 'self', 'subpersonalities', 'internal conflict', 'self-compassion', 'trauma', 'em..."
+      "label": "מערכות משפחה פנימיות ועבודת חלקים",
+      "type": "concept",
+      "content": "# מערכות משפחה פנימיות ועבודת חלקים (IFS)\n\n## הגדרה\nמערכות משפחה פנימיות (Internal Family Systems - IFS) היא גישה שפותחה על ידי ריצ'רד שוורץ. הגישה מתבוננת בנפש האדם כמערכת אקולוגית המורכבת מ\"תת-אישיו..."
     },
     {
       "id": "intentions_gollwitzer",
       "label": "Implementation Intentions (Peter Gollwitzer)",
       "type": "Concept",
-      "content": "# Implementation Intentions\n\n## TheoryConcept\nImplementation intentions are \"if-then\" plans that specify when, where, and how a person will behave in order to achieve a goal.\n"
+      "content": "# Implementation Intentions\n\n## TheoryConcept\nImplementation intentions are \"if-then\" plans that specify when, where, and how a person will behave in order to achieve a goal."
     },
     {
       "id": "jung",
-      "label": "jung",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: הצל, הפרסונה ותהליך האינדיבידואציה\ntags: [personality, psychoanalysis, jung, shadow, identity, individuation, persona, self, archetypes, psychological_growth, unconsci..."
+      "label": "הצל, הפרסונה ותהליך האינדיבידואציה",
+      "type": "concept",
+      "content": "# הצל, הפרסונה ותהליך האינדיבידואציה\n\n## הגדרה\nקארל גוסטב יונג, פסיכיאטר ופסיכואנליטיקאי שוויצרי, ייסד את הפסיכולוגיה האנליטית. בניגוד לפרויד שהתמקד בתת-מודע האישי ובדחפים מודחקים, יונג הרחיב את היריע..."
     },
     {
       "id": "kafka",
@@ -290,15 +350,15 @@
     },
     {
       "id": "kahlo",
-      "label": "kahlo",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: חוסן נפשי, כאב פיזי ופיענוח זהות עצמית\ntags: ['personality', 'art', 'kahlo', 'resilience', 'physical-pain', 'identity', 'self-expression', 'trauma', 'art-therapy', 'su..."
+      "label": "חוסן נפשי, כאב פיזי ופיענוח זהות עצמית",
+      "type": "concept",
+      "content": "# חוסן נפשי, כאב פיזי ופיענוח זהות עצמית (פרידה קאלו)\n\n## הגדרה\nפרידה קאלו הייתה ציירת מקסיקנית אייקונית, שחייה עמדו בסימן התמודדות בלתי פוסקת עם כאב פיזי כרוני קשה (עקב מחלת הפוליו ותאונת דרכים קשה) ..."
     },
     {
       "id": "kahneman",
-      "label": "kahneman",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מערכת 1 ומערכת 2 והטיות קוגניטיביות\ntags: [personality, behavioral_economics, kahneman, decision_making, cognitive_bias, חשיבה_מהירה, חשיבה_איטית, קבלת_החלטות, כלכלה_ה..."
+      "label": "מערכת 1 ומערכת 2 והטיות קוגניטיביות",
+      "type": "concept",
+      "content": "# מערכת 1 ומערכת 2 והטיות קוגניטיביות (Daniel Kahneman)\n\n## הגדרה\nהמודל שהגה פרופסור דניאל כהנמן, חתן פרס נובל לכלכלה ואחד ממייסדי הכלכלה ההתנהגותית, מפריך את התפיסה הקלאסית לפיה בני אדם פועלים תמיד כ..."
     },
     {
       "id": "kant",
@@ -308,15 +368,27 @@
     },
     {
       "id": "keats",
-      "label": "keats",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: יכולת שלילית, יופי חולף ומלנכוליה אסתטית\ntags: ['personality', 'poetry', 'keats', 'negative-capability', 'beauty', 'melancholy', 'romanticism', 'acceptance', 'uncertai..."
+      "label": "יכולת שלילית, יופי חולף ומלנכוליה אסתטית",
+      "type": "concept",
+      "content": "# יכולת שלילית, יופי חולף ומלנכוליה אסתטית (ג'ון קיטס)\n\n## הגדרה\nג'ון קיטס (1795-1821) היה משורר רומנטי אנגלי בולט, אשר למרות מותו בגיל צעיר, הותיר מורשת פילוסופית עשירה דרך שירתו ומכתביו. גישתו מתמקד..."
+    },
+    {
+      "id": "liquid_modernity_bauman",
+      "label": "מודרניות נזילה וחוסר יציבות קיומית (Zygmunt Bauman)",
+      "type": "concept",
+      "content": "# מודרניות נזילה וחוסר יציבות קיומית (Zygmunt Bauman)\n\n## הגדרה\nהסוציולוג והפילוסוף זיגמונט באומן (Zygmunt Bauman) טבע את המושג **\"מודרניות נזילה\" (Liquid Modernity)** כדי לתאר את מצבה של החברה הבתר-מ..."
     },
     {
       "id": "maslow",
-      "label": "maslow",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: פירמידת הצרכים ומימוש עצמי\ntags: [personality, humanism, maslow, motivation, needs, self-actualization, hierarchy, growth, relationships, inner_self, fulfillment, well..."
+      "label": "פירמידת הצרכים ומימוש עצמי",
+      "type": "concept",
+      "content": "# פירמידת הצרכים ומימוש עצמי (Abraham Maslow)\n\n## הגדרה\nאברהם מאסלו, יחד עם קרל רוג'רס, נחשב למייסד הפסיכולוגיה ההומניסטית. הוא טען שהאדם אינו מונע רק מדחפים שליליים או חסכים, אלא מונע בעיקר משאיפה מו..."
+    },
+    {
+      "id": "mindfulness_thich_nhat_hanh",
+      "label": "מיינדפולנס ושלום פנימי ברגע הזה (Thich Nhat Hanh)",
+      "type": "concept",
+      "content": "# מיינדפולנס ושלום פנימי ברגע הזה (Thich Nhat Hanh)\n\n## הגדרה\nנזיר הזן הבודהיסטי, המשורר ופעיל השלום טיך נהאת האן (Thich Nhat Hanh) הביא את תורת המיינדפולנס והמודעות הקשובה למערב בצורה פשוטה, יישומית ..."
     },
     {
       "id": "neruda",
@@ -326,9 +398,9 @@
     },
     {
       "id": "neuroscience",
-      "label": "neuroscience",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מדעי המוח, ויסות דופמין ואיכות שינה\ntags: ['personality', 'neuroscience', 'sleep', 'dopamine', 'huberman', 'walker', 'mood', 'anxiety', 'cognition', 'motivation', 'cir..."
+      "label": "מדעי המוח, ויסות דופמין ואיכות שינה",
+      "type": "concept",
+      "content": "# מדעי המוח, ויסות דופמין ואיכות שינה\n\n## הגדרה\nגישה זו משלבת עקרונות מחקר המוח והביו-פסיכולוגיה המודרנית, תוך התמקדות בהשפעה העמוקה של גורמים פיזיולוגיים – כגון מקצבים צירקדיים, איכות שינה, וויסות רמ..."
     },
     {
       "id": "nietzsche",
@@ -338,27 +410,33 @@
     },
     {
       "id": "nussbaum",
-      "label": "nussbaum",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: תבונה קוגניטיבית של רגשות ופגיעות\ntags: [personality, philosophy, nussbaum, emotions, vulnerability, ethics, חמלה, אבל, כעס, פחד, צדק חברתי, קוגניציה, ערכים, אריסטו, ס..."
+      "label": "תבונה קוגניטיבית של רגשות ופגיעות",
+      "type": "concept",
+      "content": "# תבונה קוגניטיבית של רגשות ופגיעות (מרתה נוסבאום)\n\n## הגדרה\nמרתה נוסבאום, פילוסופית אמריקאית בולטת במאה ה-20 וה-21, ידועה בביסוס התפיסה כי רגשות אינם דחפים ביולוגיים עיוורים בלבד, אלא הערכות קוגניטיב..."
     },
     {
       "id": "oliver",
-      "label": "oliver",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: שירת טבע קשובה, מיינדפולנס והודיה קיומית (מרי אוליבר)\ntags: ['personality', 'poetry', 'oliver', 'nature', 'mindfulness', 'gratitude', 'personal growth', 'spirituality'..."
+      "label": "שירת טבע קשובה, מיינדפולנס והודיה קיומית (מרי אוליבר)",
+      "type": "concept",
+      "content": "# שירת טבע קשובה, מיינדפולנס והודיה קיומית (מרי אוליבר)\n\n## הגדרה\nמרי אוליבר הייתה משוררת אמריקאית זוכת פרס פוליצר, אשר שירתה התאפיינה בחיבור עמוק לטבע, להתבוננות קשובה (Mindfulness) בפרטים ובנופים, ו..."
+    },
+    {
+      "id": "perma_seligman",
+      "label": "מודל PERMA לפרושג ורווחה נפשית (Seligman)",
+      "type": "concept",
+      "content": "# מודל PERMA לפרושג ורווחה נפשית (Martin Seligman)\n\n## הגדרה\nמודל PERMA נהגה על ידי מרטין זליגמן, אבי הפסיכולוגיה החיובית. המודל מציע חמישה עמודים בלתי תלויים המרכיבים את הרווחה הנפשית (Well-being) וה..."
     },
     {
       "id": "pessoa",
-      "label": "pessoa",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: פיצול האני, ייאוש קיומי ואדישות פילוסופית\ntags: ['personality', 'poetry', 'pessoa', 'fragmentation', 'existential-dread', 'apathy', 'identity', 'self-discovery', 'mean..."
+      "label": "פיצול האני, ייאוש קיומי ואדישות פילוסופית",
+      "type": "concept",
+      "content": "# פיצול האני, ייאוש קיומי ואדישות פילוסופית (פרננדו פסואה)\n\n## הגדרה\nפרננדו פסואה היה משורר, סופר והוגה פורטוגלי מהחשובים במאה ה-20. יצירתו ייחודית בשימוש ב\"הטרונימים\" – זהויות ספרותיות מלאות, בעלות ס..."
     },
     {
       "id": "picasso",
-      "label": "picasso",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: קוביזם, פרספקטיבות מרובות ותקופות רגשיות\ntags: ['personality', 'art', 'picasso', 'cubism', 'perspective', 'emotional-states', 'self-expression', 'change', 'emotional-c..."
+      "label": "קוביזם, פרספקטיבות מרובות ותקופות רגשיות",
+      "type": "concept",
+      "content": "# קוביזם, פרספקטיבות מרובות ותקופות רגשיות (פבלו פיקאסו)\n\n## הגדרה\nפבלו פיקאסו היה צייר ופסל ספרדי, מחשובי האמנים במאה ה-20 וממייסדי הקוביזם. יצירתו חוללה מהפכה בייצוג המציאות על ידי פירוק אובייקטים ו..."
     },
     {
       "id": "plath",
@@ -388,7 +466,7 @@
       "id": "procrastination_pychyl",
       "label": "Procrastination (Timothy Pychyl)",
       "type": "Concept",
-      "content": "# Procrastination\n\n## TheoryConcept\nProcrastination is an emotional regulation problem, not a time management problem. We procrastinate to avoid negative moods associated with a task.\n"
+      "content": "# Procrastination\n\n## TheoryConcept\nProcrastination is an emotional regulation problem, not a time management problem. We procrastinate to avoid negative moods associated with a task."
     },
     {
       "id": "proust",
@@ -404,15 +482,15 @@
     },
     {
       "id": "rachel",
-      "label": "rachel",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: געגוע, קבלת הדין ושבריריות קיומית\ntags: ['personality', 'poetry', 'rachel', 'longing', 'acceptance', 'nature', 'בדידות', 'חולי', 'מוות', 'שירה', 'ענווה', 'אובדן', 'התמ..."
+      "label": "געגוע, קבלת הדין ושבריריות קיומית",
+      "type": "concept",
+      "content": "# געגוע, קבלת הדין ושבריריות קיומית (רחל המשוררת)\n\n## הגדרה\nרחל בלובשטיין, הידועה כרחל המשוררת, הייתה מהמשוררות העבריות החשובות והמובילות בעת החדשה. שירתה, הנכתבת בשפה פשוטה, אינטימית ואישית מאוד, נוג..."
     },
     {
       "id": "ravikovitch",
-      "label": "ravikovitch",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: פגיעות קיצונית, טראומה והערכה עצמית שבירה\ntags: ['personality', 'poetry', 'ravikovitch', 'trauma', 'vulnerability', 'depression', 'פוסט-טראומה', 'אובדן', 'ביטחון_עצמי'..."
+      "label": "פגיעות קיצונית, טראומה והערכה עצמית שבירה",
+      "type": "concept",
+      "content": "# פגיעות קיצונית, טראומה והערכה עצמית שבירה (דליה רביקוביץ)\n\n## הגדרה\nגישה זו, בהשראת יצירתה של המשוררת דליה רביקוביץ, עוסקת בניתוח מעמיק של נפש החווה פגיעות קיצונית, דיכאון קליני, הערכה עצמית שבירה ו..."
     },
     {
       "id": "rilke",
@@ -422,45 +500,45 @@
     },
     {
       "id": "rimbaud",
-      "label": "rimbaud",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: מרד נעורים, שיבוש החושים והחיפוש אחר הלא-נודע\ntags: ['personality', 'poetry', 'rimbaud', 'rebellion', 'senses', 'transformation', 'existentialism', 'self-discovery', '..."
+      "label": "מרד נעורים, שיבוש החושים והחיפוש אחר הלא-נודע",
+      "type": "concept",
+      "content": "# מרד נעורים, שיבוש החושים והחיפוש אחר הלא-נודע (ארתור רמבו)\n\n## הגדרה\nארתור רמבו היה משורר צרפתי מהפכני, שכלל יצירותיו הגאוניות נוצרו בתקופת נעוריו הסוערת (בין גיל 15 ל-20), ולאחריהן נטש את השירה לחל..."
     },
     {
       "id": "rogers",
-      "label": "rogers",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: קבלה חיובית והגשמה עצמית\ntags: [personality, humanism, rogers, psychology, self, self-acceptance, authenticity, personal-growth, incongruence, ideal-self, real-self, u..."
+      "label": "קבלה חיובית והגשמה עצמית",
+      "type": "concept",
+      "content": "# קבלה חיובית והגשמה עצמית (Carl Rogers)\n\n## הגדרה\nקרל רוג'רס, ממייסדי הפסיכולוגיה ההומניסטית, האמין כי לבני אדם יש נטייה מולדת (Actualizing Tendency) לצמוח, להתפתח ולממש את הפוטנציאל הגלום בהם, בדומה..."
     },
     {
       "id": "rosen",
-      "label": "rosen",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: ג'פרי רוזן (Jeffrey Rosen) - האושר דרך מידה טובה\ntags: [ג'פרי רוזן, פילוסופיה, סטואיזם, אושר, מידה טובה, יושרה, שליטה עצמית, אופי, אתיקה, יומנאות, מתינות, משמעות]\ntrig..."
+      "label": "ג'פרי רוזן (Jeffrey Rosen) - האושר דרך מידה טובה",
+      "type": "concept",
+      "content": "# ג'פרי רוזן (Jeffrey Rosen) - האושר דרך מידה טובה\n\n## הגדרה\nג'פרי רוזן הוא אינטלקטואל, משפטן וחוקר בולט, אשר חיבר את הספר \"The Pursuit of Happiness\" (המרדף אחר האושר). רוזן מגשר בין הפילוסופיה הקלאסי..."
     },
     {
       "id": "rousseau",
-      "label": "rousseau",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: אהבה עצמית טבעית מול גאווה\ntags: [personality, rousseau, society, nature, authenticity, self_worth, comparison, validation, envy, identity, social_pressure]\ntrigger_ph..."
+      "label": "אהבה עצמית טבעית מול גאווה",
+      "type": "concept",
+      "content": "# אהבה עצמית טבעית מול גאווה (Rousseau)\n\n## הגדרה\nז'אן-ז'אק רוסו היה מאושיות תקופת ההשכלה, אך הרבה לבקר את ההנחה שהקדמה והתרבות משפרות את האדם. הוא טען שב\"מצב הטבע\" האדם נולד טוב, פשוט ואותנטי, ודווקא..."
     },
     {
       "id": "sartre",
-      "label": "sartre",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: קיום קודם למהות וחירות מוחלטת\ntags: [personality, existentialism, sartre, freedom, responsibility, authenticity, bad_faith, anxiety, choice, meaning, subjective_experi..."
+      "label": "קיום קודם למהות וחירות מוחלטת",
+      "type": "concept",
+      "content": "# קיום קודם למהות וחירות מוחלטת (Jean-Paul Sartre)\n\n## הגדרה\nז'אן-פול סארטר, מגדולי ההוגים של האקזיסטנציאליזם המודרני, הציג את עקרון היסוד ש\"הקיום קודם למהות\" (Existence precedes essence). בניגוד לחפצ..."
     },
     {
       "id": "schematherapy",
-      "label": "schematherapy",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: סכמה תרפיה ודפוסי חיים מוקדמים\ntags: ['personality', 'psychology', 'schema-therapy', 'early-maladaptive-schemas', 'coping-modes', 'טיפול רגשי', 'ילדות', 'דפוסי התנהגות..."
+      "label": "סכמה תרפיה ודפוסי חיים מוקדמים",
+      "type": "concept",
+      "content": "# סכמה תרפיה ודפוסי חיים מוקדמים\n\n## הגדרה\nסכמה תרפיה, שפותחה על ידי הפסיכולוג ד\"ר ג'פרי יאנג, היא גישה טיפולית אינטגרטיבית המשלבת עקרונות מטיפול קוגניטיבי-התנהגותי (CBT), גישות פסיכודינמיות, תיאוריית..."
     },
     {
       "id": "schiller",
-      "label": "schiller",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: חינוך אסתטי ויצר המשחק\ntags: [personality, aesthetics, schiller, freedom, play, creativity, balance, humanism, art, self-actualization, philosophy, joy, expression]\ntr..."
+      "label": "חינוך אסתטי ויצר המשחק",
+      "type": "concept",
+      "content": "# חינוך אסתטי ויצר המשחק (Friedrich Schiller)\n\n## הגדרה\nפרידריך שילר, משורר ופילוסוף גרמני בולט, הציג תפיסה מהפכנית המקשרת בין חופש פוליטי ואישי לבין יופי ואסתטיקה. הוא טען כי האדם, הנתון בקונפליקט תמ..."
     },
     {
       "id": "sdt",
@@ -472,7 +550,7 @@
       "id": "self_compassion_neff",
       "label": "Self-Compassion (Kristin Neff)",
       "type": "Concept",
-      "content": "# Self-Compassion\n\n## TheoryConcept\nSelf-Compassion involves treating oneself with the same kindness, concern, and support one would show to a good friend.\n"
+      "content": "# Self-Compassion\n\n## TheoryConcept\nSelf-Compassion involves treating oneself with the same kindness, concern, and support one would show to a good friend."
     },
     {
       "id": "shlonsky",
@@ -481,10 +559,16 @@
       "content": "# מודרניזם, עמל והתמודדות עם הריק הקיומי (אברהם שלונסקי)\n\n## הגדרה\nאברהם שלונסקי היה משורר, מתרגם ועורך ישראלי, ממחדשיה הבולטים של השפה העברית והשירה העברית במאה ה-20. הגותו המרכזית מדגישה את המאבק בר..."
     },
     {
+      "id": "sleep_architecture_walker",
+      "label": "ארכיטקטורת שינה ובריאות מנטלית (Matthew Walker)",
+      "type": "concept",
+      "content": "# ארכיטקטורת שינה ובריאות מנטלית (Matthew Walker)\n\n## הגדרה\nפרופסור מת'יו ווקר (Matthew Walker), חוקר מוח ומומחה עולמי לשינה מאוניברסיטת ברקלי, מתאר את השינה כמנגנון הפיזיולוגי והנפשי החשוב ביותר לשמי..."
+    },
+    {
       "id": "socrates",
-      "label": "socrates",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: חקירה עצמית והדיאלקטיקה הסוקרטית\ntags: [personality, socrates, self-knowledge, relationships, philosophy, critical_thinking, ethics, moral_dilemmas, truth, wisdom, mea..."
+      "label": "חקירה עצמית והדיאלקטיקה הסוקרטית",
+      "type": "concept",
+      "content": "# חקירה עצמית והדיאלקטיקה הסוקרטית\n\n## הגדרה\nהפילוסופיה של סוקרטס מציבה את **הנפש** כגרעין המהותי של אישיות האדם. בניגוד לרדיפה אחר עושר, כוח או תענוגות גוף, סוקרטס האמין שמטרת החיים העליונה היא \"לדאו..."
     },
     {
       "id": "spinoza",
@@ -499,6 +583,12 @@
       "content": "# הדיכוטומיה של השליטה וויסות רגשי (הפילוסופיה הסטואית)\n\n## הגדרה\nהסטואיציזם היא אסכולה פילוסופית עתיקה (מיוון ורומא, המיוצגת על ידי הוגים כמו מרקוס אורליוס, סנקה ואפיקטטוס) המתמקדת בפיתוח שליטה עצמית..."
     },
     {
+      "id": "taleb",
+      "label": "נסים ניקולס טאלב (Nassim Nicholas Taleb) - אנטי-שבירות וחוסן אישי",
+      "type": "concept",
+      "content": "# נסים ניקולס טאלב (Nassim Nicholas Taleb) - אנטי-שבירות וחוסן אישי\n\n## הגדרה\nנסים ניקולס טאלב הוא הוגה דעות, סטטיסטיקאי ומומחה פיננסי לבנוני-אמריקאי, שעוסק בבעיות של אי-ודאות, אקראיות והסתברות. ספרו ..."
+    },
+    {
       "id": "taoism",
       "label": "טבעיות, פשטות, ועשייה ללא מאמץ (Wu Wei)",
       "type": "concept",
@@ -506,21 +596,27 @@
     },
     {
       "id": "tmt",
-      "label": "tmt",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: Temporal Motivation Theory (TMT)\ntags: [motivation, productivity, procrastination, psychology, self-regulation, time-management, decision-making, goal-setting, self-ef..."
+      "label": "Temporal Motivation Theory (TMT)",
+      "type": "concept",
+      "content": "# תיאוריית המוטיבציה הטמפורלית (Temporal Motivation Theory)\n\n## הגדרה\nתיאוריית המוטיבציה הטמפורלית (TMT) היא מודל אינטגרטיבי למוטיבציה ודחיינות המשלב מספר תיאוריות פסיכולוגיות (כגון תיאוריית הציפיות ו..."
     },
     {
       "id": "tolstoy",
-      "label": "tolstoy",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: משבר קיומי, מוסריות נוקשה וחיפוש אחר פשטות\ntags: ['personality', 'literature', 'tolstoy', 'existential-crisis', 'morality', 'simplicity', 'meaning', 'authenticity', 's..."
+      "label": "משבר קיומי, מוסריות נוקשה וחיפוש אחר פשטות",
+      "type": "concept",
+      "content": "# משבר קיומי, מוסריות נוקשה וחיפוש אחר פשטות (לב טולסטוי)\n\n## הגדרה\nלב טולסטוי (1828-1910) היה מגדולי הסופרים וההוגים הרוסים. במחצית השנייה של חייו, למרות הצלחתו העצומה כסופר ועושר אישי, עבר טולסטוי מ..."
     },
     {
       "id": "tracy",
       "label": "בריאן טרייסי (Brian Tracy) - פרודוקטיביות ומשמעת עצמית",
       "type": "concept",
       "content": "# בריאן טרייסי (Brian Tracy) - פרודוקטיביות ומשמעת עצמית\n\n## הגדרה\nבריאן טרייסי הוא מומחה בעל שם עולמי לפיתוח אישי, פסיכולוגיה של הישגים וניהול זמן, שהתפרסם בין היתר בזכות ספרו \"אכול את הצפרדע\" (Eat T..."
+    },
+    {
+      "id": "transactional_analysis_berne",
+      "label": "ניתוח עסקאות ומצבי אגו (Eric Berne)",
+      "type": "concept",
+      "content": "# ניתוח עסקאות ומצבי אגו (Transactional Analysis - Eric Berne)\n\n## הגדרה\nניתוח עסקאות (Transactional Analysis - TA) היא גישה פסיכותרפית וסוציאלית שפותחה על ידי הפסיכיאטר אריק ברן (Eric Berne). התיאורי..."
     },
     {
       "id": "trauma",
@@ -530,9 +626,9 @@
     },
     {
       "id": "vangogh",
-      "label": "vangogh",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: סערה רגשית, בדידות והתמרת כאב לצבע\ntags: [personality, art, vangogh, passion, loneliness, mental-illness, creativity, suffering, expression, resilience, mental_health,..."
+      "label": "סערה רגשית, בדידות והתמרת כאב לצבע",
+      "type": "concept",
+      "content": "# סערה רגשית, בדידות והתמרת כאב לצבע (וינסנט ואן גוך)\n\n## הגדרה\nוינסנט ואן גוך היה צייר פוסט-אימפרסיוניסטי הולנדי, מגדולי האמנים בכל הזמנים. חייו אופיינו במאבק מתמשך בדיכאון, פסיכוזה ובדידות עמוקה, לצ..."
     },
     {
       "id": "wallach",
@@ -548,9 +644,9 @@
     },
     {
       "id": "wilde",
-      "label": "wilde",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: אסתטיציזם, מסכות והחיים כאמנות\ntags: [personality, society, wilde, aesthetics, masks, authenticity, suffering, beauty, identity, self-expression, inner-world, hypocris..."
+      "label": "אסתטיציזם, מסכות והחיים כאמנות",
+      "type": "concept",
+      "content": "# אסתטיציזם, מסכות והחיים כאמנות (Oscar Wilde)\n\n## הגדרה\nהאסתטיציזם, ברוח הגותו של אוסקר ויילד, היא תפיסת עולם פילוסופית ואמנותית הרואה ביופי ובאמנות את הערכים העליונים בחיי אדם. ויילד, נציג מובהק של ..."
     },
     {
       "id": "woolf",
@@ -562,13 +658,13 @@
       "id": "woop_oettingen",
       "label": "WOOP (Gabriele Oettingen)",
       "type": "Concept",
-      "content": "# WOOP (Wish, Outcome, Obstacle, Plan)\n\n## TheoryConcept\nWOOP is a science-based mental strategy that people can use to find and fulfill their wishes, set preferences, and change their habits.\n"
+      "content": "# WOOP (Wish, Outcome, Obstacle, Plan)\n\n## TheoryConcept\nWOOP is a science-based mental strategy that people can use to find and fulfill their wishes, set preferences, and change their habits."
     },
     {
       "id": "zelda",
-      "label": "zelda",
-      "type": "Uncategorized",
-      "content": "```yaml\n---\ntype: concept\ntitle: שלום פנימי, בדידות רוחנית וחמלה קוסמית\ntags: ['personality', 'poetry', 'zelda', 'spirituality', 'compassion', 'peace', 'שירה', 'קבלה', 'התמודדות עם כאב', 'מוות']\ntrigg..."
+      "label": "שלום פנימי, בדידות רוחנית וחמלה קוסמית",
+      "type": "concept",
+      "content": "# שלום פנימי, בדידות רוחנית וחמלה קוסמית (זלדה)\n\n## הגדרה\nזלדה שניאורסון-מישקובסקי (המוכרת כזלדה) הייתה משוררת ישראלית דתייה, יוצאת חסידות חב\"ד. שירתה ייחודית בשילוב שבין עולם המושגים המיסטי-דתי לבין ..."
     },
     {
       "id": "zizek",
@@ -579,8 +675,18 @@
   ],
   "edges": [
     {
+      "source": "act",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "alterman",
       "target": "רוחניות_ומשמעות",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "amichai",
+      "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
     {
@@ -599,8 +705,33 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "aristotle",
+      "target": "זוגיות_ומשפחה",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "arthur_brooks",
+      "target": "עבודה_וקריירה",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "attachment",
       "target": "זוגיות_ומשפחה",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "auden",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "avidan",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "backwards_law_watts",
+      "target": "inner_self",
       "relation": "שייך_ל"
     },
     {
@@ -614,8 +745,23 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "borges",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "brecht",
       "target": "רוחניות_ומשמעות",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "brooks",
+      "target": "רוחניות_ומשמעות",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "brown",
+      "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
     {
@@ -629,8 +775,18 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "burkeman",
+      "target": "רוחניות_ומשמעות",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "byungchulhan",
       "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "capitalist_realism_fisher",
+      "target": "meaning",
       "relation": "שייך_ל"
     },
     {
@@ -639,8 +795,43 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "cialdini",
+      "target": "עבודה_וקריירה",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "cialdini",
+      "target": "זוגיות_ומשפחה",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "cialdini",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "clinical",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "cohen",
       "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "confucius",
+      "target": "זוגיות_ומשפחה",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "dali",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "dbt_linehan",
+      "target": "inner_self",
       "relation": "שייך_ל"
     },
     {
@@ -664,6 +855,11 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "deep_work_newport",
+      "target": "work",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "development_erikson",
       "target": "למידה_והתפתחות",
       "relation": "שייך_ל"
@@ -682,6 +878,16 @@
       "source": "development_erikson",
       "target": "jung",
       "relation": "דומה_ל"
+    },
+    {
+      "source": "dickinson",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "dopamine_huberman",
+      "target": "inner_self",
+      "relation": "שייך_ל"
     },
     {
       "source": "dostoevsky",
@@ -719,6 +925,11 @@
       "relation": "דומה_ל"
     },
     {
+      "source": "eliot",
+      "target": "עולם_פנימי / רוחניות_ומשמעות",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "emotion_regulation_gross",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
@@ -750,7 +961,7 @@
     },
     {
       "source": "existential_yalom",
-      "target": "חשיבת_יתר",
+      "target": "Overthinking",
       "relation": "קשור_ל"
     },
     {
@@ -759,13 +970,28 @@
       "relation": "דומה_ל"
     },
     {
+      "source": "flow_csikszentmihalyi",
+      "target": "work",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "foucault",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "frankl",
       "target": "רוחניות_ומשמעות",
       "relation": "שייך_ל"
     },
     {
-      "source": "gibran",
-      "target": "עולם_פנימי",
+      "source": "garner",
+      "target": "זוגיות_ומשפחה",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "ginsberg",
+      "target": "עולם_פנימי, רוחניות_ומשמעות, זוגיות_ומשפחה",
       "relation": "שייך_ל"
     },
     {
@@ -774,12 +1000,37 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "goldberg",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "grant",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "growth_mindset_dweck",
+      "target": "inner_self",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "haidt",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "heine",
-      "target": "relationships, inner_self",
+      "target": "זוגיות_ומשפחה, עולם_פנימי",
       "relation": "שייך_ל"
     },
     {
       "source": "humanistic",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "ifs",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
@@ -804,7 +1055,22 @@
       "relation": "דומה_ל"
     },
     {
+      "source": "jung",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "kafka",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "kahlo",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "kahneman",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
@@ -814,12 +1080,62 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "keats",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "liquid_modernity_bauman",
+      "target": "meaning",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "maslow",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "mindfulness_thich_nhat_hanh",
+      "target": "inner_self",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "neruda",
-      "target": "relationships, inner_self",
+      "target": "זוגיות_ומשפחה, עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "neuroscience",
+      "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
     {
       "source": "nietzsche",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "nussbaum",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "oliver",
+      "target": "רוחניות_ומשמעות",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "perma_seligman",
+      "target": "meaning",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "pessoa",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "picasso",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
@@ -879,6 +1195,16 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "rachel",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "ravikovitch",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "rilke",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
@@ -891,6 +1217,41 @@
     {
       "source": "rilke",
       "target": "זוגיות_ומשפחה",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "rimbaud",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "rogers",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "rosen",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "rousseau",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "sartre",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "schematherapy",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "schiller",
+      "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
     {
@@ -929,6 +1290,16 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "sleep_architecture_walker",
+      "target": "inner_self",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "socrates",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "spinoza",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
@@ -949,8 +1320,23 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "taleb",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "taoism",
       "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "tmt",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "tolstoy",
+      "target": "רוחניות_ומשמעות",
       "relation": "שייך_ל"
     },
     {
@@ -959,7 +1345,17 @@
       "relation": "שייך_ל"
     },
     {
+      "source": "transactional_analysis_berne",
+      "target": "relationships",
+      "relation": "שייך_ל"
+    },
+    {
       "source": "trauma",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "vangogh",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
@@ -970,6 +1366,11 @@
     },
     {
       "source": "whitman",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
+    },
+    {
+      "source": "wilde",
       "target": "עולם_פנימי",
       "relation": "שייך_ל"
     },
@@ -997,6 +1398,11 @@
       "source": "woop_oettingen",
       "target": "buddhism",
       "relation": "דומה_ל"
+    },
+    {
+      "source": "zelda",
+      "target": "עולם_פנימי",
+      "relation": "שייך_ל"
     },
     {
       "source": "zizek",

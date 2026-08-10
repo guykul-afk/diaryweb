@@ -1,58 +1,72 @@
 # TKB Core Index
 
-## act (Uncategorized)
+## טיפול בקבלה ומחויבות וגמישות פסיכולוגית (ACT) (concept)
 
 ## אורבניות מלנכולית, גורל ומסירות טוטאלית (concept)
 
-## amichai (Uncategorized)
+## שירת החול, האהבה והזמן האישי (concept)
 
 ## פילוסופיית הנווד, אירוניה וספק קיומי (מאיר אריאל) (concept)
 
-## aristotle (Uncategorized)
+## חברות ומידות טובות (concept)
+
+## ארתור ברוקס (Arthur Brooks) - מאינטליגנציה נוזלית למגובשת ואושר (concept)
 
 ## Attachment Theory in Adult Relationships (concept)
 
-## auden (Uncategorized)
+## עידן החרדה, אבל אישי והתפכחות חברתית (concept)
 
-## avidan (Uncategorized)
+## פוטוריזם, מגלומניה הגנתית והזדקנות הזמן (concept)
+
+## חוק המאמץ ההפוך ושחרור משליטה (Alan Watts) (concept)
 
 ## מלנכוליה מודרנית, שעמום קיומי ויופי באופל (concept)
 
 ## ניתוח התנהגות יישומי והרגלים (concept)
 
-## borges (Uncategorized)
+## מבוכים, זיכרון אינסופי וזהות כחלום (concept)
 
 ## אפקט הניכור והביקורת החברתית (concept)
 
-## brooks (Uncategorized)
+## דיוויד ברוקס (David Brooks) - ההר השני ואופי מוסרי (concept)
 
-## brown (Uncategorized)
+## כוחה של פגיעות והתמודדות עם בושה (concept)
 
 ## פילוסופיית הדיאלוג ויחסי אני-אתה (concept)
 
 ## העדר עצמי (Anatta) וחמלה (Karuna) (concept)
 
+## אוליבר בורקמן (Oliver Burkeman) - קבלת סופיות החיים ופרודוקטיביות ריאליסטית (concept)
+
 ## חברת העייפות והישגיות יתר (concept)
+
+## ריאליזם קפיטליסטי והפרטת המצוקה (Mark Fisher) (concept)
 
 ## טיפול קוגניטיבי התנהגותי ועיוותי חשיבה (concept)
 
-## cialdini (Uncategorized)
+## Cialdini's Six Principles of Persuasion (concept)
 
-## clinical (Uncategorized)
+## מדדים בריאותיים, תפקוד ופסיכיאטריה קלינית (concept)
 
 ## כמיהה, רוחניות ומשמעות מתוך השברים (concept)
 
-## confucius (Uncategorized)
+## רן (Ren) וחמש מערכות היחסים (concept)
 
-## dali (Uncategorized)
+## סוריאליזם, פיענוח חלומות ונזילות הזמן (concept)
+
+## טיפול דיאלקטי התנהגותי (DBT) ווויסות רגשי (Linehan) (concept)
 
 ## האתיקה של העמימות וחירות הזולת (concept)
 
 ## חרדת סטטוס ונחמות הפילוסופיה (concept)
 
-## "Psychosocial Development (Erik Erikson)" (Unknown)
+## עבודת עומק ומיקוד בעידן מוסח (Cal Newport) (concept)
 
-## dickinson (Uncategorized)
+## Psychosocial Development (Erik Erikson) (Unknown)
+
+## בדידות מרצון, מיקרוסקופיה של הנפש ומוות (אמילי דיקינסון) (concept)
+
+## ויסות דופמין ומאזן עונג-כאב (Andrew Huberman) (concept)
 
 ## פסיכולוגיית המעמקים, רגשות אשם והאדם מן המרתף (concept)
 
@@ -60,65 +74,77 @@
 
 ## זרימה, שינוי חברתי וחופש מוחלט (concept)
 
-## "Restrained Eating (Polivy & Herman)" (Unknown)
+## Restrained Eating (Polivy & Herman) (Unknown)
 
-## eliot (Uncategorized)
+## ניכור מודרני, שבריריות וחיפוש רוחני (concept)
 
-## "Emotion Regulation (James Gross)" (Unknown)
+## Emotion Regulation (James Gross) (Unknown)
 
-## "Existential Psychotherapy (Irvin Yalom)" (Unknown)
+## Existential Psychotherapy (Irvin Yalom) (Unknown)
 
-## foucault (Uncategorized)
+## תורת הזרימה (Flow) וחוויות שיא (concept)
+
+## טכנולוגיות של העצמי ופיקוח עצמי (concept)
 
 ## מציאת משמעות ולוגותרפיה (concept)
 
-## garner (Uncategorized)
+## אלן גארנר (Alan Garner) - תקשורת בין-אישית ואסרטיביות (concept)
 
 ## אהבה קוסמית, חירות והכאב כמעטפת הנפש (concept)
 
-## ginsberg (Uncategorized)
+## מרד, זעקה ואותנטיות רדיקלית (concept)
 
 ## הסער והפרץ והשאיפה הבלתי פוסקת (concept)
 
-## goldberg (Uncategorized)
+## מלנכוליה מעודנת, זרות ואהבת החיים (concept)
 
-## grant (Uncategorized)
+## אדם גרנט (Adam Grant) - גמישות מחשבתית ומוטיבציה (profile)
+
+## דפוס חשיבה מתפתח מול מקובע (Growth vs Fixed Mindset) (concept)
+
+## ג'ונתן היידט (Jonathan Haidt) - פסיכולוגיה מוסרית, דור החרדה והשערת האושר (concept)
 
 ## אירוניה רומנטית ושבריריות הלב (concept)
 
 ## דאגות קיומיות ומימוש עצמי הומניסטי (concept)
 
-## ifs (Uncategorized)
+## מערכות משפחה פנימיות ועבודת חלקים (concept)
 
-## "Implementation Intentions (Peter Gollwitzer)" (Unknown)
+## Implementation Intentions (Peter Gollwitzer) (Unknown)
 
-## jung (Uncategorized)
+## הצל, הפרסונה ותהליך האינדיבידואציה (concept)
 
 ## ניכור, אבסורד מערכתי ואשמה פנימית (concept)
 
-## kahlo (Uncategorized)
+## חוסן נפשי, כאב פיזי ופיענוח זהות עצמית (concept)
 
-## kahneman (Uncategorized)
+## מערכת 1 ומערכת 2 והטיות קוגניטיביות (concept)
 
 ## הצו הקטגורי והאדם כתכלית (Kant) (concept)
 
-## keats (Uncategorized)
+## יכולת שלילית, יופי חולף ומלנכוליה אסתטית (concept)
 
-## maslow (Uncategorized)
+## מודרניות נזילה וחוסר יציבות קיומית (Zygmunt Bauman) (concept)
+
+## פירמידת הצרכים ומימוש עצמי (concept)
+
+## מיינדפולנס ושלום פנימי ברגע הזה (Thich Nhat Hanh) (concept)
 
 ## שירה חושנית, תשוקה והודיה לדברים הפשוטים (פבלו נרודה) (concept)
 
-## neuroscience (Uncategorized)
+## מדעי המוח, ויסות דופמין ואיכות שינה (concept)
 
 ## הרצון לעוצמה ויצירת ערכים (concept)
 
-## nussbaum (Uncategorized)
+## תבונה קוגניטיבית של רגשות ופגיעות (concept)
 
-## oliver (Uncategorized)
+## שירת טבע קשובה, מיינדפולנס והודיה קיומית (מרי אוליבר) (concept)
 
-## pessoa (Uncategorized)
+## מודל PERMA לפרושג ורווחה נפשית (Seligman) (concept)
 
-## picasso (Uncategorized)
+## פיצול האני, ייאוש קיומי ואדישות פילוסופית (concept)
+
+## קוביזם, פרספקטיבות מרובות ותקופות רגשיות (concept)
 
 ## שירה וידויית, דיכאון קליני וקונפליקט תפקידים (concept)
 
@@ -128,67 +154,73 @@
 
 ## תיאוריית הפוליווגל וויסות מערכת העצבים (concept)
 
-## "Procrastination (Timothy Pychyl)" (Unknown)
+## Procrastination (Timothy Pychyl) (Unknown)
 
 ## זיכרון לא-רצוני וסובייקטיביות האהבה (concept)
 
 ## מנגנוני הגנה ותהליכים פסיכודינמיים (concept)
 
-## rachel (Uncategorized)
+## געגוע, קבלת הדין ושבריריות קיומית (concept)
 
-## ravikovitch (Uncategorized)
+## פגיעות קיצונית, טראומה והערכה עצמית שבירה (concept)
 
 ## בדידות, אהבה וקבלת הקושי (concept)
 
-## rimbaud (Uncategorized)
+## מרד נעורים, שיבוש החושים והחיפוש אחר הלא-נודע (concept)
 
-## rogers (Uncategorized)
+## קבלה חיובית והגשמה עצמית (concept)
 
-## rosen (Uncategorized)
+## ג'פרי רוזן (Jeffrey Rosen) - האושר דרך מידה טובה (concept)
 
-## rousseau (Uncategorized)
+## אהבה עצמית טבעית מול גאווה (concept)
 
-## sartre (Uncategorized)
+## קיום קודם למהות וחירות מוחלטת (concept)
 
-## schematherapy (Uncategorized)
+## סכמה תרפיה ודפוסי חיים מוקדמים (concept)
 
-## schiller (Uncategorized)
+## חינוך אסתטי ויצר המשחק (concept)
 
 ## Self-Determination Theory (SDT) (concept)
 
-## "Self-Compassion (Kristin Neff)" (Unknown)
+## Self-Compassion (Kristin Neff) (Unknown)
 
 ## מודרניזם, עמל והתמודדות עם הריק הקיומי (concept)
 
-## socrates (Uncategorized)
+## ארכיטקטורת שינה ובריאות מנטלית (Matthew Walker) (concept)
+
+## חקירה עצמית והדיאלקטיקה הסוקרטית (concept)
 
 ## קונאטוס, תבונה ומערכות יחסים (concept)
 
 ## הדיכוטומיה של השליטה וויסות רגשי (concept)
 
+## נסים ניקולס טאלב (Nassim Nicholas Taleb) - אנטי-שבירות וחוסן אישי (concept)
+
 ## טבעיות, פשטות, ועשייה ללא מאמץ (Wu Wei) (concept)
 
-## tmt (Uncategorized)
+## Temporal Motivation Theory (TMT) (concept)
 
-## tolstoy (Uncategorized)
+## משבר קיומי, מוסריות נוקשה וחיפוש אחר פשטות (concept)
 
 ## בריאן טרייסי (Brian Tracy) - פרודוקטיביות ומשמעת עצמית (concept)
 
+## ניתוח עסקאות ומצבי אגו (Eric Berne) (concept)
+
 ## השפעת טראומה על הגוף והנפש (concept)
 
-## vangogh (Uncategorized)
+## סערה רגשית, בדידות והתמרת כאב לצבע (concept)
 
 ## פריצת גבולות הנפש, זהות נזילה וסערה מנטלית (concept)
 
 ## העצמי האינסופי והחיבור הקוסמי (concept)
 
-## wilde (Uncategorized)
+## אסתטיציזם, מסכות והחיים כאמנות (concept)
 
 ## זרם התודעה, תפיסת הזמן המנטלי ושבירות הנפש (concept)
 
-## "WOOP (Gabriele Oettingen)" (Unknown)
+## WOOP (Gabriele Oettingen) (Unknown)
 
-## zelda (Uncategorized)
+## שלום פנימי, בדידות רוחנית וחמלה קוסמית (concept)
 
 ## הבניית התשוקה ופנטזיה אידיאולוגית (concept)
 

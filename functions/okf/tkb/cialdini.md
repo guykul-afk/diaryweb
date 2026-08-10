@@ -13,7 +13,7 @@ core_conflicts:
   - קושי להבין ולנהל אינטראקציות חברתיות בהן מתרחשת השפעה.
   - התמודדות עם תחושת ניצול או חוסר אונים מול טכניקות שכנוע.
 domain: [עבודה_וקריירה, זוגיות_ומשפחה, עולם_פנימי]
-source: Cialdini, R. B. (2001). Influence: Science and practice. Allyn and Bacon.
+source: "Cialdini, R. B. (2001). Influence: Science and practice. Allyn and Bacon."
 maps_to_patterns: []
 counterpart: ""
 ---

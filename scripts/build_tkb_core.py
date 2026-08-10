@@ -16,7 +16,7 @@ def build_core():
             content = f.read()
             
         # Parse frontmatter
-        match = re.search(r'^---\n(.*?)\n---', content, flags=re.DOTALL)
+        match = re.search(r'^---\r?\n(.*?)\r?\n---', content, flags=re.DOTALL)
         if match:
             fm_text = match.group(1)
             

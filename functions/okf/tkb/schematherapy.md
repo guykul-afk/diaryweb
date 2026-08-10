@@ -13,7 +13,7 @@ core_conflicts:
   - מאבק בין החלקים הפגיעים והילדיים שבתוכנו לבין ניסיונות נוקשים של הגנה עצמית (כמו פיצוי יתר או הימנעות).
   - חוסר היכולת לשבור מעגל של מערכות יחסים או מצבים שליליים שחוזרים על עצמם למרות הרצון בשינוי.
 domain: עולם_פנימי
-source: Jeffrey Young's Schema Therapy: A Practitioner's Guide
+source: "Jeffrey Young's Schema Therapy: A Practitioner's Guide"
 maps_to_patterns: []
 counterpart: ""
 ---

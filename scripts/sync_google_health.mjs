@@ -97,14 +97,16 @@ async function sync() {
 
   console.log(`Syncing data from ${startTime.toISOString().split('T')[0]} to ${endTime.toISOString().split('T')[0]}...`);
 
-  // Fetch all metrics in parallel
-  const [stepsBuckets, sleepBuckets, heartBuckets] = await Promise.all([
+  // Fetch all metrics in parallel (including resting HR & HRV)
+  const [stepsBuckets, sleepBuckets, heartBuckets, restingHeartBuckets, hrvBuckets] = await Promise.all([
     fetchGoogleFitMetric(accessToken, startTimeMillis, endTimeMillis, 'derived:com.google.step_count.delta:com.google.android.gms:estimated_steps'),
     fetchGoogleFitMetric(accessToken, startTimeMillis, endTimeMillis, 'derived:com.google.sleep.segment:com.google.android.gms:merged'),
-    fetchGoogleFitMetric(accessToken, startTimeMillis, endTimeMillis, 'derived:com.google.heart_rate.bpm:com.google.android.gms:merge_heart_rate_bpm')
+    fetchGoogleFitMetric(accessToken, startTimeMillis, endTimeMillis, 'derived:com.google.heart_rate.bpm:com.google.android.gms:merge_heart_rate_bpm'),
+    fetchGoogleFitMetric(accessToken, startTimeMillis, endTimeMillis, 'com.google.heart_rate.resting'),
+    fetchGoogleFitMetric(accessToken, startTimeMillis, endTimeMillis, 'com.google.heart_rate.heart_rate_variability.rmssd')
   ]);
 
-  console.log(`Fetched steps buckets count: ${stepsBuckets?.length}, sleep: ${sleepBuckets?.length}, heart: ${heartBuckets?.length}`);
+  console.log(`Fetched steps: ${stepsBuckets?.length}, sleep: ${sleepBuckets?.length}, heart: ${heartBuckets?.length}, restingHR: ${restingHeartBuckets?.length}, hrv: ${hrvBuckets?.length}`);
   
   // Debug output of raw buckets if empty
   if (stepsBuckets?.length > 0) {
@@ -142,19 +144,17 @@ async function sync() {
     }
   });
 
-  // Process Sleep (Approximate Sleep Score from duration since Google Fit doesn't have score by default, or sleep duration in hours * 12)
+  // Process Sleep
   sleepBuckets.forEach(bucket => {
     const dateStr = new Date(parseInt(bucket.startTimeMillis)).toISOString().split('T')[0];
     let sleepDurationMinutes = 0;
     bucket.dataset.forEach(ds => {
       ds.point.forEach(pt => {
-        // Sleep segments have start/end time. Let's calculate duration
         const duration = (parseInt(pt.endTimeNanos) - parseInt(pt.startTimeNanos)) / 1e9 / 60; // in minutes
         sleepDurationMinutes += duration;
       });
     });
     if (sleepDurationMinutes > 0) {
-      // Calculate a dummy sleep score based on duration (e.g. 8 hours (480 mins) = 90 score, linear mapping)
       const hours = sleepDurationMinutes / 60;
       let score = Math.round((hours / 8) * 90);
       if (score > 100) score = 100;
@@ -163,17 +163,43 @@ async function sync() {
     }
   });
 
-  // Process Heart Rate & HRV (Resting HR estimate from average daily heart rate or min bpm)
-  heartBuckets.forEach(bucket => {
+  // Process Resting Heart Rate (from explicit Google Fit resting_hr data type)
+  restingHeartBuckets.forEach(bucket => {
     const dateStr = new Date(parseInt(bucket.startTimeMillis)).toISOString().split('T')[0];
-    let hrSum = 0;
-    let hrCount = 0;
-    let minHr = 999;
     bucket.dataset.forEach(ds => {
       ds.point.forEach(pt => {
         pt.value.forEach(val => {
           if (val.fpVal) {
-            hrSum += val.fpVal;
+            getOrCreateDay(dateStr).resting_hr = Math.round(val.fpVal);
+          }
+        });
+      });
+    });
+  });
+
+  // Process HRV (from explicit Google Fit rmssd data type)
+  hrvBuckets.forEach(bucket => {
+    const dateStr = new Date(parseInt(bucket.startTimeMillis)).toISOString().split('T')[0];
+    bucket.dataset.forEach(ds => {
+      ds.point.forEach(pt => {
+        pt.value.forEach(val => {
+          if (val.fpVal) {
+            getOrCreateDay(dateStr).hrv = Math.round(val.fpVal);
+          }
+        });
+      });
+    });
+  });
+
+  // Process Heart Rate & Fallbacks for Resting HR / HRV if explicit values were not present
+  heartBuckets.forEach(bucket => {
+    const dateStr = new Date(parseInt(bucket.startTimeMillis)).toISOString().split('T')[0];
+    let minHr = 999;
+    let hrCount = 0;
+    bucket.dataset.forEach(ds => {
+      ds.point.forEach(pt => {
+        pt.value.forEach(val => {
+          if (val.fpVal) {
             hrCount++;
             if (val.fpVal < minHr) minHr = val.fpVal;
           }
@@ -182,10 +208,15 @@ async function sync() {
     });
 
     if (hrCount > 0) {
-      // Estimate resting HR as the lowest 10% or just the minimum/resting parameter
-      getOrCreateDay(dateStr).resting_hr = Math.round(minHr);
-      // Simulate HRV correlation for the demonstration if no hardware device is synced
-      getOrCreateDay(dateStr).hrv = Math.round(80 - minHr * 0.8 + (Math.random() * 5));
+      const dayObj = getOrCreateDay(dateStr);
+      // Fallback for Resting HR if not set directly from restingHeartBuckets
+      if (!dayObj.resting_hr && minHr !== 999) {
+        dayObj.resting_hr = Math.round(minHr);
+      }
+      // Fallback for HRV calculation based on resting HR baseline if non-explicit
+      if (!dayObj.hrv && dayObj.resting_hr) {
+        dayObj.hrv = Math.round(85 - dayObj.resting_hr * 0.7);
+      }
     }
   });
 

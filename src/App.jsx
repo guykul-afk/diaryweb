@@ -185,6 +185,7 @@ function App() {
             {...props} 
             selectedEntryId={selectedEntryId} 
             onSelectEntry={setSelectedEntryId} 
+            onNavigateToTab={setActiveTab}
           />
         );
       case 'graph':
@@ -230,9 +231,14 @@ function App() {
           />
         );
       case 'knowledge':
+      case 'knowledge-graph':
+      case 'knowledge-frequency':
         return (
           <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
-            <KnowledgeBaseGraphView onNavigateToEntry={handleNavigateToEntry} />
+            <KnowledgeBaseGraphView 
+              initialTab={activeTab === 'knowledge-frequency' ? 'frequency' : 'graph'} 
+              onNavigateToEntry={handleNavigateToEntry} 
+            />
           </div>
         );
       default:
@@ -318,12 +324,26 @@ function App() {
             >
               <span>תובנות אישיות</span>
             </button>
+
             <button
-              className={`sidebar-btn ${activeTab === 'knowledge' ? 'active' : ''}`}
-              onClick={() => setActiveTab('knowledge')}
-              title="בסיס ידע אקדמי"
+              className={`sidebar-btn ${activeTab === 'knowledge' || activeTab === 'knowledge-graph' ? 'active' : ''}`}
+              onClick={() => setActiveTab('knowledge-graph')}
+              title="בסיס ידע אקדמי (גרף 3D)"
             >
               <span>בסיס ידע אקדמי</span>
+            </button>
+
+            <button
+              className={`sidebar-btn ${activeTab === 'knowledge-frequency' ? 'active' : ''}`}
+              onClick={() => setActiveTab('knowledge-frequency')}
+              style={{
+                paddingRight: '28px',
+                fontSize: '0.85rem',
+                borderRight: activeTab === 'knowledge-frequency' ? '3px solid var(--accent-color)' : 'none'
+              }}
+              title="שכיחות מושגים ברשומות"
+            >
+              <span>↳ שכיחות מושגים</span>
             </button>
           </nav>
 

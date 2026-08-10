@@ -389,13 +389,56 @@ function showInfo(nodeId) {
       
       const childLinks = childNodes.map(node => {
         const color = node.color ? (node.color.background || node.color) : '#60a5fa';
-        return `<div class="linked-entry-item" style="border-right: 3px solid ${esc(color)}; margin-top: 8px; text-align: right;" onclick="try { network.openCluster('${esc(nodeId)}'); } catch(e){} focusNode('${esc(node.id)}');">📄 ${esc(node.label || node.name)}</div>`;
+        const icon = (node.label || '').endsWith('.md') ? '📄' : '💡';
+        const name = (node.label || node.name).replace('.md', '');
+        const descPreview = node._description ? `<div style="font-size: 12px; color: #94a3b8; line-height: 1.4; margin-top: 6px;">${esc(node._description).substring(0, 80)}...</div>` : '';
+        
+        return `<div class="linked-entry-item" style="border-right: 3px solid ${esc(color)}; margin-bottom: 8px; padding: 12px; background: rgba(255,255,255,0.03); border-radius: 6px; cursor: pointer; transition: all 0.2s;" onclick="try { network.openCluster('${esc(nodeId)}'); } catch(e){} focusNode('${esc(node.id)}');" onmouseover="this.style.background='rgba(255,255,255,0.08)'" onmouseout="this.style.background='rgba(255,255,255,0.03)'">
+            <div style="font-weight: 600; color: #f1f5f9; font-size: 14px;">${icon} ${esc(name)}</div>
+            ${descPreview}
+        </div>`;
       }).join('');
       
+      const domain = typeof getDomainForThinker === 'function' ? getDomainForThinker(thinkerName) : { name: "כללי", icon: "📘", color: "#64748b" };
+      
+      const thinkerSummaries = {
+        "Carl Jung": "מייסד הפסיכולוגיה האנליטית. התמקד בלא-מודע הקולקטיבי, ארכיטיפים, תהליך האינדיבידואציה, ומושגים כמו 'הצל' ו'הפרסונה'. הגותו משלבת פסיכולוגיה, מיתולוגיה ודת.",
+        "Carl Rogers": "ממייסדי הזרם ההומניסטי. פיתח את הטיפול הממוקד-לקוח, הדגיש את חשיבות הקבלה הבלתי מותנית, האותנטיות והאמפתיה כתנאים לצמיחה ומימוש עצמי.",
+        "Aaron Beck & Albert Ellis": "אבות הגישה הקוגניטיבית-התנהגותית (CBT). חקרו כיצד מחשבות, אמונות ועיוותי חשיבה משפיעים על רגשות והתנהגות, ופיתחו טכניקות לשינוי קוגניטיבי.",
+        "Viktor Frankl": "פסיכיאטר ופילוסוף אקזיסטנציאליסטי, מייסד הלוגותרפיה. שרד את השואה והדגיש את החיפוש אחר משמעות ככוח המניע המרכזי של האדם.",
+        "Sigmund Freud": "אבי הפסיכואנליזה. הדגיש את הלא-מודע, דחפים יצריים (איד), מנגנוני הגנה, וחוויות ילדות מוקדמות כמעצבים את האישיות.",
+        "Siddhartha Gautama (Buddha)": "מייסד הבודהיזם. לימד על טבע הסבל (דוקהה), ארעיות (אניצ'ה), והדרך לשחרור באמצעות מודעות, חמלה ושחרור מהיאחזות.",
+        "Friedrich Nietzsche": "פילוסוף קיומי ואנטי-ממסדי. ביקר את המוסר המסורתי, טבע את המושגים 'העל-אדם' ו'הרצון לעוצמה', והדגיש יצירת משמעות אישית.",
+        "B.F. Skinner & Watson": "ממובילי הביהביוריזם. התמקדו בהתנהגות נצפית, התניה אופרנטית וקלאסית, והשפעת סביבה וחיזוקים על למידה."
+      };
+      
+      const summaryText = thinkerSummaries[thinkerName] || `הוגה ויוצר בתחום <strong>${domain.name}</strong>. הגותו, כתביו והמושגים המקושרים אליו בבסיס הידע האקדמי מרוכזים תחת צומת זה.`;
+
       n = {
         id: nodeId,
         label: thinkerName,
-        _description: `הוגה: <strong>${thinkerName}</strong><br><br>צומת זה מקבץ את כל התיאוריות, הכתבים והמושגים השייכים להוגה זה. לחץ על מושג כדי לפתוח אותו בגרף:<br><br>${childLinks}`
+        _description: `
+          <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div style="font-size: 36px; background: rgba(255,255,255,0.05); padding: 12px; border-radius: 12px;">${domain.icon}</div>
+            <div>
+              <div style="font-size: 12px; color: ${domain.color}; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">${domain.name}</div>
+              <div style="font-size: 22px; color: #ffffff; font-weight: bold;">${thinkerName}</div>
+            </div>
+          </div>
+          
+          <div style="font-size: 14px; color: #cbd5e1; line-height: 1.6; margin-bottom: 24px; padding: 16px; background: rgba(0,0,0,0.2); border-radius: 8px; border-right: 3px solid ${domain.color};">
+            <strong style="color: white; display: block; margin-bottom: 6px;">סיכום הגות:</strong>
+            ${summaryText}
+          </div>
+          
+          <div style="font-size: 15px; color: #ffffff; font-weight: bold; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <span>כתבים ומושגים מקושרים</span>
+            <span style="background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 12px; font-size: 12px;">${childNodes.length} פריטים</span>
+          </div>
+          <div style="display: flex; flex-direction: column;">
+            ${childLinks || '<div style="color: #64748b; font-size: 13px; font-style: italic;">אין מושגים מקושרים להוגה זה.</div>'}
+          </div>
+        `
       };
     } else {
       return;
@@ -475,8 +518,10 @@ window.addEventListener('message', (event) => {
           _community: match.community,
           _description: n.content || match._description,
           _is_h1: n.isH1 !== undefined ? n.isH1 : match._is_h1,
-          _source_file: n.sourceFile || match.source_file,
-          _file_type: n.type || match.file_type
+          _source_file: n.sourceFile || match.source_file || match._source_file,
+          source_file: n.sourceFile || match.source_file || match._source_file,
+          _file_type: n.type || match.file_type,
+          thinker: n.thinker || match.thinker
         };
       }
       
@@ -494,7 +539,9 @@ window.addEventListener('message', (event) => {
         _description: n.content,
         _is_h1: n.isH1,
         _source_file: n.sourceFile,
-        _file_type: n.type
+        source_file: n.sourceFile,
+        _file_type: n.type,
+        thinker: n.thinker
       };
     });
     
@@ -803,6 +850,60 @@ function extractThinker(n) {
   return "Unknown";
 }
 
+const THINKER_DOMAINS = {
+  "CBT & קוגניציה": {
+    color: "#3b82f6",
+    icon: "🧠",
+    thinkers: [
+      "Aaron Beck & Albert Ellis", "B.F. Skinner & Watson", "Daniel Kahneman", 
+      "Cialdini's Six Principles of Persuasion", "Behavioral", "CBT", "Jeffrey Young"
+    ]
+  },
+  "הומניזם וקיומיות": {
+    color: "#a855f7",
+    icon: "👁️",
+    thinkers: [
+      "Carl Jung", "Carl Rogers", "Abraham Maslow", "Viktor Frankl", "Brené Brown",
+      "Gabor Maté & Bessel van der Kolk", "Humanistic & Existential", "Psychodynamic", "Clinical", "IFS"
+    ]
+  },
+  "פילוסופיה וסטואיציזם": {
+    color: "#eab308",
+    icon: "🏛️",
+    thinkers: [
+      "Aristotle", "Socrates", "Plato", "Marcus Aurelius & Seneca", "Spinoza", "Kant",
+      "Rousseau", "Friedrich Nietzsche", "Simone de Beauvoir", "Michel Foucault", "Byung-Chul Han", "Alain de Botton", "Martin Buber"
+    ]
+  },
+  "מזרח ורוחניות": {
+    color: "#10b981",
+    icon: "🧘",
+    thinkers: [
+      "Siddhartha Gautama (Buddha)", "Buddhism", "Confucius", "Lao Tzu", "Khalil Gibran"
+    ]
+  },
+  "ספרות, שירה ואמנות": {
+    color: "#ec4899",
+    icon: "🎨",
+    thinkers: [
+      "Bertolt Brecht", "Bob Dylan", "Allen Ginsberg", "Franz Kafka", "Salvador Dali",
+      "Frida Kahlo", "Emily Dickinson", "Leonard Cohen", "Virginia Woolf", "Charles Baudelaire",
+      "Arthur Rimbaud", "Natan Alterman", "Leah Goldberg", "W.H. Auden", "Jorge Luis Borges",
+      "John Keats", "Rachel the Poet", "Leo Tolstoy", "Avraham Shlonsky", "Slavoj Žižek"
+    ]
+  }
+};
+
+function getDomainForThinker(thinkerName) {
+  if (!thinkerName) return { name: "כללי ומחקר", color: "#64748b", icon: "📘" };
+  for (const [domName, domInfo] of Object.entries(THINKER_DOMAINS)) {
+    if (domInfo.thinkers.some(t => thinkerName.toLowerCase().includes(t.toLowerCase()) || t.toLowerCase().includes(thinkerName.toLowerCase()))) {
+      return { name: domName, ...domInfo };
+    }
+  }
+  return { name: "כללי ומחקר", color: "#64748b", icon: "📘" };
+}
+
 let currentClusters = [];
 
 function applyGraphClustering(nodesList, mode) {
@@ -838,6 +939,7 @@ function applyGraphClustering(nodesList, mode) {
     thinkers.forEach(thinker => {
       if (!thinker || thinker === "Unknown") return;
       
+      const domain = getDomainForThinker(thinker);
       const cid = 'cluster_' + thinker;
       const clusterOptionsByData = {
         joinCondition: function(childOptions) {
@@ -850,15 +952,47 @@ function applyGraphClustering(nodesList, mode) {
           id: cid,
           borderWidth: 3,
           shape: 'dot',
-          size: 40,
-          label: thinker,
-          font: { size: 16, color: '#ffffff', face: 'arial' },
-          color: { background: '#60a5fa', border: '#ffffff' },
+          size: 32,
+          label: `${domain.icon} ${thinker}`,
+          font: { size: 14, color: '#ffffff', face: 'system-ui, -apple-system, sans-serif', strokeWidth: 4, strokeColor: '#0f0f1a' },
+          color: { background: domain.color, border: '#ffffff', highlight: { background: '#ffffff', border: domain.color } },
           allowSingleNodeCluster: true
         }
       };
       network.cluster(clusterOptionsByData);
       currentClusters.push(cid);
+    });
+
+    // Re-trigger physics stabilization to spread clusters gracefully without central overlap
+    network.setOptions({
+      physics: {
+        enabled: true,
+        solver: 'forceAtlas2Based',
+        forceAtlas2Based: {
+          gravitationalConstant: -2200,
+          centralGravity: 0.002,
+          springLength: 380,
+          springConstant: 0.015,
+          damping: 0.5,
+          avoidOverlap: 1.0
+        }
+      }
+    });
+    network.stabilize(200);
+  } else {
+    network.setOptions({
+      physics: {
+        enabled: true,
+        solver: 'forceAtlas2Based',
+        forceAtlas2Based: {
+          gravitationalConstant: -500,
+          centralGravity: 0.005,
+          springLength: 320,
+          springConstant: 0.02,
+          damping: 0.4,
+          avoidOverlap: 1.0
+        }
+      }
     });
   }
 }
@@ -912,78 +1046,150 @@ function rebuildSidebar(nodesList, mode = 'theory') {
   if (!listBody) return;
   listBody.innerHTML = '';
   
-  const groups = {};
-  
-  nodesList.forEach(n => {
-    const isFileNode = (n.label || '').endsWith('.md');
-    if (isFileNode) return;
+  if (mode === 'thinker') {
+    // Group thinkers under domain accordions
+    const domainGroups = {};
     
-    let key = n.source_file || n._source_file || n.sourceFile;
-    if (mode === 'thinker') {
-      key = extractThinker(n);
-    }
-    if (!key) return;
+    nodesList.forEach(n => {
+      const isFileNode = (n.label || '').endsWith('.md');
+      if (isFileNode) return;
+      
+      const thinker = extractThinker(n);
+      if (!thinker || thinker === "Unknown") return;
+      
+      const dom = getDomainForThinker(thinker);
+      if (!domainGroups[dom.name]) {
+        domainGroups[dom.name] = {
+          domainInfo: dom,
+          thinkersMap: {}
+        };
+      }
+      
+      if (!domainGroups[dom.name].thinkersMap[thinker]) {
+        domainGroups[dom.name].thinkersMap[thinker] = [];
+      }
+      domainGroups[dom.name].thinkersMap[thinker].push(n);
+    });
+
+    Object.keys(domainGroups).forEach(domName => {
+      const groupData = domainGroups[domName];
+      const domInfo = groupData.domainInfo;
+      const thinkersMap = groupData.thinkersMap;
+      const thinkerNames = Object.keys(thinkersMap).sort((a,b) => a.localeCompare(b, 'he'));
+      
+      if (!thinkerNames.length) return;
+
+      // Domain Header Accordion
+      const domHeader = document.createElement('div');
+      domHeader.className = 'domain-header';
+      domHeader.style.cssText = `
+        background: rgba(255, 255, 255, 0.04);
+        border-right: 4px solid ${domInfo.color};
+        border-radius: 6px;
+        padding: 8px 10px;
+        margin-top: 10px;
+        font-weight: bold;
+        font-size: 13px;
+        color: #ffffff;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+      `;
+      domHeader.innerHTML = `<span>${domInfo.icon} ${domName} (${thinkerNames.length})</span><span style="font-size:10px; opacity:0.6;">▼</span>`;
+
+      const domBody = document.createElement('div');
+      domBody.style.display = 'flex';
+      domBody.style.flexDirection = 'column';
+      domBody.style.gap = '4px';
+      domBody.style.marginTop = '4px';
+
+      domHeader.onclick = () => {
+        const isHidden = domBody.style.display === 'none';
+        domBody.style.display = isHidden ? 'flex' : 'none';
+        domHeader.querySelector('span:last-child').textContent = isHidden ? '▼' : '◀';
+      };
+
+      thinkerNames.forEach(tName => {
+        const thinkerItem = document.createElement('div');
+        thinkerItem.className = 'nodes-list-item';
+        thinkerItem.style.cssText = `
+          padding: 6px 10px;
+          margin-right: 10px;
+          background: rgba(255, 255, 255, 0.02);
+          border-right: 2px solid ${domInfo.color};
+          border-radius: 4px;
+          font-size: 12px;
+          color: #cbd5e1;
+          cursor: pointer;
+        `;
+        thinkerItem.textContent = tName;
+        
+        thinkerItem.onclick = () => {
+          const clusterId = 'cluster_' + tName;
+          if (network.isCluster(clusterId)) {
+            network.focus(clusterId, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+            network.selectNodes([clusterId]);
+            showInfo(clusterId);
+          } else {
+            const firstNode = thinkersMap[tName][0];
+            if (firstNode) {
+              network.focus(firstNode.id, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
+              network.selectNodes([firstNode.id]);
+              showInfo(firstNode.id);
+            }
+          }
+        };
+        domBody.appendChild(thinkerItem);
+      });
+
+      listBody.appendChild(domHeader);
+      listBody.appendChild(domBody);
+    });
+
+  } else {
+    // Mode is theory
+    const groups = {};
     
-    if (!groups[key]) {
-      groups[key] = { parent: null, children: [] };
-    }
-    
-    if (mode === 'theory') {
+    nodesList.forEach(n => {
+      const isFileNode = (n.label || '').endsWith('.md');
+      if (isFileNode) return;
+      
+      let key = n.source_file || n._source_file || n.sourceFile;
+      if (!key) return;
+      
+      if (!groups[key]) {
+        groups[key] = { parent: null, children: [] };
+      }
+      
       if (n._is_h1 || n.isH1 || n.is_h1) {
         groups[key].parent = n;
       } else if (n._description || n.description || n.content) {
         groups[key].children.push(n);
       }
-    } else {
-      if (!groups[key].parent) {
-        groups[key].parent = {
-          id: 'thinker_' + key,
-          label: key,
-          name: key,
-          color: n.color
-        };
-      }
-      if (n._is_h1 || n.isH1 || n.is_h1) {
-        groups[key].children.push(n);
-      }
-    }
-  });
+    });
 
-  const sortedGroups = Object.values(groups).filter(g => g.parent);
-  sortedGroups.sort((a, b) => (a.parent.label || a.parent.name || '').localeCompare(b.parent.label || b.parent.name || '', 'he'));
+    const sortedGroups = Object.values(groups).filter(g => g.parent);
+    sortedGroups.sort((a, b) => (a.parent.label || a.parent.name || '').localeCompare(b.parent.label || b.parent.name || '', 'he'));
 
-  sortedGroups.forEach(g => {
-    const parentItem = document.createElement('div');
-    parentItem.className = 'nodes-list-item';
-    const parentColor = g.parent.color ? (g.parent.color.background || g.parent.color) : '#555';
-    parentItem.style.borderRight = `4px solid ${parentColor}`;
-    parentItem.style.fontWeight = 'bold';
-    parentItem.style.color = '#ffffff';
-    parentItem.style.background = 'rgba(255, 255, 255, 0.05)';
-    parentItem.style.marginTop = '12px';
-    parentItem.textContent = g.parent.label || g.parent.name;
-    
-    parentItem.onclick = () => {
-      if (mode === 'thinker') {
-        const clusterId = 'cluster_' + (g.parent.label || g.parent.name);
-        if (network.isCluster(clusterId)) {
-          network.focus(clusterId, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
-          network.selectNodes([clusterId]);
-          showInfo(clusterId);
-        } else if (g.children.length > 0) {
-          network.focus(g.children[0].id, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
-          network.selectNodes([g.children[0].id]);
-          showInfo(g.children[0].id);
-        }
-      } else {
+    sortedGroups.forEach(g => {
+      const parentItem = document.createElement('div');
+      parentItem.className = 'nodes-list-item';
+      const parentColor = g.parent.color ? (g.parent.color.background || g.parent.color) : '#555';
+      parentItem.style.borderRight = `4px solid ${parentColor}`;
+      parentItem.style.fontWeight = 'bold';
+      parentItem.style.color = '#ffffff';
+      parentItem.style.background = 'rgba(255, 255, 255, 0.05)';
+      parentItem.style.marginTop = '10px';
+      parentItem.textContent = g.parent.label || g.parent.name;
+      
+      parentItem.onclick = () => {
         network.focus(g.parent.id, { scale: 1.3, animation: { duration: 800, easingFunction: 'easeInOutQuad' } });
         network.selectNodes([g.parent.id]);
         showInfo(g.parent.id);
-      }
-    };
-    listBody.appendChild(parentItem);
+      };
+      listBody.appendChild(parentItem);
 
-    if (mode === 'theory') {
       g.children.sort((a, b) => (a.label || a.name || '').localeCompare(b.label || b.name || '', 'he'));
       
       g.children.forEach(c => {
@@ -1009,8 +1215,8 @@ function rebuildSidebar(nodesList, mode = 'theory') {
         };
         listBody.appendChild(childItem);
       });
-    }
-  });
+    });
+  }
 }
 
 // Initial sidebar population
