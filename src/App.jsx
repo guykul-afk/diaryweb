@@ -7,6 +7,7 @@ import { DiaryDataProvider } from './hooks/useDiaryData';
 import QuotesView from './QuotesView';
 import MindMapBuilderView from './MindMapBuilderView';
 import KnowledgeBaseGraphView from './KnowledgeBaseGraphView';
+import DeepKnowledgeView from './DeepKnowledgeView';
 import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 import TokenCostTracker from './components/TokenCostTracker';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
@@ -205,6 +206,16 @@ function App() {
             <MindMapBuilderView />
           </div>
         );
+      case 'graph-deep':
+      case 'deep-graph':
+        return (
+          <div style={{ flexGrow: 1, height: '100%' }}>
+            <DeepKnowledgeView 
+              {...props} 
+              onNavigateToEntry={handleNavigateToEntry} 
+            />
+          </div>
+        );
       case 'analysis':
         return (
           <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
@@ -305,6 +316,12 @@ function App() {
                   onClick={() => setActiveTab('graph-stars')}
                 >
                   מפת כוכבים
+                </button>
+                <button 
+                  className={`submenu-btn ${activeTab === 'graph-deep' || activeTab === 'deep-graph' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('graph-deep')}
+                >
+                  גרף סמנטי 2.0
                 </button>
                 <button 
                   className={`submenu-btn ${activeTab === 'graph-mindmap' ? 'active' : ''}`}

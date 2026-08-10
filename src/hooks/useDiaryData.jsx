@@ -31,9 +31,9 @@ export function DiaryDataProvider({ children, uid }) {
         fetchTheoreticalConcepts()
       ]);
 
-      // Combine user nodes and theoretical concepts
-      const combinedNodes = [...graphData.nodes];
-      const combinedLinks = [...graphData.links];
+      // Mark user nodes as personal
+      const combinedNodes = graphData.nodes.map(n => ({ ...n, isPersonal: true, isTheoretical: false }));
+      const combinedLinks = graphData.links.map(l => ({ ...l, isPersonal: true, isTheoretical: false }));
 
       // Add/enrich theoretical concepts
       theoreticalData.nodes.forEach(tNode => {
@@ -42,12 +42,14 @@ export function DiaryDataProvider({ children, uid }) {
         if (existing) {
           existing.content = existing.content || tNode.content;
           existing.sourceFile = tNode.sourceFile;
+          existing.thinker = tNode.thinker;
           existing.isH1 = tNode.isH1;
+          existing.hasTheoreticalRef = true;
           if (existing.type === 'Concept' && tNode.type !== 'Concept') {
             existing.type = tNode.type;
           }
         } else {
-          combinedNodes.push(tNode);
+          combinedNodes.push({ ...tNode, isTheoretical: true, isPersonal: false });
         }
       });
 
@@ -62,11 +64,11 @@ export function DiaryDataProvider({ children, uid }) {
       theoreticalData.links.forEach(tLink => {
         const s = tLink.source.toLowerCase();
         const t = tLink.target.toLowerCase();
-        const label = tLink.label.toLowerCase();
+        const label = (tLink.label || '').toLowerCase();
         const key1 = `${s}-${t}-${label}`;
         const key2 = `${t}-${s}-${label}`;
         if (!existingLinkKeys.has(key1) && !existingLinkKeys.has(key2)) {
-          combinedLinks.push(tLink);
+          combinedLinks.push({ ...tLink, isTheoretical: true, isPersonal: false });
           existingLinkKeys.add(key1);
         }
       });
