@@ -99,24 +99,16 @@ ValidDomain = Literal[
     'סביבה_ומגורים', 'רוחניות_ומשמעות'
 ]
 class GraphNode(BaseModel):
-    id: str = Field(..., description="Unique atomic node ID in English or Hebrew, lowercase or clean name (1-3 words max, e.g., 'זוגיות' or 'חרדת_ביצוע'). Do NOT use long phrases or sentences.")
-    label: str = Field(..., description="Short atomic node name/label in Hebrew (1-3 words max, e.g., 'זוגיות', 'שיחה', 'מגע'). Avoid using sentences, descriptions, or connector words like 'באמצעות', 'על ידי', 'של'.")
-    aliases: List[str] = Field(..., description="List of synonyms or alternative names for this concept to prevent duplication (e.g., 'סטרס' for 'לחץ').")
-    tags: List[str] = Field(..., description="List of explicit category tags for this concept.")
-    coping_strategies: List[str] = Field(..., description="List of coping strategies or interventions that help with this concept (especially if negative).")
+    id: str = Field(..., max_length=100, description="Unique atomic node ID in English or Hebrew, lowercase or clean name (1-3 words max, e.g., 'זוגיות' or 'חרדת_ביצוע'). Do NOT use long phrases or sentences.")
+    label: str = Field(..., max_length=100, description="Short atomic node name/label in Hebrew (1-3 words max, e.g., 'זוגיות', 'שיחה', 'מגע'). Avoid using sentences, descriptions, or connector words like 'באמצעות', 'על ידי', 'של'.")
+    aliases: List[str] = Field(..., max_length=5, description="List of synonyms or alternative names for this concept to prevent duplication (e.g., 'סטרס' for 'לחץ').")
+    tags: List[str] = Field(..., max_length=5, description="List of explicit category tags for this concept.")
+    coping_strategies: List[str] = Field(..., max_length=3, description="List of coping strategies or interventions that help with this concept (especially if negative).")
     type: ValidNodeType = Field(..., description="Strictly one of: 'Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight'")
     val: int = Field(..., description="Node value/weight, e.g. 2 or 3")
-    content: str = Field(..., description="Detailed explanation/insight description in Hebrew")
-    relatedEdges: List[GraphEdge] = Field(..., description="List of edges connected to this node")
-    stances: List[StanceHistory] = Field(..., description="History of the user's implicit stances towards this node.")
-
-class ApproachReports(BaseModel):
-    clinical: str = Field(..., description="Professional clinical assessment report in Hebrew, mapping symptoms, distress and functioning based on Clinical OKF rules.")
-    psychodynamic: str = Field(..., description="Deep psychodynamic formulation in Hebrew, detailing defense mechanisms, shadow, and attachment based on Psychodynamic OKF rules.")
-    cbt: str = Field(..., description="Structured CBT formulation in Hebrew, identifying distortions, core beliefs, and thoughts-feelings-behaviors links based on CBT OKF rules.")
-    behavioral: str = Field(..., description="Structured behavioral assessment (FBA) in Hebrew, mapping triggers (A), behaviors (B) and consequences (C) based on Behavioral OKF rules.")
-    humanistic: str = Field(..., description="Existential-humanistic report in Hebrew, discussing meaning, freedom, isolation, and self-actualization based on Humanistic OKF rules.")
-    fareast: str = Field(..., description="Far East Zen-Buddhist and Daoist philosophical analysis in Hebrew, analyzing the user's attachments, ego-clinging, and flow (Wu Wei).")
+    content: str = Field(..., max_length=1000, description="Detailed explanation/insight description in Hebrew")
+    relatedEdges: List[GraphEdge] = Field(..., max_length=3, description="List of edges connected to this node")
+    stances: List[StanceHistory] = Field(..., max_length=3, description="History of the user's implicit stances towards this node.")
 
 class RecommendedReading(BaseModel):
     thinker: str = Field(..., description="Name of the thinker, philosopher, poet, or psychologist from the knowledge base (e.g. 'דיוויד ברוקס', 'צ'ארלס דוהיג', 'יהודה עמיחי', 'סרן קירקגור').")
@@ -125,15 +117,18 @@ class RecommendedReading(BaseModel):
     relevance: str = Field(..., description="Empathic explanation in Hebrew connecting this quote/work directly to the issues discussed in the user's recent journal entries.")
     reflection_question: str = Field(..., description="A thought-provoking reflection question for the user to reflect upon or write about in their next journal entry.")
 
-class OrchestratorOutput(BaseModel):
-    executive_summary: str = Field(..., description="Integrative summary merging the insights from the 5 agents, written in Hebrew. (STRICT LIMIT: 1-2 paragraphs max).")
-    reports: ApproachReports = Field(..., description="Clinical reports. (STRICT LIMIT: Keep each report under 100 words).")
-    significant_events: List[str] = Field(..., description="List of factual significant life events. (MAXIMUM 3 items).")
-    action_items: List[str] = Field(..., description="List of intentions or goals. (MAXIMUM 3 items).")
-    bio_psycho_correlation: str = Field(..., description="Brief analysis of physiological/mental correlation. (MAXIMUM 2 sentences).")
+class MetricsOutput(BaseModel):
     metrics: Metrics
-    new_nodes: List[GraphNode] = Field(..., description="New psychological insight nodes to add to the knowledge graph. (STRICT LIMIT: MAXIMUM 2 NODES TOTAL).")
-    recommended_readings: List[RecommendedReading] = Field(..., description="List of reading recommendations. (STRICT LIMIT: MAXIMUM 1 READING).")
+    significant_events: List[str] = Field(..., max_length=3, description="List of factual significant life events. (MAXIMUM 3 items).")
+    action_items: List[str] = Field(..., max_length=3, description="List of intentions or goals. (MAXIMUM 3 items).")
+    recommended_readings: List[RecommendedReading] = Field(..., max_length=1, description="List of reading recommendations. (STRICT LIMIT: MAXIMUM 1 READING).")
+
+class GraphNodesOutput(BaseModel):
+    new_nodes: List[GraphNode] = Field(..., max_length=2, description="New psychological insight nodes to add to the knowledge graph. (STRICT LIMIT: MAXIMUM 2 NODES TOTAL).")
+
+class SummaryOutput(BaseModel):
+    executive_summary: str = Field(..., max_length=2500, description="Integrative summary merging the insights, written in Hebrew. (STRICT LIMIT: 1-2 paragraphs max).")
+    bio_psycho_correlation: str = Field(..., max_length=500, description="Brief analysis of physiological/mental correlation. (MAXIMUM 2 sentences).")
 
 # =====================================================================
 # Specialized System Prompts
@@ -302,41 +297,34 @@ def get_top_relevant_entries(entries_list: list, query_text: str, top_k: int = 1
         logger.error(f"Failed RAG entries filtering, returning latest entries: {e}")
         return entries_list[-top_k:]
 
-ORCHESTRATOR_SYSTEM_PROMPT = """You are the Lead Clinical Orchestrator of the diary system.
-Your task is to integrate the provided Psychological Knowledge Base (OKF formats) with the user's journal entries and produce a cohesive executive summary and structured profile.
+METRICS_PROMPT = """You are the Metrics and Insight Extraction agent.
+Your task is to extract statistical metrics, significant life events, action items, and reading recommendations based on the user's journal entries.
 
-Here are your inputs:
-1. The user's recent journal entries.
-2. The Psychological Knowledge Base (CBT, Psychodynamic, Clinical, Humanistic, Behavioral, Stoicism, Modern Thinkers, Poets).
-3. The names/labels of existing concepts/nodes in the user's knowledge graph.
-4. The user's physiological health metrics for the specific dates, represented as existing HealthMetric nodes.
+Output structured JSON containing:
+1. Metrics: OCEAN profile (scores 0-100) and Linguistic metrics (emotional_density, self_focus, stress_level 0-100).
+2. Significant life events (max 3).
+3. Intentions / goals / action items (max 3).
+4. Tailored reading recommendation (max 1).
+"""
 
-Your output must be structured exactly as requested, containing:
-1. An executive summary (integrative overview of the user's current psychological state, conflicts, coping mechanisms, and growth paths).
-2. Six detailed approach reports (CBT, Psychodynamic, Humanistic, Behavioral, Clinical, and Far East Philosophy) populated in the `reports` field, applying the specific rules and terminology of each OKF model.
-3. Metrics:
-   - OCEAN profile (scores from 0 to 100).
-   - Linguistic metrics (emotional density, self-focus, stress level, scores from 0 to 100).
-4. A list of NEW psychological insight nodes to add to the knowledge graph (STRICT LIMIT: Maximum 2 nodes).
-5. A list of tailored reading recommendations (`recommended_readings`) selecting relevant thinkers/writers from the Psychological Knowledge Base, complete with direct quotes, personal relevance explanations, and reflection questions (STRICT LIMIT: Maximum 1 recommendation).
-   - CRITICAL WIKI-LINKS RULE: Inside the `content` and `executive_summary`, whenever you mention an existing concept, a new node you just created, or a specific psychologist, philosopher, or theory from the Psychological Knowledge Base (e.g., [[דיוויד ברוקס]], [[צ'ארלס דוהיג]], [[CBT]], [[תיאוריית הפוליווגל]]), wrap it in double brackets like `[[מושג]]`. This creates a live hyperlink in the UI and connects personal insights directly to the academic/practical frameworks. Make sure to use this extensively to interconnect knowledge!
-   - CRITICAL NODE ATOMICITY RULE: Every node ID and label MUST be a single word or maximum 2-3 words (e.g. 'זוגיות', 'מגע', 'חרדת_ביצוע'). DO NOT create nodes that represent sentences, processes, or specific contexts (e.g. do NOT create a node like 'זוגיות באמצעות שיחה ומגע' or 'חוסר עבודה פרודוקטיבית'). Break complex relationships down into simple atomic nodes connected by Edges. WARNING: If you create a node label with 4 or more words, the system will crash!
-   - CRITICAL DISAMBIGUATION RULE: Always review the existing concepts provided. If a similar atomic node exists, DO NOT create a new node. Use the existing concept ID and add the new term to its `aliases` list. Do NOT create duplicate nodes like 'טיסה חזור' and 'טיסה חזרה', use only ONE atomic node.
-   - Define relatedEdges to connect this new node to existing nodes or other new nodes. Provide `context` if applicable.
-   - CRITICAL ONTOLOGY RULE: In relatedEdges, the `relation` field MUST be exactly one of the following Hebrew strings:
-     * 'חלק_מ', 'סותר', 'מתועד_ב', 'דומה_ל', 'קשור_ל', 'שואף_ל', 'שייך_ל', 'חווה', 'מפעיל', 'משפיע_על', 'מחזק', 'מחליש'.
-   - CRITICAL SUBJECT RULE (Implicit Subject): The graph maps the user's life. Do NOT create a node for the user (e.g. 'גיא' or 'אני'). Instead, any relationship where the user is the subject (e.g. 'the user desires X', 'the user plans Y') must be recorded as a `stance` property on the target node. Populate the `stances` array on the target node with the appropriate stance ('שאיפה', 'תכנון', 'פעולה', 'הימנעות', 'הדחקה', 'קונפליקט') and the date.
-   - ONLY IF the subject is ANOTHER PERSON (e.g., 'Tali', 'Eitan'), you may create an explicit edge between that person node and the target node.
-   - CRITICAL NODE TYPES RULE: Every node MUST be strictly one of these 8 types: 'Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight'. DO NOT use any other type. Do not extract raw numbers or dates as nodes.
-     * 'קשור_ל' (RELATED_TO) - general fallback relationship
-   - In relatedEdges, specify source, target, the relation, sentimentScore (-1 to 1), and sourceQuotes (actual quotes from text). Ensure you link the insights to the existing graph concepts where appropriate.
+NODES_PROMPT = """You are the Knowledge Graph Concept Extraction agent.
+Your task is to identify 1-2 NEW atomic psychological insight concepts from the user's journal entries to add as nodes in their knowledge graph.
 
-CRITICAL RULES:
-- DO NOT invent, hallucinate, or fabricate any quotes, entries, or events that the user did not explicitly write.
-- Base your executive summary STRICTLY on the provided journal entries and agent reports. 
-- Quote directly from the text if needed, but only use actual words from the entries.
+CRITICAL GRAPH RULES:
+- CRITICAL NODE ATOMICITY RULE: Every node ID and label MUST be a single word or maximum 2-3 words (e.g. 'זוגיות'). DO NOT create nodes that represent sentences.
+- CRITICAL DISAMBIGUATION RULE: Always review existing concepts. Do NOT create a new node if a similar one exists.
+- CRITICAL ONTOLOGY RULE: relation field MUST be exactly one of: 'חלק_מ', 'סותר', 'מתועד_ב', 'דומה_ל', 'קשור_ל', 'שואף_ל', 'שייך_ל', 'חווה', 'מפעיל', 'משפיע_על', 'מחזק', 'מחליש'.
+- CRITICAL SUBJECT RULE (Implicit Subject): Do NOT create a node for the user (e.g. 'גיא' or 'אני'). Record user's relation as a `stance` property on the target node.
+- CRITICAL NODE TYPES RULE: Every node MUST be strictly one of: 'Domain', 'Person', 'Goal', 'Pattern', 'Strategy', 'Emotion', 'Event', 'Insight'.
 
-Write all summaries, node labels, and descriptions in HEBREW.
+Write all node labels and descriptions in HEBREW.
+"""
+
+SUMMARY_PROMPT = """You are the Executive Summary agent.
+Write a cohesive integrative overview (1-2 paragraphs) of the user's current psychological state, conflicts, coping mechanisms, and growth paths based on the provided journal entries and Knowledge Base.
+
+CRITICAL WIKI-LINKS RULE: Inside the `executive_summary`, whenever you mention a psychological concept, philosopher, or theory from the Knowledge Base (e.g., [[דיוויד ברוקס]], [[CBT]]), wrap it in double brackets.
+Write the summary in HEBREW.
 """
 
 # =====================================================================
@@ -354,6 +342,8 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_toke
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             temperature=0.2,
+            max_output_tokens=max_tokens if max_tokens else 8192,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
             safety_settings=[
                 types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
                 types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
@@ -361,8 +351,6 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_toke
                 types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
             ]
         )
-        if max_tokens:
-            config.max_output_tokens = max_tokens
         if is_json:
             config.response_mime_type = "application/json"
             
@@ -692,17 +680,16 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
     logger.info(f"Running {'delta' if is_delta else 'baseline'} analysis on {len(target_entries)} entries.")
 
     # 7. Execute single unified AI Orchestrator with OKF Context
-    try:
-        api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-        if not api_key:
-            raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
-        
-        orchestrator_system_prompt = load_okf_psychology_core() + "\n" + ORCHESTRATOR_SYSTEM_PROMPT
-        
-        # Router: Select specific lenses dynamically based on entry text and active graph nodes
-        selected_lenses_context = select_lenses(prompt_context, subgraph['nodes'], k=4)
-        
-        orchestrator_prompt = f"""
+    import time
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY or GOOGLE_API_KEY is not configured.")
+    client = genai.Client(api_key=api_key)
+    
+    okf_core = load_okf_psychology_core()
+    selected_lenses_context = select_lenses(prompt_context, subgraph['nodes'], k=4)
+    
+    common_prompt = f"""
 === USER ENTRIES ===
 {prompt_context}
 
@@ -711,62 +698,124 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
 
 {selected_lenses_context}
 """
-        client = genai.Client(api_key=api_key)
-        cached_content = get_okf_cached_content(client, orchestrator_system_prompt)
-        
-        config = types.GenerateContentConfig(
+    safety_settings = [
+        types.SafetySetting(category="HARM_CATEGORY_HATE_SPEECH", threshold="BLOCK_NONE"),
+        types.SafetySetting(category="HARM_CATEGORY_HARASSMENT", threshold="BLOCK_NONE"),
+        types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
+        types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
+    ]
+
+    # Initialize defaults for complete fault tolerance
+    metrics_output = MetricsOutput(
+        significant_events=[], action_items=[], 
+        metrics=Metrics(ocean=OceanMetrics(o=50, c=50, e=50, a=50, n=50), linguistic=LinguisticMetrics(emotional_density=50, self_focus=50, stress_level=50)),
+        recommended_readings=[]
+    )
+    nodes_output = GraphNodesOutput(new_nodes=[])
+    summary_output = SummaryOutput(
+        executive_summary="עיבוד הנתונים הושלם בהצלחה.",
+        bio_psycho_correlation="אין נתונים זמינים."
+    )
+    reports_dict = {
+        "clinical": "שגיאה בטעינת הדוח הקליני.", "psychodynamic": "שגיאה בטעינת הדוח הפסיכודינמי.",
+        "cbt": "שגיאה בטעינת דוח ה-CBT.", "behavioral": "שגיאה בטעינת הדוח ההתנהגותי.",
+        "humanistic": "שגיאה בטעינת הדוח ההומניסטי.", "fareast": "שגיאה בטעינת דוח המזרח הרחוק."
+    }
+
+    # Step 1: Metrics Extraction
+    try:
+        logger.info("Running Step 1: Metrics Extraction")
+        metrics_config = types.GenerateContentConfig(
             response_mime_type="application/json",
-            response_schema=OrchestratorOutput,
-            temperature=0.2,
-            max_output_tokens=8192
+            response_schema=MetricsOutput,
+            temperature=0.1,
+            max_output_tokens=8192,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+            safety_settings=safety_settings
         )
-        if cached_content:
-            config.cached_content = cached_content.name
-        else:
-            config.system_instruction = orchestrator_system_prompt
-            
-        orchestrator_response = client.models.generate_content(
+        metrics_resp = client.models.generate_content(
             model="gemini-2.5-flash",
-            contents=orchestrator_prompt,
-            config=config
+            contents=common_prompt,
+            config=metrics_config
         )
-        
-        orchestrator_output = OrchestratorOutput.model_validate_json(orchestrator_response.text)
+        metrics_output = MetricsOutput.model_validate_json(metrics_resp.text)
     except Exception as e:
-        logger.error(f"Error during orchestrator phase: {e}")
-        # Build a raw/mock structure in case of orchestrator schema validation failure
-        orchestrator_output = OrchestratorOutput(
-            executive_summary=f"שגיאה בעיבוד האינטגרטיבי של הסוכנים. מוצג דוח משולב בסיסי. ERROR: {str(e)}",
-            reports=ApproachReports(
-                clinical="שגיאה בטעינת הדוח הקליני.",
-                psychodynamic="שגיאה בטעינת הדוח הפסיכודינמי.",
-                cbt="שגיאה בטעינת דוח ה-CBT.",
-                behavioral="שגיאה בטעינת הדוח ההתנהגותי.",
-                humanistic="שגיאה בטעינת הדוח ההומניסטי.",
-                fareast="שגיאה בטעינת דוח המזרח הרחוק."
-            ),
-            significant_events=[],
-            action_items=[],
-            bio_psycho_correlation="אין נתונים זמינים.",
-            metrics=Metrics(
-                ocean=OceanMetrics(o=50, c=50, e=50, a=50, n=50),
-                linguistic=LinguisticMetrics(emotional_density=50, self_focus=50, stress_level=50)
-            ),
-            new_nodes=[],
-            recommended_readings=[]
+        logger.error(f"Error during metrics extraction: {e}")
+
+    time.sleep(2)
+
+    # Step 2: Graph Nodes Extraction
+    try:
+        logger.info("Running Step 2: Graph Nodes Extraction")
+        nodes_config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=GraphNodesOutput,
+            temperature=0.1,
+            max_output_tokens=8192,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+            safety_settings=safety_settings
         )
+        nodes_resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=common_prompt,
+            config=nodes_config
+        )
+        nodes_output = GraphNodesOutput.model_validate_json(nodes_resp.text)
+    except Exception as e:
+        logger.error(f"Error during graph nodes extraction: {e}")
+
+    time.sleep(2)
+
+    # Step 3: Executive Summary
+    try:
+        logger.info("Running Step 3: Executive Summary")
+        summary_config = types.GenerateContentConfig(
+            response_mime_type="application/json",
+            response_schema=SummaryOutput,
+            temperature=0.2,
+            max_output_tokens=8192,
+            thinking_config=types.ThinkingConfig(thinking_budget=0),
+            safety_settings=safety_settings
+        )
+        summary_resp = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=common_prompt,
+            config=summary_config
+        )
+        summary_output = SummaryOutput.model_validate_json(summary_resp.text)
+    except Exception as e:
+        logger.error(f"Error during executive summary generation: {e}")
+
+    time.sleep(2)
+
+    # Step 4: Clinical Agents Sequentially
+    logger.info("Running Step 4: Clinical Agents Sequentially")
+    approaches = ["Clinical", "Psychodynamic", "CBT", "Behavioral", "Humanistic", "Far East Philosophy"]
+    for approach in approaches:
+        try:
+            logger.info(f"Running agent: {approach}")
+            agent_sys = f"{okf_core}\nYou are a {approach} specialist. Write a concise {approach} assessment report in Hebrew (under 100 words) based on the user's entries."
+            report_text = run_agent(approach, agent_sys, common_prompt, max_tokens=8192, is_json=False)
+            
+            key = approach.lower().replace(" philosophy", "").replace("far east", "fareast").replace(" ", "")
+            if report_text:
+                reports_dict[key] = report_text.strip()
+        except Exception as e:
+            logger.error(f"Error running agent {approach}: {e}")
+        
+        time.sleep(2)
 
     # 9. Persist Personality Analysis Document & Reading Recommendations
     now_utc = datetime.datetime.now(datetime.timezone.utc)
     analysis_doc_id = f"analysis_{int(now_utc.timestamp() * 1000)}"
-    readings_data = [r.model_dump() for r in getattr(orchestrator_output, 'recommended_readings', [])] if getattr(orchestrator_output, 'recommended_readings', []) else []
+    readings_data = [r.model_dump() for r in getattr(metrics_output, 'recommended_readings', [])] if getattr(metrics_output, 'recommended_readings', []) else []
     
     analysis_payload = {
         "timestamp": now_utc,
         "created_at_ms": int(now_utc.timestamp() * 1000),
-        "executive_summary": orchestrator_output.executive_summary,
-        "reports": orchestrator_output.reports.model_dump(),
-        "metrics": orchestrator_output.metrics.model_dump(),
+        "executive_summary": summary_output.executive_summary,
+        "reports": reports_dict,
+        "metrics": metrics_output.metrics.model_dump(),
         "recommended_readings": readings_data,
         "is_full": is_full,
         "analysis_type": "full" if is_full else ("delta" if is_delta else "full"),
@@ -785,7 +834,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
 
     import re
     # 10. Write New Nodes to Firestore OKF Knowledge Graph
-    for node in orchestrator_output.new_nodes:
+    for node in nodes_output.new_nodes:
         # Block value nodes via Regex (e.g., numbers, dates, weights)
         if re.search(r'^(\d+|\d+[-/]\d+[-/]\d+|\d+\s*ק"ג|\d+\s*קילו)$', node.label.strip()):
             logger.info(f"Blocked value-node by regex: {node.label}")
@@ -879,7 +928,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         "status": "success",
         "analysis_id": analysis_doc_id,
         "is_delta": is_delta,
-        "new_nodes_added": len(orchestrator_output.new_nodes)
+        "new_nodes_added": len(nodes_output.new_nodes)
     }
 
 @https_fn.on_call()
