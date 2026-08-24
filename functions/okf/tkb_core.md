@@ -198,6 +198,8 @@
 
 ## טבעיות, פשטות, ועשייה ללא מאמץ (Wu Wei) (concept)
 
+## חשיבה בהימורים - קבלת החלטות תחת אי-ודאות (Annie Duke) (concept)
+
 ## Temporal Motivation Theory (TMT) (concept)
 
 ## משבר קיומי, מוסריות נוקשה וחיפוש אחר פשטות (concept)

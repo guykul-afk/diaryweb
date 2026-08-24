@@ -46,6 +46,15 @@
 
 ---
 
+## 📚 תיעוד מקיף וארכיטקטורה ([docs/](file:///c:/Users/guyku/okf_knowledge_viewer/docs/INDEX.md))
+
+* 🌌 **[חזון ומטרות-על (Vision & Philosophy)](file:///c:/Users/guyku/okf_knowledge_viewer/docs/01_SYSTEM_VISION.md)** - פילוסופיית המערכת ומערכת ההפעלה האפיסטמית.
+* 🏗️ **[אפיון ארכיטקטוני (System Architecture)](file:///c:/Users/guyku/okf_knowledge_viewer/docs/02_SYSTEM_ARCHITECTURE.md)** - שכבות המערכת, Multi-Agent Engine ו-Graph-RAG.
+* 🧠 **[ארכיטקטורה אפיסטמית (Epistemic Architecture)](file:///c:/Users/guyku/okf_knowledge_viewer/docs/03_EPISTEMIC_ARCHITECTURE.md)** - תורת ההכרה, ודאות, דיסוננס ועדכון אמונות.
+* 🏛️ **[ארכיטקטורה אונטולוגית (Ontological Architecture)](file:///c:/Users/guyku/okf_knowledge_viewer/docs/04_ONTOLOGICAL_ARCHITECTURE.md)** - מודל הישויות, 12 היחסים, מודל הזמן ומסד הידע התיאורטי (TKB).
+
+---
+
 ## 🚀 הרצה מקומית
 
 1. התקנת תלויות:

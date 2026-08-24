@@ -32,3 +32,4 @@ functions/.env
 scratch/
 sync_log.txt
 takeout-20260713T152930Z-2-001/
+*.zip
