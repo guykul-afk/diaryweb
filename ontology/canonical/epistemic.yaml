@@ -1,0 +1,53 @@
+version: "2.0.0"
+description: "Epistemic Status and Core Concepts for DiaryWeb Ontology v2"
+
+core_concepts:
+  - SourceEntry
+  - Entity
+  - Event
+  - Assertion
+  - Evidence
+  - Insight
+
+extended_concepts:
+  - Mention
+  - State
+  - RelationshipState
+  - Decision
+  - Stance
+  - Pattern
+  - Hypothesis
+  - Contradiction
+  - Question
+
+concept_lifecycle_statuses:
+  - CORE
+  - ACTIVE
+  - OBSERVING
+  - DORMANT
+  - EXPERIMENTAL
+  - DEPRECATED
+
+epistemic_statuses:
+  SELF_REPORTED:
+    description: "Explicitly stated by the author in the diary text."
+    requiresEvidence: true
+  OBSERVED:
+    description: "Direct observation of an event, action or sensory data."
+    requiresEvidence: true
+  INFERRED:
+    description: "Deduced or inferred logically by the extraction or analysis engine."
+    requiresEvidence: true
+  DERIVED:
+    description: "Calculated or aggregated from multiple baseline assertions or health data."
+    requiresEvidence: false
+  HYPOTHESIS:
+    description: "Speculative claim or pattern hypothesis under observation."
+    requiresEvidence: false
+  DISPUTED:
+    description: "A claim contradicted or superseded by other evidence."
+    requiresEvidence: true
+
+origins:
+  CONTEMPORANEOUS_EXTRACTION: "Extracted during active writing / initial recording"
+  RETROSPECTIVE_EXTRACTION: "Extracted during full corpus rebuild or reprocessing"

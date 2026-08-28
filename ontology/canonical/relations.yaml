@@ -1,0 +1,108 @@
+version: "2.0.0"
+description: "Initial Canonical Relations for DiaryWeb Ontology v2"
+
+relations:
+  RELATED_TO:
+    domain: ["ENTITY", "EVENT"]
+    range: ["ENTITY", "EVENT", "STATE"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["קשור_ל", "קשור", "נוגע_ל"]
+
+  ABOUT:
+    domain: ["SOURCE_ENTRY", "INSIGHT", "EVENT"]
+    range: ["ENTITY", "CONCEPT"]
+    causalStrength: "NONE"
+    requiresEvidence: false
+    aliases: ["עוסק_ב", "מדבר_על", "לגבי"]
+
+  PARTICIPATED_IN:
+    domain: ["PERSON"]
+    range: ["EVENT"]
+    causalStrength: "LOW"
+    requiresEvidence: true
+    aliases: ["השתתף_ב", "נפגש_עם", "היה_ב", "נוכח_ב"]
+
+  LOCATED_AT:
+    domain: ["EVENT", "PERSON", "OBJECT"]
+    range: ["PLACE"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["נמצא_ב", "במיקום", "ב"]
+
+  EXPRESSED:
+    domain: ["PERSON"]
+    range: ["STANCE", "DECISION", "EMOTION", "QUESTION"]
+    causalStrength: "LOW"
+    requiresEvidence: true
+    aliases: ["הביע", "אמר", "טען", "הצהיר", "שיתף"]
+
+  ASSOCIATED_WITH:
+    domain: ["ENTITY", "EVENT", "CONCEPT"]
+    range: ["CONCEPT", "EMOTION", "STATE"]
+    causalStrength: "LOW"
+    requiresEvidence: true
+    aliases: ["מקושר_עם", "מזכיר", "מתקשר_ל"]
+
+  PRECEDES:
+    domain: ["EVENT", "STATE"]
+    range: ["EVENT", "STATE"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["קדם_ל", "לפני", "התרחש_לפני"]
+
+  CONTRIBUTES_TO:
+    domain: ["ENTITY", "EVENT", "STATE"]
+    range: ["ENTITY", "EVENT", "STATE", "OUTCOME"]
+    causalStrength: "MEDIUM"
+    requiresEvidence: true
+    aliases: ["הוביל_ל", "מוביל_ל", "מובילה_ל", "גרם_ל", "השפיע_על", "משפיע_על", "תרם_ל", "מחזק", "מחליש"]
+
+  SUPPORTS:
+    domain: ["ASSERTION", "EVIDENCE", "INSIGHT"]
+    range: ["ASSERTION", "HYPOTHESIS", "PATTERN"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["תומך_ב", "מחזק_טענה", "מאשש"]
+
+  CONTRADICTS:
+    domain: ["ASSERTION", "EVENT", "STANCE"]
+    range: ["ASSERTION", "EVENT", "STANCE"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["סותר", "מתנגש_עם", "מנוגד_ל"]
+
+  EXPERIENCES:
+    domain: ["PERSON"]
+    range: ["EMOTION", "STATE", "CONCEPT"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["חווה_את", "חווה", "מרגיש", "חש"]
+
+  COMMITTED_TO:
+    domain: ["PERSON"]
+    range: ["GOAL", "PROJECT", "DECISION"]
+    causalStrength: "LOW"
+    requiresEvidence: true
+    aliases: ["מתחייב_ל", "מחויב_ל", "החליט_על", "מתכנן", "מתכנן_ל"]
+
+  WORKS_ON:
+    domain: ["PERSON"]
+    range: ["PROJECT", "GOAL", "OBJECT"]
+    causalStrength: "LOW"
+    requiresEvidence: true
+    aliases: ["עובד_על", "פועל_למען", "משקיע_ב"]
+
+  ASPIRES_TO:
+    domain: ["PERSON"]
+    range: ["GOAL", "STATE", "CONCEPT"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["שואף_ל", "שואף ל", "חולם_על", "רוצה"]
+
+  FEELS_TOWARD:
+    domain: ["PERSON"]
+    range: ["PERSON", "ENTITY"]
+    causalStrength: "NONE"
+    requiresEvidence: true
+    aliases: ["מרגיש_כלפי", "חש_כלפי", "יחסו_אל"]

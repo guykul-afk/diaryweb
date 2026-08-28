@@ -135,6 +135,14 @@ export async function fetchAllRecommendedReadings(uid) {
 
 
 
+// Helper to format transcript text (e.g. replace 'משתמש' speaker label with 'אני')
+export function formatTranscript(text) {
+  if (!text || typeof text !== 'string') return text || '';
+  return text.replace(/(^|[\n\r]|(?<=\s))(?:\*\*)?משתמש(?:\*\*)?\s*(:|[-–—])/g, (match) => {
+    return match.replace('משתמש', 'אני');
+  });
+}
+
 // Helper to fetch entries from Firebase Firestore
 export async function fetchFirebaseEntries(uid) {
   if (!uid) throw new Error("Missing User ID (UID)");
@@ -156,7 +164,7 @@ export async function fetchFirebaseEntries(uid) {
         mood: data.mood || data.sentiment || 'ניטרלי',
         tkb_reference: data.tkb_reference || null
       },
-      content: data.transcript || data.content || '',
+      content: formatTranscript(data.transcript || data.content || ''),
       rawTimestamp: data.timestamp
     });
   });

@@ -972,11 +972,13 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             
             # Candidate Promotion Logic
             update_data = {
-                "relatedEdges": firestore.ArrayUnion(edges_list),
-                "stances": firestore.ArrayUnion(stances_list),
                 "last_active": firestore.SERVER_TIMESTAMP,
                 "mentions": firestore.Increment(1)
             }
+            if edges_list:
+                update_data["relatedEdges"] = firestore.ArrayUnion(edges_list)
+            if stances_list:
+                update_data["stances"] = firestore.ArrayUnion(stances_list)
             
             # Check if it was a candidate and should be promoted
             if best_match.get('state') == 'candidate':
@@ -1987,6 +1989,7 @@ def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         return
 
     try:
+        db = get_db()
         tkb_concepts_text = format_tkb_concepts_for_prompt(db)
         
         system_prompt = (

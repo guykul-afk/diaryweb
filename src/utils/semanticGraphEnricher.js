@@ -413,61 +413,72 @@ export function enrichGraphData(nodesArg, edgesArg) {
       : (Array.isArray(nodesArg.links) ? nodesArg.links : []);
   }
 
+  const isSuperNode = (idOrName) => {
+    if (!idOrName) return false;
+    const s = String(idOrName).trim().toLowerCase();
+    return s === 'גיא' || s === 'concept_גיא' || s === 'guy' || s === 'אני';
+  };
+
   const nodeMap = new Map();
-  const enrichedNodes = rawNodes.map(node => {
-    if (!node || typeof node !== 'object') return node;
+  const enrichedNodes = rawNodes
+    .filter(node => node && typeof node === 'object' && !isSuperNode(node.id) && !isSuperNode(node.name) && !isSuperNode(node.label))
+    .map(node => {
+      const parent_category = classifyParentCategory(node);
+      const sentiment = determineSentiment(node);
+      const isInsight = 
+        node.type === 'Insight' || 
+        node.category === 'תובנות' || 
+        node.type === 'תובנה' ||
+        parent_category === 'תובנות ודפוסים' ||
+        parent_category === 'תובנות (Insights)';
 
-    const parent_category = classifyParentCategory(node);
-    const sentiment = determineSentiment(node);
-    const isInsight = 
-      node.type === 'Insight' || 
-      node.category === 'תובנות' || 
-      node.type === 'תובנה' ||
-      parent_category === 'תובנות ודפוסים' ||
-      parent_category === 'תובנות (Insights)';
+      const categoryColor = CATEGORY_COLORS[parent_category]?.main || '#64748b';
 
-    const categoryColor = CATEGORY_COLORS[parent_category]?.main || '#64748b';
+      const enrichedNode = {
+        ...node,
+        parent_category,
+        sentiment,
+        isInsight,
+        val: isInsight ? 20 : (node.val || node.weight ? Math.max(6, Math.min(14, node.val || node.weight * 2)) : 8),
+        color: categoryColor,
+        date: node.date || node.created_at || node.timestamp || node.date_str || null
+      };
 
-    const enrichedNode = {
-      ...node,
-      parent_category,
-      sentiment,
-      isInsight,
-      val: isInsight ? 20 : (node.val || node.weight ? Math.max(6, Math.min(14, node.val || node.weight * 2)) : 8),
-      color: categoryColor,
-      date: node.date || node.created_at || node.timestamp || node.date_str || null
-    };
+      if (node.id !== undefined && node.id !== null) {
+        nodeMap.set(String(node.id), enrichedNode);
+      }
+      return enrichedNode;
+    });
 
-    if (node.id !== undefined && node.id !== null) {
-      nodeMap.set(String(node.id), enrichedNode);
-    }
-    return enrichedNode;
-  });
+  const enrichedEdges = rawEdges
+    .filter(edge => {
+      if (!edge || typeof edge !== 'object') return false;
+      const sourceId = typeof edge.source === 'object' && edge.source !== null ? edge.source.id : edge.source;
+      const targetId = typeof edge.target === 'object' && edge.target !== null ? edge.target.id : edge.target;
+      return !isSuperNode(sourceId) && !isSuperNode(targetId) && nodeMap.has(String(sourceId)) && nodeMap.has(String(targetId));
+    })
+    .map(edge => {
+      const sourceId = typeof edge.source === 'object' && edge.source !== null ? edge.source.id : edge.source;
+      const targetId = typeof edge.target === 'object' && edge.target !== null ? edge.target.id : edge.target;
 
-  const enrichedEdges = rawEdges.map(edge => {
-    if (!edge || typeof edge !== 'object') return edge;
+      const sourceNode = sourceId !== undefined && sourceId !== null ? nodeMap.get(String(sourceId)) : null;
+      const targetNode = targetId !== undefined && targetId !== null ? nodeMap.get(String(targetId)) : null;
 
-    const sourceId = typeof edge.source === 'object' && edge.source !== null ? edge.source.id : edge.source;
-    const targetId = typeof edge.target === 'object' && edge.target !== null ? edge.target.id : edge.target;
+      const edge_type = classifyEdgeType(edge);
+      const direction = determineDirection(edge, edge_type);
+      const summary = generateEdgeSummary(edge, sourceNode, targetNode, edge_type);
+      const relationshipType = edge_type || 'ASSOCIATED_WITH';
+      const edgeColor = RELATIONSHIP_COLORS[relationshipType] || '#38bdf8';
 
-    const sourceNode = sourceId !== undefined && sourceId !== null ? nodeMap.get(String(sourceId)) : null;
-    const targetNode = targetId !== undefined && targetId !== null ? nodeMap.get(String(targetId)) : null;
-
-    const edge_type = classifyEdgeType(edge);
-    const direction = determineDirection(edge, edge_type);
-    const summary = generateEdgeSummary(edge, sourceNode, targetNode, edge_type);
-    const relationshipType = edge_type || 'ASSOCIATED_WITH';
-    const edgeColor = RELATIONSHIP_COLORS[relationshipType] || '#38bdf8';
-
-    return {
-      ...edge,
-      edge_type,
-      relationshipType,
-      color: edgeColor,
-      direction,
-      summary
-    };
-  });
+      return {
+        ...edge,
+        edge_type,
+        relationshipType,
+        color: edgeColor,
+        direction,
+        summary
+      };
+    });
 
   return {
     nodes: enrichedNodes,

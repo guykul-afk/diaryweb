@@ -1,0 +1,24 @@
+version: "2.0.0"
+description: "Canonical Entity types in DiaryWeb Ontology v2"
+
+types:
+  PERSON:
+    description: "Human individuals mentioned or interacting in the diary."
+    examples: ["גיא", "טלי", "דני"]
+  PLACE:
+    description: "Geographical or physical locations."
+    examples: ["בית", "משרד", "תל אביב"]
+  ORGANIZATION:
+    description: "Companies, institutions, groups or teams."
+    examples: ["Google", "צבא", "אוניברסיטה"]
+  PROJECT:
+    description: "Specific initiatives, projects, or structured tasks."
+    examples: ["DiaryWeb", "ספר", "פרויקט בית"]
+  CONCEPT:
+    description: "Abstract ideas, psychological concepts, practices or themes."
+    examples: ["חרדה", "דחיינות", "מיינדפולנס", "משמעות"]
+  OBJECT:
+    description: "Physical items, tools, devices or artifacts."
+    examples: ["מחשב", "טלפון", "רכב"]
+  OTHER:
+    description: "Fallback entity type when none of the standard types match."

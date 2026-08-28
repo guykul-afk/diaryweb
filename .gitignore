@@ -30,6 +30,14 @@ functions/okf/tkb_backup/
 .env
 functions/.env
 scratch/
+scratch*.txt
 sync_log.txt
 takeout-20260713T152930Z-2-001/
 *.zip
+
+# Python & Build cache
+__pycache__/
+*.py[cod]
+*$py.class
+functions/__pycache__/
+.firebase/

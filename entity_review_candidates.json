@@ -1,0 +1,26 @@
+[
+  {
+    "groupKey": "גיא",
+    "candidates": [
+      {
+        "id": "גיא",
+        "canonicalName": "גיא",
+        "aliases": [
+          "גיא"
+        ],
+        "occurrencesCount": 2469
+      },
+      {
+        "id": "גיא וטלי",
+        "canonicalName": "גיא וטלי",
+        "aliases": [
+          "שיחות גיא וטלי",
+          "זוגיות גיא וטלי",
+          "נישואים גיא וטלי",
+          "גיא וטלי"
+        ],
+        "occurrencesCount": 11
+      }
+    ]
+  }
+]

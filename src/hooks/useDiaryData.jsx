@@ -1,9 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { fetchFirebaseGraph, fetchFirebaseEntries, fetchTheoreticalConcepts } from '../firebase';
+import { projectV2ToGraph } from '../utils/v2GraphProjection';
 
 const DiaryDataContext = createContext(null);
 
 export function DiaryDataProvider({ children, uid }) {
+  const [ontologyVersion, setOntologyVersion] = useState('v2');
+  const [v2RawData, setV2RawData] = useState(null);
   const [rawGraphData, setRawGraphData] = useState({ nodes: [], links: [] });
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,15 +28,59 @@ export function DiaryDataProvider({ children, uid }) {
     setLoading(true);
     setError(null);
     try {
-      const [graphData, entriesData, theoreticalData] = await Promise.all([
-        fetchFirebaseGraph(uid),
-        fetchFirebaseEntries(uid),
-        fetchTheoreticalConcepts()
-      ]);
+      let graphData = { nodes: [], links: [] };
+      let entriesData = [];
 
-      // Mark user nodes as personal
-      const combinedNodes = graphData.nodes.map(n => ({ ...n, isPersonal: true, isTheoretical: false }));
-      const combinedLinks = graphData.links.map(l => ({ ...l, isPersonal: true, isTheoretical: false }));
+      if (ontologyVersion === 'v2') {
+        // Fetch canonical v2 knowledge
+        try {
+          const v2Resp = await fetch('/knowledge_v2.json');
+          if (v2Resp.ok) {
+            const v2Json = await v2Resp.json();
+            setV2RawData(v2Json);
+            graphData = projectV2ToGraph(v2Json);
+          }
+        } catch (e) {
+          console.warn("Could not load local knowledge_v2.json, falling back to Firebase", e);
+          graphData = await fetchFirebaseGraph(uid);
+        }
+        
+        try {
+          entriesData = await fetchFirebaseEntries(uid);
+        } catch (e) {
+          console.warn("Could not load live entries, loading cached entries", e);
+        }
+      } else {
+        // Fetch legacy graph from Firebase or archive
+        const [liveGraph, liveEntries] = await Promise.all([
+          fetchFirebaseGraph(uid),
+          fetchFirebaseEntries(uid)
+        ]);
+        graphData = liveGraph;
+        entriesData = liveEntries;
+      }
+
+      const theoreticalData = await fetchTheoreticalConcepts();
+
+      // Helper to check if a node or id is the author/user super-node
+      const isSuperNode = (idOrName) => {
+        if (!idOrName) return false;
+        const s = String(idOrName).trim().toLowerCase();
+        return s === 'גיא' || s === 'concept_גיא' || s === 'guy' || s === 'אני';
+      };
+
+      // Mark user nodes as personal and exclude author super-node
+      const combinedNodes = graphData.nodes
+        .filter(n => !isSuperNode(n.id) && !isSuperNode(n.name) && !isSuperNode(n.label))
+        .map(n => ({ ...n, isPersonal: true, isTheoretical: false }));
+        
+      const combinedLinks = graphData.links
+        .filter(l => {
+          const s = typeof l.source === 'object' ? l.source?.id : l.source;
+          const t = typeof l.target === 'object' ? l.target?.id : l.target;
+          return !isSuperNode(s) && !isSuperNode(t);
+        })
+        .map(l => ({ ...l, isPersonal: true, isTheoretical: false }));
 
       // Add/enrich theoretical concepts
       theoreticalData.nodes.forEach(tNode => {
@@ -84,11 +131,11 @@ export function DiaryDataProvider({ children, uid }) {
     } finally {
       setLoading(false);
     }
-  }, [uid]);
+  }, [uid, ontologyVersion]);
 
   useEffect(() => {
     fetchData();
-  }, [uid]);
+  }, [fetchData]);
 
   // Extract unique topics and moods
   const uniqueTopics = useMemo(() => {
@@ -450,6 +497,9 @@ export function DiaryDataProvider({ children, uid }) {
 
   return (
     <DiaryDataContext.Provider value={{
+      ontologyVersion,
+      setOntologyVersion,
+      v2RawData,
       rawGraphData,
       entries,
       loading,

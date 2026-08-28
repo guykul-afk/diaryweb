@@ -8,10 +8,14 @@ import QuotesView from './QuotesView';
 import MindMapBuilderView from './MindMapBuilderView';
 import KnowledgeBaseGraphView from './KnowledgeBaseGraphView';
 import DeepKnowledgeView from './DeepKnowledgeView';
+import OntologyView from './OntologyView';
 import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 import TokenCostTracker from './components/TokenCostTracker';
-import { BookOpen, Network, Loader2, Brain, Sparkles, Lock } from 'lucide-react';
+import EntityReconciliationModal from './components/EntityReconciliationModal';
+import EpistemicTraceabilityView from './components/EpistemicTraceabilityView';
+import { BookOpen, Network, Loader2, Brain, Sparkles, Lock, Layers, CheckCircle2, Search } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
+import { useDiaryData } from './hooks/useDiaryData';
 
 const FIREBASE_UID_FALLBACK = import.meta.env.VITE_FIREBASE_UID || 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
 
@@ -121,6 +125,281 @@ function PasscodeGate({ onVerified }) {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function AppContent({
+  activeTab,
+  setActiveTab,
+  selectedEntryId,
+  setSelectedEntryId,
+  dataSource,
+  uid,
+  isaData,
+  isaLoading,
+  authLoading,
+  handleNavigateToEntry,
+  renderContent
+}) {
+  const { ontologyVersion, setOntologyVersion } = useDiaryData();
+  const [isReconcileOpen, setIsReconcileOpen] = useState(false);
+  const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
+  const [candidates, setCandidates] = useState([]);
+
+  const openReconciliation = async () => {
+    try {
+      const resp = await fetch('/entity_review_candidates.json');
+      if (resp.ok) {
+        const data = await resp.json();
+        setCandidates(data);
+      }
+    } catch (e) {
+      console.warn("Failed to load entity_review_candidates.json", e);
+    }
+    setIsReconcileOpen(true);
+  };
+
+  return (
+    <div className="three-column-layout">
+      {/* Right Navigation Sidebar (RTL) */}
+      <aside className="sidebar-right">
+        <div className="sidebar-logo" style={{ gap: '10px' }}>
+          <img src="/logo.png" alt="לוגו זריחה בים" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
+          <span>צלילה עמוקה</span>
+        </div>
+
+        {/* Ontology v2 Badge & Controls */}
+        <div style={{
+          padding: '10px 12px',
+          margin: '0 8px 10px 8px',
+          borderRadius: '12px',
+          background: ontologyVersion === 'v2' ? 'rgba(79, 70, 229, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+          border: `1px solid ${ontologyVersion === 'v2' ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: ontologyVersion === 'v2' ? '#818cf8' : '#94a3b8' }}>
+              {ontologyVersion === 'v2' ? '🌟 אונטולוגיה v2 (קנונית)' : '🏛️ ארכיון Legacy'}
+            </span>
+            <button
+              onClick={() => setOntologyVersion(prev => prev === 'v2' ? 'legacy' : 'v2')}
+              style={{
+                fontSize: '0.65rem',
+                background: 'rgba(255,255,255,0.08)',
+                color: '#cbd5e1',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '2px 6px',
+                cursor: 'pointer'
+              }}
+              title="החלף מקור ידע"
+            >
+              החלף ל-{ontologyVersion === 'v2' ? 'Legacy' : 'v2'}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              onClick={openReconciliation}
+              style={{
+                flex: 1,
+                fontSize: '0.7rem',
+                background: 'rgba(99, 102, 241, 0.2)',
+                color: '#c7d2fe',
+                border: '1px solid rgba(99, 102, 241, 0.3)',
+                borderRadius: '6px',
+                padding: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              סקירת ישויות
+            </button>
+            <button
+              onClick={() => setIsTraceabilityOpen(true)}
+              style={{
+                flex: 1,
+                fontSize: '0.7rem',
+                background: 'rgba(16, 185, 129, 0.2)',
+                color: '#a7f3d0',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                borderRadius: '6px',
+                padding: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              למה כך? 🔍
+            </button>
+          </div>
+        </div>
+
+        <div style={{ padding: '8px 12px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '8px' }}>
+          <TokenCostTracker uid={uid} />
+        </div>
+
+        <nav className="sidebar-nav">
+          <button
+            className={`sidebar-btn ${activeTab === 'feed' ? 'active' : ''}`}
+            onClick={() => setActiveTab('feed')}
+            title="יומן רשומות"
+          >
+            <span>יומן רשומות</span>
+          </button>
+
+          <button
+            className={`sidebar-btn ${activeTab === 'readings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('readings')}
+            title="השראה והמלצות קריאה"
+          >
+            <span>השראה והמלצות</span>
+          </button>
+          
+          <button
+            className={`sidebar-btn ${activeTab === 'quotes' ? 'active' : ''}`}
+            onClick={() => setActiveTab('quotes')}
+            title="ציטוטים נבחרים"
+          >
+            <span>ציטוטים</span>
+          </button>
+          
+          <button
+            className={`sidebar-btn ${activeTab.startsWith('graph') ? 'active' : ''}`}
+            onClick={() => setActiveTab('graph-stars')}
+            title="מפת קשרים ומבטים מורחבים"
+          >
+            <span>מפות וקשרים</span>
+          </button>
+
+          {activeTab.startsWith('graph') && (
+            <div className="sidebar-submenu">
+              <button 
+                className={`submenu-btn ${activeTab === 'graph' || activeTab === 'graph-stars' ? 'active' : ''}`}
+                onClick={() => setActiveTab('graph-stars')}
+              >
+                מפת כוכבים
+              </button>
+              <button 
+                className={`submenu-btn ${activeTab === 'graph-deep' || activeTab === 'deep-graph' ? 'active' : ''}`}
+                onClick={() => setActiveTab('graph-deep')}
+              >
+                גרף סמנטי 2.0
+              </button>
+              <button 
+                className={`submenu-btn ${activeTab === 'graph-mindmap' ? 'active' : ''}`}
+                onClick={() => setActiveTab('graph-mindmap')}
+              >
+                עורך מפת מוח (GRIND)
+              </button>
+            </div>
+          )}
+
+          <button
+            className={`sidebar-btn ${activeTab === 'analysis' ? 'active' : ''}`}
+            onClick={() => setActiveTab('analysis')}
+            title="ניתוח אישיות רב-סוכני"
+          >
+            <span>ניתוח אישיות</span>
+          </button>
+          <button
+            className={`sidebar-btn ${activeTab === 'insights' ? 'active' : ''}`}
+            onClick={() => setActiveTab('insights')}
+            title="תובנות אישיות"
+          >
+            <span>תובנות אישיות</span>
+          </button>
+
+          <button
+            className={`sidebar-btn ${activeTab === 'knowledge' || activeTab === 'knowledge-graph' ? 'active' : ''}`}
+            onClick={() => setActiveTab('knowledge-graph')}
+            title="בסיס ידע אקדמי (גרף 3D)"
+          >
+            <span>בסיס ידע אקדמי</span>
+          </button>
+
+          <button
+            className={`sidebar-btn ${activeTab === 'knowledge-frequency' ? 'active' : ''}`}
+            onClick={() => setActiveTab('knowledge-frequency')}
+            style={{
+              paddingRight: '28px',
+              fontSize: '0.85rem',
+              borderRight: activeTab === 'knowledge-frequency' ? '3px solid var(--accent-color)' : 'none'
+            }}
+            title="שכיחות מושגים ברשומות"
+          >
+            <span>↳ שכיחות מושגים</span>
+          </button>
+
+          <button
+            className={`sidebar-btn ${activeTab === 'ontology' ? 'active' : ''}`}
+            onClick={() => setActiveTab('ontology')}
+            style={{
+              marginTop: '6px',
+              background: activeTab === 'ontology' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.08)',
+              border: '1px solid rgba(99, 102, 241, 0.3)',
+              color: '#c7d2fe'
+            }}
+            title="מרכז שליטה והתערבות באונטולוגיה (Ontology Studio)"
+          >
+            <span>⚙️ אונטולוגיה (ניהול)</span>
+          </button>
+        </nav>
+
+        {/* Connection status */}
+        <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div 
+                style={{ 
+                  width: '8px', 
+                  height: '8px', 
+                  borderRadius: '50%', 
+                  backgroundColor: authLoading ? 'var(--text-muted)' : 'var(--accent-color)' 
+                  }} 
+                title={authLoading ? "מתחבר..." : "מחובר ל-Firebase"}
+              />
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>פיירבייס</span>
+            </div>
+            {isaLoading ? (
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>סנכרון ISA...</span>
+            ) : isaData ? (
+              <span style={{ fontSize: '0.7rem', color: '#10b981' }} title="נתוני ISA מסונכרנים אוטומטית בכל יום ב-23:59">ISA מסונכרן ✓</span>
+            ) : (
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ללא נתוני ISA</span>
+            )}
+          </div>
+        </div>
+      </aside>
+
+      {/* Main View Area */}
+      {renderContent()}
+
+      {/* Entity Reconciliation Modal */}
+      <EntityReconciliationModal
+        isOpen={isReconcileOpen}
+        onClose={() => setIsReconcileOpen(false)}
+        candidates={candidates}
+      />
+
+      {/* Epistemic Traceability Modal / Drawer */}
+      {isTraceabilityOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 60,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px'
+        }}>
+          <div style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <EpistemicTraceabilityView onClose={() => setIsTraceabilityOpen(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -253,6 +532,12 @@ function App() {
             />
           </div>
         );
+      case 'ontology':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
+            <OntologyView />
+          </div>
+        );
       default:
         return null;
     }
@@ -264,141 +549,19 @@ function App() {
 
   return (
     <DiaryDataProvider uid={uid}>
-      <div className="three-column-layout">
-        {/* Right Navigation Sidebar (RTL) */}
-        <aside className="sidebar-right">
-          <div className="sidebar-logo" style={{ gap: '10px' }}>
-            <img src="/logo.png" alt="לוגו זריחה בים" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
-            <span>צלילה עמוקה</span>
-          </div>
-
-          <div style={{ padding: '8px 12px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '8px' }}>
-            <TokenCostTracker uid={uid} />
-          </div>
-
-          <nav className="sidebar-nav">
-            <button
-              className={`sidebar-btn ${activeTab === 'feed' ? 'active' : ''}`}
-              onClick={() => setActiveTab('feed')}
-              title="יומן רשומות"
-            >
-              <span>יומן רשומות</span>
-            </button>
-
-            <button
-              className={`sidebar-btn ${activeTab === 'readings' ? 'active' : ''}`}
-              onClick={() => setActiveTab('readings')}
-              title="השראה והמלצות קריאה"
-            >
-              <span>השראה והמלצות</span>
-            </button>
-            
-            <button
-              className={`sidebar-btn ${activeTab === 'quotes' ? 'active' : ''}`}
-              onClick={() => setActiveTab('quotes')}
-              title="ציטוטים נבחרים"
-            >
-              <span>ציטוטים</span>
-            </button>
-            
-            <button
-              className={`sidebar-btn ${activeTab.startsWith('graph') ? 'active' : ''}`}
-              onClick={() => setActiveTab('graph-stars')}
-              title="מפת קשרים ומבטים מורחבים"
-            >
-              <span>מפות וקשרים</span>
-            </button>
-
-            {activeTab.startsWith('graph') && (
-              <div className="sidebar-submenu">
-                <button 
-                  className={`submenu-btn ${activeTab === 'graph' || activeTab === 'graph-stars' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('graph-stars')}
-                >
-                  מפת כוכבים
-                </button>
-                <button 
-                  className={`submenu-btn ${activeTab === 'graph-deep' || activeTab === 'deep-graph' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('graph-deep')}
-                >
-                  גרף סמנטי 2.0
-                </button>
-                <button 
-                  className={`submenu-btn ${activeTab === 'graph-mindmap' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('graph-mindmap')}
-                >
-                  עורך מפת מוח (GRIND)
-                </button>
-              </div>
-            )}
-
-            <button
-              className={`sidebar-btn ${activeTab === 'analysis' ? 'active' : ''}`}
-              onClick={() => setActiveTab('analysis')}
-              title="ניתוח אישיות רב-סוכני"
-            >
-              <span>ניתוח אישיות</span>
-            </button>
-            <button
-              className={`sidebar-btn ${activeTab === 'insights' ? 'active' : ''}`}
-              onClick={() => setActiveTab('insights')}
-              title="תובנות אישיות"
-            >
-              <span>תובנות אישיות</span>
-            </button>
-
-            <button
-              className={`sidebar-btn ${activeTab === 'knowledge' || activeTab === 'knowledge-graph' ? 'active' : ''}`}
-              onClick={() => setActiveTab('knowledge-graph')}
-              title="בסיס ידע אקדמי (גרף 3D)"
-            >
-              <span>בסיס ידע אקדמי</span>
-            </button>
-
-            <button
-              className={`sidebar-btn ${activeTab === 'knowledge-frequency' ? 'active' : ''}`}
-              onClick={() => setActiveTab('knowledge-frequency')}
-              style={{
-                paddingRight: '28px',
-                fontSize: '0.85rem',
-                borderRight: activeTab === 'knowledge-frequency' ? '3px solid var(--accent-color)' : 'none'
-              }}
-              title="שכיחות מושגים ברשומות"
-            >
-              <span>↳ שכיחות מושגים</span>
-            </button>
-          </nav>
-
-          {/* Connection status */}
-          <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <div 
-                  style={{ 
-                    width: '8px', 
-                    height: '8px', 
-                    borderRadius: '50%', 
-                    backgroundColor: authLoading ? 'var(--text-muted)' : 'var(--accent-color)' 
-                    }} 
-                  title={authLoading ? "מתחבר..." : "מחובר ל-Firebase"}
-                />
-                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>פיירבייס</span>
-              </div>
-              {isaLoading ? (
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>סנכרון ISA...</span>
-              ) : isaData ? (
-                <span style={{ fontSize: '0.7rem', color: '#10b981' }} title="נתוני ISA מסונכרנים אוטומטית בכל יום ב-23:59">ISA מסונכרן ✓</span>
-              ) : (
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ללא נתוני ISA</span>
-              )}
-            </div>
-          </div>
-        </aside>
-
-
-        {/* Main View Area */}
-        {renderContent()}
-      </div>
+      <AppContent
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        selectedEntryId={selectedEntryId}
+        setSelectedEntryId={setSelectedEntryId}
+        dataSource={dataSource}
+        uid={uid}
+        isaData={isaData}
+        isaLoading={isaLoading}
+        authLoading={authLoading}
+        handleNavigateToEntry={handleNavigateToEntry}
+        renderContent={renderContent}
+      />
     </DiaryDataProvider>
   );
 }
