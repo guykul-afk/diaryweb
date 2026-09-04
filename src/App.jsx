@@ -3,6 +3,7 @@ import FeedView from './FeedView';
 import GraphView from './GraphView';
 import PersonalityAnalysisView from './PersonalityAnalysisView';
 import InsightsView from './InsightsView';
+import AskView from './AskView';
 import { DiaryDataProvider } from './hooks/useDiaryData';
 import QuotesView from './QuotesView';
 import MindMapBuilderView from './MindMapBuilderView';
@@ -13,7 +14,8 @@ import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 import TokenCostTracker from './components/TokenCostTracker';
 import EntityReconciliationModal from './components/EntityReconciliationModal';
 import EpistemicTraceabilityView from './components/EpistemicTraceabilityView';
-import { BookOpen, Network, Loader2, Brain, Sparkles, Lock, Layers, CheckCircle2, Search } from 'lucide-react';
+import EpistemicHealthModal from './components/EpistemicHealthModal';
+import { BookOpen, Network, Loader2, Brain, Sparkles, Lock, Layers, CheckCircle2, Search, Scale, ShieldCheck } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 import { useDiaryData } from './hooks/useDiaryData';
 
@@ -145,6 +147,7 @@ function AppContent({
   const { ontologyVersion, setOntologyVersion } = useDiaryData();
   const [isReconcileOpen, setIsReconcileOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
+  const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
   const [candidates, setCandidates] = useState([]);
 
   const openReconciliation = async () => {
@@ -206,12 +209,12 @@ function AppContent({
               onClick={openReconciliation}
               style={{
                 flex: 1,
-                fontSize: '0.7rem',
+                fontSize: '0.68rem',
                 background: 'rgba(99, 102, 241, 0.2)',
                 color: '#c7d2fe',
                 border: '1px solid rgba(99, 102, 241, 0.3)',
                 borderRadius: '6px',
-                padding: '4px',
+                padding: '4px 2px',
                 cursor: 'pointer'
               }}
             >
@@ -221,16 +224,32 @@ function AppContent({
               onClick={() => setIsTraceabilityOpen(true)}
               style={{
                 flex: 1,
-                fontSize: '0.7rem',
+                fontSize: '0.68rem',
                 background: 'rgba(16, 185, 129, 0.2)',
                 color: '#a7f3d0',
                 border: '1px solid rgba(16, 185, 129, 0.3)',
                 borderRadius: '6px',
-                padding: '4px',
+                padding: '4px 2px',
                 cursor: 'pointer'
               }}
             >
               למה כך? 🔍
+            </button>
+            <button
+              onClick={() => setIsHealthModalOpen(true)}
+              style={{
+                flex: 1,
+                fontSize: '0.68rem',
+                background: 'rgba(56, 189, 248, 0.2)',
+                color: '#bae6fd',
+                border: '1px solid rgba(56, 189, 248, 0.3)',
+                borderRadius: '6px',
+                padding: '4px 2px',
+                cursor: 'pointer'
+              }}
+              title="בריאות הידע, החלטות וכיול"
+            >
+              בריאות ⚖️
             </button>
           </div>
         </div>
@@ -309,6 +328,17 @@ function AppContent({
           >
             <span>תובנות אישיות</span>
           </button>
+          <button
+            className={`sidebar-btn ${activeTab === 'mirror' || activeTab === 'ask' ? 'active' : ''}`}
+            onClick={() => setActiveTab('mirror')}
+            style={{
+              background: (activeTab === 'mirror' || activeTab === 'ask') ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+              color: (activeTab === 'mirror' || activeTab === 'ask') ? '#c7d2fe' : 'inherit'
+            }}
+            title="מראת החלטות ושיקול דעת (Decision Mirror)"
+          >
+            <span>⚖️ מראת החלטות</span>
+          </button>
 
           <button
             className={`sidebar-btn ${activeTab === 'knowledge' || activeTab === 'knowledge-graph' ? 'active' : ''}`}
@@ -380,6 +410,13 @@ function AppContent({
         isOpen={isReconcileOpen}
         onClose={() => setIsReconcileOpen(false)}
         candidates={candidates}
+      />
+
+      {/* Epistemic Health Modal */}
+      <EpistemicHealthModal
+        isOpen={isHealthModalOpen}
+        onClose={() => setIsHealthModalOpen(false)}
+        uid={uid}
       />
 
       {/* Epistemic Traceability Modal / Drawer */}
@@ -536,6 +573,13 @@ function App() {
         return (
           <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
             <OntologyView />
+          </div>
+        );
+      case 'mirror':
+      case 'ask':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
+            <AskView {...props} onNavigateToEntry={handleNavigateToEntry} />
           </div>
         );
       default:

@@ -451,3 +451,89 @@ export async function removeEdge(uid, source, target, relation) {
     }
   }
 }
+
+// ==========================================
+// RIKMA Self: Epistemic Decisions & Learning
+// ==========================================
+
+// Fetch user decisions from users/{uid}/decisions
+export async function fetchUserDecisions(uid) {
+  if (!uid) return [];
+  try {
+    const colRef = collection(db, `users/${uid}/decisions`);
+    const q = query(colRef, orderBy('decisionDate', 'desc'));
+    const snap = await getDocsFromServer(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn("fetchUserDecisions warning:", err);
+    return [];
+  }
+}
+
+// Fetch open predictions from users/{uid}/predictions
+export async function fetchUserPredictions(uid) {
+  if (!uid) return [];
+  try {
+    const colRef = collection(db, `users/${uid}/predictions`);
+    const q = query(colRef, orderBy('recordedAt', 'desc'));
+    const snap = await getDocsFromServer(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn("fetchUserPredictions warning:", err);
+    return [];
+  }
+}
+
+// Fetch observed outcomes from users/{uid}/outcomes
+export async function fetchUserOutcomes(uid) {
+  if (!uid) return [];
+  try {
+    const colRef = collection(db, `users/${uid}/outcomes`);
+    const q = query(colRef, orderBy('observedAt', 'desc'));
+    const snap = await getDocsFromServer(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn("fetchUserOutcomes warning:", err);
+    return [];
+  }
+}
+
+// Save or update a DecisionRecord in Firestore
+export async function saveDecisionRecord(uid, decisionData) {
+  if (!uid || !decisionData) throw new Error("Missing UID or decisionData");
+  const decId = decisionData.id || `dec_${Date.now()}`;
+  const docRef = doc(db, `users/${uid}/decisions`, decId);
+  const dataToSave = {
+    ...decisionData,
+    id: decId,
+    updatedAt: new Date().toISOString()
+  };
+  await setDoc(docRef, dataToSave, { merge: true });
+  return dataToSave;
+}
+
+// Confirm an outcome and link to prediction & decision
+export async function confirmOutcomeMatch(uid, outcomeData) {
+  if (!uid || !outcomeData) throw new Error("Missing UID or outcomeData");
+  const outId = outcomeData.id || `out_${Date.now()}`;
+  const docRef = doc(db, `users/${uid}/outcomes`, outId);
+  const payload = {
+    ...outcomeData,
+    id: outId,
+    humanConfirmation: true,
+    savedAt: new Date().toISOString()
+  };
+  await setDoc(docRef, payload, { merge: true });
+
+  // Update related prediction status if predictionId exists
+  if (outcomeData.predictionId) {
+    const predRef = doc(db, `users/${uid}/predictions`, outcomeData.predictionId);
+    await setDoc(predRef, {
+      empiricalStatus: outcomeData.matchedExpectation === 'FULL' ? 'SUPPORTED' : (outcomeData.matchedExpectation === 'FAILED' ? 'FALSIFIED' : 'PARTIAL'),
+      outcomeId: outId
+    }, { merge: true });
+  }
+
+  return payload;
+}
+
