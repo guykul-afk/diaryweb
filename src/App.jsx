@@ -15,8 +15,7 @@ import TokenCostTracker from './components/TokenCostTracker';
 import EntityReconciliationModal from './components/EntityReconciliationModal';
 import EpistemicTraceabilityView from './components/EpistemicTraceabilityView';
 import EpistemicHealthModal from './components/EpistemicHealthModal';
-import MacroKnowledgeGraph from './components/MacroKnowledgeGraph';
-import MicroInsightFlow from './components/MicroInsightFlow';
+import DomainInsightExplorer from './components/DomainInsightExplorer';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock, Layers, CheckCircle2, Search, Scale, ShieldCheck } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 import { useDiaryData } from './hooks/useDiaryData';
@@ -315,16 +314,10 @@ function AppContent({
                 עורך מפת מוח (GRIND)
               </button>
               <button 
-                className={`submenu-btn ${activeTab === 'graph-macro' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graph-macro')}
+                className={`submenu-btn ${activeTab === 'graph-domains' ? 'active' : ''}`}
+                onClick={() => setActiveTab('graph-domains')}
               >
-                🌐 מבט מאקרו (AntV G6)
-              </button>
-              <button 
-                className={`submenu-btn ${activeTab === 'graph-micro' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graph-micro')}
-              >
-                🔍 מבט מיקרו (React Flow)
+                🧭 מרכז תחומי חיים (Macro Hub)
               </button>
             </div>
           )}
@@ -537,16 +530,10 @@ function App() {
             <MindMapBuilderView />
           </div>
         );
-      case 'graph-macro':
+      case 'graph-domains':
         return (
-          <div style={{ flexGrow: 1, height: '100%', padding: '24px' }}>
-            <MacroKnowledgeGraph diaryData={diaryData} />
-          </div>
-        );
-      case 'graph-micro':
-        return (
-          <div style={{ flexGrow: 1, height: '100%', padding: '24px' }}>
-            <MicroInsightFlow diaryData={diaryData} />
+          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
+            <DomainInsightExplorer diaryData={diaryData} />
           </div>
         );
       case 'graph-deep':

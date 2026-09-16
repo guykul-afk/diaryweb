@@ -228,7 +228,7 @@ export default function StorylineView({ onNavigateToEntry }) {
     
     queryDiaryInsights(uid, queryStr)
       .then(res => {
-        const text = res || 'לא נמצאו מספיק נתונים לסיכום AI.';
+        const text = (typeof res === 'object' && res?.result) ? res.result : (res || 'לא נמצאו מספיק נתונים לסיכום AI.');
         setAiSummary(text);
         setSummaryCache(prev => ({ ...prev, [cacheKey]: text }));
       })
