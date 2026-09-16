@@ -214,8 +214,10 @@ export async function fetchFirebaseGraph(uid) {
     nodes.push({
       id: nodeId,
       name: data.label || nodeId,
-      type: data.type || 'Concept',
+      label: data.label || nodeId,
+      type: data.type || 'Insight',
       weight: data.val || 1,
+      val: data.val || 1,
       content: data.content || '',
       fx: data.fx !== undefined ? data.fx : null,
       fy: data.fy !== undefined ? data.fy : null,
@@ -232,7 +234,8 @@ export async function fetchFirebaseGraph(uid) {
           links.push({
             source: edge.source,
             target: edge.target,
-            label: edge.relation || 'relates',
+            relation: edge.relation || 'קשור_ל',
+            label: edge.relation || 'קשור_ל',
             sentimentScore: edge.sentimentScore !== undefined ? edge.sentimentScore : 0,
             sourceQuotes: edge.sourceQuotes || [],
             timestamp: edge.timestamp,

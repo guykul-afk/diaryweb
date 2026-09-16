@@ -31,34 +31,13 @@ export function DiaryDataProvider({ children, uid }) {
       let graphData = { nodes: [], links: [] };
       let entriesData = [];
 
-      if (ontologyVersion === 'v2') {
-        // Fetch canonical v2 knowledge
-        try {
-          const v2Resp = await fetch('/knowledge_v2.json');
-          if (v2Resp.ok) {
-            const v2Json = await v2Resp.json();
-            setV2RawData(v2Json);
-            graphData = projectV2ToGraph(v2Json);
-          }
-        } catch (e) {
-          console.warn("Could not load local knowledge_v2.json, falling back to Firebase", e);
-          graphData = await fetchFirebaseGraph(uid);
-        }
-        
-        try {
-          entriesData = await fetchFirebaseEntries(uid);
-        } catch (e) {
-          console.warn("Could not load live entries, loading cached entries", e);
-        }
-      } else {
-        // Fetch legacy graph from Firebase or archive
-        const [liveGraph, liveEntries] = await Promise.all([
-          fetchFirebaseGraph(uid),
-          fetchFirebaseEntries(uid)
-        ]);
-        graphData = liveGraph;
-        entriesData = liveEntries;
-      }
+      // Always fetch live normalized graph from Firebase Firestore
+      const [liveGraph, liveEntries] = await Promise.all([
+        fetchFirebaseGraph(uid),
+        fetchFirebaseEntries(uid)
+      ]);
+      graphData = liveGraph;
+      entriesData = liveEntries;
 
       const theoreticalData = await fetchTheoreticalConcepts();
 
