@@ -1354,95 +1354,146 @@ CRITICAL RULES:
 
 @https_fn.on_call(timeout_sec=120)
 def query_diary_insights(req: https_fn.CallableRequest) -> dict:
-    uid = extract_authenticated_uid(req)
-    query_text = req.data.get('query')
-    if not query_text:
-        return {"status": "error", "message": "Missing query"}
+    try:
+        uid = extract_authenticated_uid(req)
+        query_text = req.data.get('query')
+        if not query_text:
+            return {"status": "error", "message": "Missing query"}
+            
+        history = req.data.get('history', [])
+        history_lines = []
+        for msg in history:
+            role = msg.get('role')
+            text = msg.get('text') or msg.get('content') or ""
+            if "שאל אותי כל שאלה על היומנים" in text:
+                continue
+            text = text.replace('\n\n*(התשובה נשמרה אוטומטית כצומת תובנה בבסיס הידע)*', '')
+            role_label = "User" if role == 'user' else "AI"
+            history_lines.append(f"{role_label}: {text}")
+            
+        history_context = "\n".join(history_lines) if history_lines else ""
+
+        logger.info(f"Investigating diary/insights/graph for {uid} with query: {query_text}. History length: {len(history)}")
+
+        # 1. Fetch entries and filter with Semantic RAG
+        entries_ref = get_db().collection('users').document(uid).collection('entries')
+        entries_snapshot = entries_ref.stream()
+        raw_entries = [doc.to_dict() for doc in entries_snapshot]
+        relevant_entries = get_top_relevant_entries(raw_entries, query_text, top_k=35)
         
-    history = req.data.get('history', [])
-    history_lines = []
-    for msg in history:
-        role = msg.get('role')
-        text = msg.get('text') or msg.get('content') or ""
-        if "שאל אותי כל שאלה על היומנים" in text:
-            continue
-        text = text.replace('\n\n*(התשובה נשמרה אוטומטית כצומת תובנה בבסיס הידע)*', '')
-        role_label = "User" if role == 'user' else "AI"
-        history_lines.append(f"{role_label}: {text}")
+        entries_data = []
+        for data in relevant_entries:
+            date_str = data.get('date') or str(data.get('timestamp'))
+            topics = ", ".join(data.get('topics', []))
+            content = data.get('content') or data.get('transcript') or ""
+            entries_data.append(f"- Date: {date_str} | Topics: {topics}\n  Content: {content}")
+        entries_context = "\n\n".join(entries_data)
+
+        # 2. Fetch original insights
+        insights_ref = get_db().collection('users').document(uid).collection('insights').document('current')
+        insights_snap = insights_ref.get()
+        insights_context = "No structured insights found."
+        if insights_snap.exists:
+            insights_data = insights_snap.to_dict() or {}
+            major = "\n".join([f"- {ins}" for ins in (insights_data.get('majorInsights') or [])])
+            weekly = insights_data.get('weeklyInsight', 'None')
+            shadow_obj = insights_data.get('shadowWork') or {}
+            shadow = shadow_obj.get('insight', 'None') if isinstance(shadow_obj, dict) else 'None'
+            manual_sections = []
+            op_obj = insights_data.get('operatingManual') or {}
+            op_insight = op_obj.get('insight') if isinstance(op_obj, dict) else {}
+            sections = op_insight.get('sections') or [] if isinstance(op_insight, dict) else []
+            for s in sections:
+                if isinstance(s, dict):
+                    bullets_str = "\n  ".join([f"* {b}" for b in (s.get('bullets') or [])])
+                    manual_sections.append(f"{s.get('title')}:\n  {bullets_str}")
+            manual_context = "\n".join(manual_sections)
+            insights_context = f"Major Insights:\n{major}\n\nWeekly Insight:\n{weekly}\n\nShadow Work:\n{shadow}\n\nOperating Manual:\n{manual_context}"
+
+        # 3. Fetch and filter graph nodes (Graph-RAG)
+        nodes_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
+        nodes_snapshot = nodes_ref.stream()
+        all_nodes = []
+        for doc in nodes_snapshot:
+            data = doc.to_dict()
+            if data.get('type') == 'QAResponse':
+                continue
+            data['id'] = data.get('id') or doc.id
+            all_nodes.append(data)
+            
+        subgraph = get_subgraph_by_semantic_search(all_nodes, query_text, top_k=15, max_hops=1)
+        logger.info(f"Graph-RAG traversal retrieved {len(subgraph.get('nodes', []))} relevant nodes.")
         
-    history_context = "\n".join(history_lines) if history_lines else ""
+        graph_data = []
+        for n in subgraph.get('nodes', []):
+            node_id = n.get('id')
+            label = n.get('label', node_id)
+            content = n.get('content', '')
+            edges = n.get('relatedEdges') or []
+            edges_str = ", ".join([f"[{e.get('relation')}] -> {e.get('target')}" for e in edges if isinstance(e, dict)])
+            graph_data.append(f"- Concept: {label} ({content})\n  Connections: {edges_str if edges_str else 'None'}")
+            
+        graph_context = "\n".join(graph_data) if graph_data else "No relevant knowledge graph context found."
 
-    logger.info(f"Investigating diary/insights/graph for {uid} with query: {query_text}. History length: {len(history)}")
+        # 4. Construct prompt
+        prompt = f"User Question: {query_text}\n\n"
+        if history_context:
+            prompt += f"=== CONVERSATION HISTORY ===\n{history_context}\n\n"
+        prompt += f"=== USER JOURNAL ENTRIES (TEXTS) ===\n{entries_context}\n\n=== USER STRUCTURED INSIGHTS ===\n{insights_context}\n\n=== USER KNOWLEDGE BASE (GRAPH CONCEPTS) ===\n{graph_context}"
 
-    # 1. Fetch entries and filter with Semantic RAG
-    entries_ref = get_db().collection('users').document(uid).collection('entries')
-    entries_snapshot = entries_ref.stream()
-    raw_entries = [doc.to_dict() for doc in entries_snapshot]
-    relevant_entries = get_top_relevant_entries(raw_entries, query_text, top_k=35)
-    
-    entries_data = []
-    for data in relevant_entries:
-        date_str = data.get('date') or str(data.get('timestamp'))
-        topics = ", ".join(data.get('topics', []))
-        content = data.get('content') or data.get('transcript') or ""
-        entries_data.append(f"- Date: {date_str} | Topics: {topics}\n  Content: {content}")
-    entries_context = "\n\n".join(entries_data)
-
-    # 2. Fetch original insights
-    insights_ref = get_db().collection('users').document(uid).collection('insights').document('current')
-    insights_snap = insights_ref.get()
-    insights_context = "No structured insights found."
-    if insights_snap.exists:
-        insights_data = insights_snap.to_dict()
-        major = "\n".join([f"- {ins}" for ins in insights_data.get('majorInsights', [])])
-        weekly = insights_data.get('weeklyInsight', 'None')
-        shadow = insights_data.get('shadowWork', {}).get('insight', 'None')
-        manual_sections = []
-        for s in insights_data.get('operatingManual', {}).get('insight', {}).get('sections', []):
-            bullets_str = "\n  ".join([f"* {b}" for b in s.get('bullets', [])])
-            manual_sections.append(f"{s.get('title')}:\n  {bullets_str}")
-        manual_context = "\n".join(manual_sections)
-        insights_context = f"Major Insights:\n{major}\n\nWeekly Insight:\n{weekly}\n\nShadow Work:\n{shadow}\n\nOperating Manual:\n{manual_context}"
-
-    # 3. Fetch and filter graph nodes (Graph-RAG)
-    nodes_ref = get_db().collection('users').document(uid).collection('knowledge_graph_nodes')
-    nodes_snapshot = nodes_ref.stream()
-    all_nodes = []
-    for doc in nodes_snapshot:
-        data = doc.to_dict()
-        if data.get('type') == 'QAResponse':
-            continue
-        data['id'] = data.get('id') or doc.id
-        all_nodes.append(data)
+        response = run_agent("Investigator", INVESTIGATOR_SYSTEM_PROMPT, prompt, uid=uid)
         
-    subgraph = get_subgraph_by_semantic_search(all_nodes, query_text, top_k=15, max_hops=1)
-    logger.info(f"Graph-RAG traversal retrieved {len(subgraph['nodes'])} relevant nodes.")
-    
-    graph_data = []
-    for n in subgraph['nodes']:
-        node_id = n.get('id')
-        label = n.get('label', node_id)
-        content = n.get('content', '')
-        edges = n.get('relatedEdges', [])
-        edges_str = ", ".join([f"[{e.get('relation')}] -> {e.get('target')}" for e in edges])
-        graph_data.append(f"- Concept: {label} ({content})\n  Connections: {edges_str if edges_str else 'None'}")
+        import uuid
+        insight_id = f"investigator_{uuid.uuid4().hex[:8]}"
         
-    graph_context = "\n".join(graph_data) if graph_data else "No relevant knowledge graph context found."
+        extraction_prompt = f"Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the knowledge base that it discusses. Output strictly valid JSON like: {{\n  \"label\": \"...\",\n  \"related_nodes\": [\"node1\", \"node2\"]\n}}\n\nInsight:\n{response}"
+        extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt, uid=uid)
+        
+        label = "תשובת חוקר יומן (AI)"
+        related_nodes = []
+        try:
+            import json
+            clean_json = extraction_response.strip().strip('`').replace('json\n', '')
+            extracted = json.loads(clean_json)
+            label = extracted.get('label', label)
+            related_nodes = extracted.get('related_nodes', [])
+        except Exception as e:
+            logger.error(f"Failed to extract JSON for investigator node: {e}")
+            pass
+            
+        edges_list = []
+        for rn in related_nodes:
+            if rn and isinstance(rn, str):
+                edges_list.append({
+                    "source": insight_id,
+                    "target": rn.strip().replace(" ", "_"),
+                    "relation": "תשובת יומן",
+                    "sentimentScore": 0,
+                    "sourceQuotes": []
+                })
+            
+        get_db().collection('users').document(uid).collection('knowledge_graph_nodes').document(insight_id).set({
+            "id": insight_id,
+            "label": label,
+            "type": "Insight",
+            "val": 3,
+            "content": f"שאלה: {query_text}\n\n{response}",
+            "relatedEdges": edges_list,
+            "timestamp": firestore.SERVER_TIMESTAMP
+        }, merge=True)
+        
+        return {
+            "status": "success",
+            "result": response
+        }
+    except Exception as e:
+        import traceback
+        logger.error(f"Error in query_diary_insights: {e}\n{traceback.format_exc()}")
+        return {
+            "status": "error",
+            "message": f"שגיאה בעיבוד השאלה: {str(e)}"
+        }
 
-    # 4. Construct prompt
-    prompt = f"User Question: {query_text}\n\n"
-    if history_context:
-        prompt += f"=== CONVERSATION HISTORY ===\n{history_context}\n\n"
-    prompt += f"=== USER JOURNAL ENTRIES (TEXTS) ===\n{entries_context}\n\n=== USER STRUCTURED INSIGHTS ===\n{insights_context}\n\n=== USER KNOWLEDGE BASE (GRAPH CONCEPTS) ===\n{graph_context}"
-
-    response = run_agent("Investigator", INVESTIGATOR_SYSTEM_PROMPT, prompt)
-    
-    import uuid
-    insight_id = f"investigator_{uuid.uuid4().hex[:8]}"
-    
-    extraction_prompt = f"Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the knowledge base that it discusses. Output strictly valid JSON like: {{\n  \"label\": \"...\",\n  \"related_nodes\": [\"node1\", \"node2\"]\n}}\n\nInsight:\n{response}"
-    extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt)
-    
 @https_fn.on_call(timeout_sec=60)
 def explain_graph_link(req: https_fn.CallableRequest) -> dict:
     uid = extract_authenticated_uid(req)

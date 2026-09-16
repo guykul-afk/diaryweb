@@ -15,6 +15,8 @@ import TokenCostTracker from './components/TokenCostTracker';
 import EntityReconciliationModal from './components/EntityReconciliationModal';
 import EpistemicTraceabilityView from './components/EpistemicTraceabilityView';
 import EpistemicHealthModal from './components/EpistemicHealthModal';
+import MacroKnowledgeGraph from './components/MacroKnowledgeGraph';
+import MicroInsightFlow from './components/MicroInsightFlow';
 import { BookOpen, Network, Loader2, Brain, Sparkles, Lock, Layers, CheckCircle2, Search, Scale, ShieldCheck } from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
 import { useDiaryData } from './hooks/useDiaryData';
@@ -144,7 +146,8 @@ function AppContent({
   handleNavigateToEntry,
   renderContent
 }) {
-  const { ontologyVersion, setOntologyVersion } = useDiaryData();
+  const diaryData = useDiaryData();
+  const { ontologyVersion, setOntologyVersion } = diaryData;
   const [isReconcileOpen, setIsReconcileOpen] = useState(false);
   const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
@@ -311,6 +314,18 @@ function AppContent({
               >
                 עורך מפת מוח (GRIND)
               </button>
+              <button 
+                className={`submenu-btn ${activeTab === 'graph-macro' ? 'active' : ''}`}
+                onClick={() => setActiveTab('graph-macro')}
+              >
+                Macro Knowledge Graph
+              </button>
+              <button 
+                className={`submenu-btn ${activeTab === 'graph-micro' ? 'active' : ''}`}
+                onClick={() => setActiveTab('graph-micro')}
+              >
+                Micro Insight Flow
+              </button>
             </div>
           )}
 
@@ -403,7 +418,7 @@ function AppContent({
       </aside>
 
       {/* Main View Area */}
-      {renderContent()}
+      {renderContent(diaryData)}
 
       {/* Entity Reconciliation Modal */}
       <EntityReconciliationModal
@@ -484,7 +499,7 @@ function App() {
     setActiveTab('feed');
   };
 
-  const renderContent = () => {
+  const renderContent = (diaryData) => {
     if (authLoading) {
       return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexGrow: 1, gap: '12px' }}>
@@ -520,6 +535,18 @@ function App() {
         return (
           <div style={{ flexGrow: 1, height: '100%' }}>
             <MindMapBuilderView />
+          </div>
+        );
+      case 'graph-macro':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', padding: '24px' }}>
+            <MacroKnowledgeGraph diaryData={diaryData} />
+          </div>
+        );
+      case 'graph-micro':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', padding: '24px' }}>
+            <MicroInsightFlow diaryData={diaryData} />
           </div>
         );
       case 'graph-deep':
