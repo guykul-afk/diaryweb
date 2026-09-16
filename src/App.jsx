@@ -318,13 +318,13 @@ function AppContent({
                 className={`submenu-btn ${activeTab === 'graph-macro' ? 'active' : ''}`}
                 onClick={() => setActiveTab('graph-macro')}
               >
-                Macro Knowledge Graph
+                🌐 מבט מאקרו (AntV G6)
               </button>
               <button 
                 className={`submenu-btn ${activeTab === 'graph-micro' ? 'active' : ''}`}
                 onClick={() => setActiveTab('graph-micro')}
               >
-                Micro Insight Flow
+                🔍 מבט מיקרו (React Flow)
               </button>
             </div>
           )}
