@@ -154,7 +154,7 @@ export default function PersonalityAnalysisView({ uid }) {
   if (!analysisData) {
     return (
       <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        לא נמצא ניתוח אישיות עבור משתמש זה.
+        לא נמצא ניתוח אישיות עבור גיא.
       </div>
     );
   }

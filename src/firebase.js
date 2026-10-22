@@ -135,11 +135,11 @@ export async function fetchAllRecommendedReadings(uid) {
 
 
 
-// Helper to format transcript text (e.g. replace 'משתמש' speaker label with 'אני')
+// Helper to format transcript text (replace 'משתמש' speaker label with 'גיא')
 export function formatTranscript(text) {
   if (!text || typeof text !== 'string') return text || '';
   return text.replace(/(^|[\n\r]|(?<=\s))(?:\*\*)?משתמש(?:\*\*)?\s*(:|[-–—])/g, (match) => {
-    return match.replace('משתמש', 'אני');
+    return match.replace('משתמש', 'גיא');
   });
 }
 

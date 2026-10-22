@@ -865,7 +865,7 @@ export default function GraphView({ onNavigateToEntry, isaData }) {
             {/* Stance History Display */}
             {selectedNode.stances && selectedNode.stances.length > 0 && (
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', marginTop: '10px' }}>
-                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>יחס המשתמש (Stance):</h4>
+                <h4 style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '4px' }}>יחס גיא (Stance):</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   {selectedNode.stances.map((stance, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', background: 'var(--bg-secondary)', padding: '4px 8px', borderRadius: '4px' }}>
