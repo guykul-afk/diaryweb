@@ -43,7 +43,12 @@ def fetch_all_raw_entries():
         if 'date' in fields and 'stringValue' in fields['date']:
             date_val = fields['date']['stringValue']
         elif 'timestamp' in fields and 'timestampValue' in fields['timestamp']:
-            date_val = fields['timestamp']['timestampValue']
+            date_val = fields['timestamp']['timestampValue'][:10]
+        
+        if not date_val:
+            m_date = re.search(r'(\d{4}-\d{2}-\d{2})', doc_id)
+            if m_date:
+                date_val = m_date.group(1)
 
         topics = []
         if 'topics' in fields and 'arrayValue' in fields['topics']:
@@ -104,12 +109,28 @@ def main():
         if label not in aliases:
             aliases.append(label)
         
+        # Preserve all legacy metadata
+        meta = {
+            "domain": node.get("domain"),
+            "val": node.get("val"),
+            "sentimentScore": node.get("sentimentScore"),
+            "firstSeen": node.get("firstSeen"),
+            "lastSeen": node.get("lastSeen"),
+            "sourceQuotes": node.get("sourceQuotes", []),
+            "stances": node.get("stances", []),
+            "summary": node.get("summary"),
+            "description": node.get("description")
+        }
+        # filter out None
+        meta = {k: v for k, v in meta.items() if v is not None and v != [] and v != ""}
+        
         ent = Entity(
             id=nid,
             type=norm_type,
             canonicalName=label,
             aliases=aliases,
-            createdAt=node.get("createdAt") or "legacy"
+            createdAt=node.get("createdAt") or "legacy",
+            metadata=meta
         )
         entities_registry[nid] = ent
 
@@ -148,11 +169,24 @@ def main():
                 assertions_list.append(assertion)
 
     # Process legacy edges into assertions
+    # Build date / text lookup from raw_entries
+    raw_entry_lookup = []
+    for re_item in raw_entries:
+        re_id = re_item["id"]
+        re_date = re_item["date"]
+        re_content = re_item["content"]
+        raw_entry_lookup.append((re_id, re_date, re_content))
+
     edge_seen = set()
     for node in legacy_nodes:
         source_id = node.get("id")
         if not source_id:
             continue
+        
+        # also gather node stances dates / quotes for matching
+        node_stances = node.get("stances", [])
+        node_source_quotes = node.get("sourceQuotes", [])
+
         for edge in node.get("relatedEdges", []):
             raw_rel = edge.get("relation", "").strip()
             target_id = edge.get("target") or edge.get("targetId")
@@ -166,9 +200,80 @@ def main():
 
             canonical_pred, norm_status, in_backlog = normalizer.normalize_predicate(raw_rel)
             
-            # Find evidence quote if available
-            quote = edge.get("quote") or edge.get("context") or raw_rel
-            entry_ref = edge.get("sourceEntryId") or edge.get("entryId") or "entry_legacy"
+            # Extract source quotes list
+            sq = edge.get("sourceQuotes") or []
+            single_q = edge.get("quote") or edge.get("context")
+            if single_q and single_q not in sq:
+                sq.append(single_q)
+            
+            # Attempt to find matching entry in raw_entries
+            matched_entry_id = None
+            matched_date = None
+            matched_quote = single_q or (sq[0] if sq else None)
+            provenance_type = "legacy_inferred"
+
+            # 1. Try matching explicit entryId if present in edge
+            cand_id = edge.get("sourceEntryId") or edge.get("entryId")
+            if cand_id and any(re_id == cand_id for re_id, _, _ in raw_entry_lookup):
+                matched_entry_id = cand_id
+                for re_id, re_date, _ in raw_entry_lookup:
+                    if re_id == cand_id:
+                        matched_date = re_date
+                        break
+                provenance_type = "direct_entry"
+            
+            # 2. Try matching quote or target/source name against raw entries content
+            if not matched_entry_id:
+                search_terms = [t for t in [single_q, target_id, source_id] if t and len(t) > 2]
+                for re_id, re_date, re_content in raw_entry_lookup:
+                    if any(term in re_content for term in search_terms):
+                        matched_entry_id = re_id
+                        matched_date = re_date
+                        provenance_type = "direct_entry"
+                        # Extract a snippet around the match if no explicit quote
+                        if not matched_quote:
+                            for term in search_terms:
+                                idx = re_content.find(term)
+                                if idx != -1:
+                                    start = max(0, idx - 40)
+                                    end = min(len(re_content), idx + len(term) + 40)
+                                    matched_quote = re_content[start:end].strip()
+                                    break
+                        break
+
+            # If still no matched entry id, check node stances or fallback
+            if not matched_entry_id and node_stances:
+                for st in node_stances:
+                    st_date = st.get("date")
+                    st_quote = st.get("quote")
+                    if st_quote:
+                        for re_id, re_date, re_content in raw_entry_lookup:
+                            if st_quote in re_content or (st_date and st_date == re_date):
+                                matched_entry_id = re_id
+                                matched_date = re_date
+                                matched_quote = st_quote
+                                provenance_type = "direct_entry"
+                                break
+                    if matched_entry_id:
+                        break
+
+            # Determine validFrom from edge timestamp (ms epoch) or matched date
+            valid_from = matched_date
+            edge_ts = edge.get("timestamp") or edge.get("createdAt")
+            if edge_ts and isinstance(edge_ts, (int, float)) and edge_ts > 1000000000:
+                try:
+                    dt_val = datetime.utcfromtimestamp(edge_ts / 1000.0)
+                    valid_from = dt_val.strftime('%Y-%m-%d')
+                except Exception:
+                    pass
+
+            evidence_dict = {
+                "entryId": matched_entry_id or "entry_legacy",
+                "quote": matched_quote or raw_rel,
+                "provenanceType": provenance_type
+            }
+            if sq:
+                evidence_dict["sourceQuotes"] = sq
 
             ast = Assertion(
                 id=f"ast_{uuid.uuid4().hex[:12]}",
@@ -176,8 +281,9 @@ def main():
                 predicate=canonical_pred,
                 rawPredicate=raw_rel,
                 objectId=target_id,
-                epistemicStatus="SELF_REPORTED" if edge.get("sentimentScore") is not None else "INFERRED",
-                evidence=Evidence(entryId=entry_ref, quote=quote),
+                epistemicStatus="SELF_REPORTED" if edge.get("sentimentScore") is not None or provenance_type == "direct_entry" else "INFERRED",
+                validFrom=valid_from,
+                evidence=Evidence(**evidence_dict),
                 origin="RETROSPECTIVE_EXTRACTION",
                 extractionRunId=run_id
             )
@@ -231,7 +337,10 @@ def main():
     with open("knowledge_v2.json", "w", encoding="utf-8") as f:
         json.dump(knowledge_v2, f, ensure_ascii=False, indent=2)
 
-    print(f"Pass F: Successfully compiled knowledge_v2.json with {len(entities_registry)} entities and {len(assertions_list)} assertions.")
+    import shutil
+    shutil.copy("knowledge_v2.json", "public/knowledge_v2.json")
+
+    print(f"Pass F: Successfully compiled knowledge_v2.json and copied to public/knowledge_v2.json with {len(entities_registry)} entities and {len(assertions_list)} assertions.")
 
 if __name__ == "__main__":
     main()

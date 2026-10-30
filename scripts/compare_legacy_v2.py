@@ -32,6 +32,8 @@ def run_comparison():
     raw_predicate_preserved = sum(1 for a in assertions if "rawPredicate" in a and a["rawPredicate"])
     causal_assertions = [a for a in assertions if a.get("predicate") == "CONTRIBUTES_TO"]
     causal_traceable = sum(1 for a in causal_assertions if a.get("evidence") and a["evidence"].get("entryId"))
+    direct_entry_count = sum(1 for a in assertions if a.get("evidence") and a["evidence"].get("provenanceType") == "direct_entry")
+    legacy_inferred_count = sum(1 for a in assertions if a.get("evidence") and a["evidence"].get("provenanceType") == "legacy_inferred")
 
     # Generate Report
     report = []
@@ -64,7 +66,7 @@ def run_comparison():
     report.append("3. **דפוסים ותפיסות:** ממופים כ-`CONCEPT` ומקושרים באמצעות יחסי `EXPERIENCES` ו-`CONTRIBUTES_TO`.")
     report.append("4. **סתירות:** מנגנון `CONTRADICTS` מוכן למיפוי טענות מתנגשות.")
     report.append("5. **חוזק ראיות לתובנות:** כל Insight מיועד להחזיק רשימת `derivedFromAssertions`.")
-    report.append("6. **החלטות וסיבתיות:** **{len(causal_assertions)}** טענות סיבתיות (`CONTRIBUTES_TO`) עם מעקב מלא למקור.")
+    report.append(f"6. **החלטות וסיבתיות:** **{len(causal_assertions)}** טענות סיבתיות (`CONTRIBUTES_TO`) עם מעקב מלא למקור (מהן **{direct_entry_count:,}** ברמת ייחוס ישירה ליומן ו-**{legacy_inferred_count:,}** במקור מוסק `legacy_inferred`).")
 
     report_text = "\n".join(report)
     with open("QUALITY_GATE_REPORT.md", "w", encoding="utf-8") as f:

@@ -1,0 +1,362 @@
+{
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "in": "header",
+        "name": "X-API-Key",
+        "type": "apiKey"
+      },
+      "BearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Standardized REST API allowing external AI agents (ChatGPT, Claude, LangChain, AutoGPT) to access and analyze personal journal entries, knowledge graphs, and physiological data.",
+    "title": "OKF Knowledge Viewer AI API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/analyze": {
+      "post": {
+        "description": "Allows an external AI to submit findings, patterns, or recommendations into the permanent vault.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "action_recommendations": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "patterns_detected": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "source_agent": {
+                    "example": "Claude-3.5-Sonnet",
+                    "type": "string"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "tags": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "title",
+                  "summary"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Analysis recorded"
+          }
+        },
+        "summary": "Submit External AI Analysis"
+      }
+    },
+    "/entries": {
+      "get": {
+        "description": "Search personal diary entries with filtering by query, mood, tag, and date range.",
+        "parameters": [
+          {
+            "description": "Text search query",
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by topic/tag",
+            "in": "query",
+            "name": "tag",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter by mood string",
+            "in": "query",
+            "name": "mood",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter entries from this ISO date",
+            "in": "query",
+            "name": "start_date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Filter entries up to this ISO date",
+            "in": "query",
+            "name": "end_date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Number of entries",
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of entries"
+          }
+        },
+        "summary": "List & Search Journal Entries"
+      }
+    },
+    "/entries/{entry_id}": {
+      "get": {
+        "description": "Retrieve full text and metadata for a specific journal entry.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Entry details"
+          },
+          "404": {
+            "description": "Entry not found"
+          }
+        },
+        "summary": "Get Single Journal Entry"
+      }
+    },
+    "/graph/nodes": {
+      "get": {
+        "description": "Retrieve entities, domains, patterns, emotions, and concepts in the knowledge graph.",
+        "parameters": [
+          {
+            "description": "Node type filter (e.g. Domain, Person, Goal, Pattern)",
+            "in": "query",
+            "name": "type",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search node label or id",
+            "in": "query",
+            "name": "search",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of nodes"
+          }
+        },
+        "summary": "List Knowledge Graph Nodes"
+      }
+    },
+    "/graph/subgraph": {
+      "get": {
+        "description": "Returns connected nodes and edges centered around a given node or search query.",
+        "parameters": [
+          {
+            "description": "Center node id",
+            "in": "query",
+            "name": "node_id",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Search keyword for center node",
+            "in": "query",
+            "name": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Depth of relations (1 or 2)",
+            "in": "query",
+            "name": "hops",
+            "schema": {
+              "default": 1,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Subgraph of nodes and edges"
+          }
+        },
+        "summary": "Get Ego-Subgraph Around a Concept"
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Retrieve sleep, heart rate, workouts, and activity records.",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start_date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "end_date",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "metric",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Physiological metrics"
+          }
+        },
+        "summary": "Get Physiological & Life Tracker Data"
+      }
+    },
+    "/insights": {
+      "get": {
+        "description": "Returns current OCEAN personality scores, linguistic indices, and past analyses.",
+        "responses": {
+          "200": {
+            "description": "Personality insights"
+          }
+        },
+        "summary": "Get Personality Analysis & Metrics"
+      }
+    },
+    "/ping": {
+      "get": {
+        "description": "Returns API status and authentication verification.",
+        "responses": {
+          "200": {
+            "description": "API is online"
+          }
+        },
+        "summary": "Health check"
+      }
+    },
+    "/query": {
+      "post": {
+        "description": "Takes a natural language question and aggregates relevant entries, graph nodes, and metrics into an LLM-ready context block.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "include_graph": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "include_health": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "query": {
+                    "example": "מה הדפוסים שלי סביב עבודה ולחץ?",
+                    "type": "string"
+                  },
+                  "top_k_entries": {
+                    "default": 5,
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "query"
+                ],
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Synthesized AI context pack"
+          }
+        },
+        "summary": "AI RAG Context Retrieval"
+      }
+    },
+    "/theoretical-concepts": {
+      "get": {
+        "description": "Returns theoretical lenses (CBT, Stoicism, Brooks, etc.) from OKF ontology.",
+        "responses": {
+          "200": {
+            "description": "Theoretical concepts"
+          }
+        },
+        "summary": "Get Psychological Theoretical Concepts"
+      }
+    }
+  },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
+    }
+  ],
+  "servers": [
+    {
+      "description": "API Gateway",
+      "url": "http://localhost/api/v1"
+    }
+  ]
+}

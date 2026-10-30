@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "okf-knowledge-vault": {
+      "command": "python",
+      "args": [
+        "c:/Users/User/okf_knowledge_viewer/scripts/mcp_server.py"
+      ],
+      "env": {
+        "OKF_API_URL": "http://localhost:5005",
+        "OKF_API_KEY": "okf-ai-default-secret-key-2026"
+      }
+    }
+  }
+}

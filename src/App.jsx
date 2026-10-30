@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import FeedView from './FeedView';
-import GraphView from './GraphView';
 import PersonalityAnalysisView from './PersonalityAnalysisView';
 import InsightsView from './InsightsView';
 import AskView from './AskView';
-import { DiaryDataProvider } from './hooks/useDiaryData';
-import QuotesView from './QuotesView';
-import MindMapBuilderView from './MindMapBuilderView';
-import KnowledgeBaseGraphView from './KnowledgeBaseGraphView';
 import DeepKnowledgeView from './DeepKnowledgeView';
 import OntologyView from './OntologyView';
-import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 import TokenCostTracker from './components/TokenCostTracker';
 import EntityReconciliationModal from './components/EntityReconciliationModal';
 import EpistemicTraceabilityView from './components/EpistemicTraceabilityView';
 import EpistemicHealthModal from './components/EpistemicHealthModal';
-import DomainInsightExplorer from './components/DomainInsightExplorer';
-import { BookOpen, Network, Loader2, Brain, Sparkles, Lock, Layers, CheckCircle2, Search, Scale, ShieldCheck } from 'lucide-react';
+import { 
+  BookOpen, 
+  Network, 
+  Loader2, 
+  Brain, 
+  Sparkles, 
+  Scale, 
+  Settings, 
+  X,
+  ShieldCheck,
+  ChevronRight
+} from 'lucide-react';
 import { getFirebaseUid, verifyPasscode, fetchSyncedIsaData } from './firebase';
-import { useDiaryData } from './hooks/useDiaryData';
+import { useDiaryData, DiaryDataProvider } from './hooks/useDiaryData';
 
 const FIREBASE_UID_FALLBACK = import.meta.env.VITE_FIREBASE_UID || 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
 
@@ -143,13 +147,15 @@ function AppContent({
   isaLoading,
   authLoading,
   handleNavigateToEntry,
-  renderContent
+  renderContent,
+  traceabilityTarget,
+  setTraceabilityTarget
 }) {
   const diaryData = useDiaryData();
   const { ontologyVersion, setOntologyVersion } = diaryData;
   const [isReconcileOpen, setIsReconcileOpen] = useState(false);
-  const [isTraceabilityOpen, setIsTraceabilityOpen] = useState(false);
   const [isHealthModalOpen, setIsHealthModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [candidates, setCandidates] = useState([]);
 
   const openReconciliation = async () => {
@@ -167,226 +173,87 @@ function AppContent({
 
   return (
     <div className="three-column-layout">
-      {/* Right Navigation Sidebar (RTL) */}
+      {/* Right Navigation Sidebar (RTL) - 5 Clean Core Pillars + Footer Drawer */}
       <aside className="sidebar-right">
         <div className="sidebar-logo" style={{ gap: '10px' }}>
           <img src="/logo.png" alt="לוגו זריחה בים" style={{ width: '28px', height: '28px', borderRadius: '6px' }} />
           <span>צלילה עמוקה</span>
         </div>
 
-        {/* Ontology v2 Badge & Controls */}
-        <div style={{
-          padding: '10px 12px',
-          margin: '0 8px 10px 8px',
-          borderRadius: '12px',
-          background: ontologyVersion === 'v2' ? 'rgba(79, 70, 229, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-          border: `1px solid ${ontologyVersion === 'v2' ? 'rgba(99, 102, 241, 0.4)' : 'rgba(255, 255, 255, 0.1)'}`,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: ontologyVersion === 'v2' ? '#818cf8' : '#94a3b8' }}>
-              {ontologyVersion === 'v2' ? '🌟 אונטולוגיה v2 (קנונית)' : '🏛️ ארכיון Legacy'}
-            </span>
-            <button
-              onClick={() => setOntologyVersion(prev => prev === 'v2' ? 'legacy' : 'v2')}
-              style={{
-                fontSize: '0.65rem',
-                background: 'rgba(255,255,255,0.08)',
-                color: '#cbd5e1',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '2px 6px',
-                cursor: 'pointer'
-              }}
-              title="החלף מקור ידע"
-            >
-              החלף ל-{ontologyVersion === 'v2' ? 'Legacy' : 'v2'}
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <button
-              onClick={openReconciliation}
-              style={{
-                flex: 1,
-                fontSize: '0.68rem',
-                background: 'rgba(99, 102, 241, 0.2)',
-                color: '#c7d2fe',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
-                borderRadius: '6px',
-                padding: '4px 2px',
-                cursor: 'pointer'
-              }}
-            >
-              סקירת ישויות
-            </button>
-            <button
-              onClick={() => setIsTraceabilityOpen(true)}
-              style={{
-                flex: 1,
-                fontSize: '0.68rem',
-                background: 'rgba(16, 185, 129, 0.2)',
-                color: '#a7f3d0',
-                border: '1px solid rgba(16, 185, 129, 0.3)',
-                borderRadius: '6px',
-                padding: '4px 2px',
-                cursor: 'pointer'
-              }}
-            >
-              למה כך? 🔍
-            </button>
-            <button
-              onClick={() => setIsHealthModalOpen(true)}
-              style={{
-                flex: 1,
-                fontSize: '0.68rem',
-                background: 'rgba(56, 189, 248, 0.2)',
-                color: '#bae6fd',
-                border: '1px solid rgba(56, 189, 248, 0.3)',
-                borderRadius: '6px',
-                padding: '4px 2px',
-                cursor: 'pointer'
-              }}
-              title="בריאות הידע, החלטות וכיול"
-            >
-              בריאות ⚖️
-            </button>
-          </div>
-        </div>
-
-        <div style={{ padding: '8px 12px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '8px' }}>
-          <TokenCostTracker uid={uid} />
-        </div>
-
-        <nav className="sidebar-nav">
+        {/* 5 Focused Core Pillars Navigation */}
+        <nav className="sidebar-nav" style={{ marginTop: '8px' }}>
           <button
             className={`sidebar-btn ${activeTab === 'feed' ? 'active' : ''}`}
             onClick={() => setActiveTab('feed')}
-            title="יומן רשומות"
+            title="📖 יומן וציר זמן"
           >
-            <span>יומן רשומות</span>
+            <BookOpen size={18} />
+            <span>📖 יומן וציר זמן</span>
           </button>
 
           <button
-            className={`sidebar-btn ${activeTab === 'readings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('readings')}
-            title="השראה והמלצות קריאה"
+            className={`sidebar-btn ${(activeTab === 'mirror' || activeTab === 'ask') ? 'active' : ''}`}
+            onClick={() => setActiveTab('mirror')}
+            title="⚖️ מראת החלטות וכיול"
           >
-            <span>השראה והמלצות</span>
-          </button>
-          
-          <button
-            className={`sidebar-btn ${activeTab === 'quotes' ? 'active' : ''}`}
-            onClick={() => setActiveTab('quotes')}
-            title="ציטוטים נבחרים"
-          >
-            <span>ציטוטים</span>
-          </button>
-          
-          <button
-            className={`sidebar-btn ${activeTab.startsWith('graph') ? 'active' : ''}`}
-            onClick={() => setActiveTab('graph-stars')}
-            title="מפת קשרים ומבטים מורחבים"
-          >
-            <span>מפות וקשרים</span>
+            <Scale size={18} />
+            <span>⚖️ מראת החלטות וכיול</span>
           </button>
 
-          {activeTab.startsWith('graph') && (
-            <div className="sidebar-submenu">
-              <button 
-                className={`submenu-btn ${activeTab === 'graph' || activeTab === 'graph-stars' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graph-stars')}
-              >
-                מפת כוכבים
-              </button>
-              <button 
-                className={`submenu-btn ${activeTab === 'graph-deep' || activeTab === 'deep-graph' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graph-deep')}
-              >
-                גרף סמנטי 2.0
-              </button>
-              <button 
-                className={`submenu-btn ${activeTab === 'graph-mindmap' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graph-mindmap')}
-              >
-                עורך מפת מוח (GRIND)
-              </button>
-              <button 
-                className={`submenu-btn ${activeTab === 'graph-domains' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graph-domains')}
-              >
-                🧭 מרכז תחומי חיים (Macro Hub)
-              </button>
-            </div>
-          )}
-
-          <button
-            className={`sidebar-btn ${activeTab === 'analysis' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analysis')}
-            title="ניתוח אישיות רב-סוכני"
-          >
-            <span>ניתוח אישיות</span>
-          </button>
           <button
             className={`sidebar-btn ${activeTab === 'insights' ? 'active' : ''}`}
             onClick={() => setActiveTab('insights')}
-            title="תובנות אישיות"
+            title="💡 תובנות ומכ&quot;ם גוף–נפש"
           >
-            <span>תובנות אישיות</span>
-          </button>
-          <button
-            className={`sidebar-btn ${activeTab === 'mirror' || activeTab === 'ask' ? 'active' : ''}`}
-            onClick={() => setActiveTab('mirror')}
-            style={{
-              background: (activeTab === 'mirror' || activeTab === 'ask') ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
-              color: (activeTab === 'mirror' || activeTab === 'ask') ? '#c7d2fe' : 'inherit'
-            }}
-            title="מראת החלטות ושיקול דעת (Decision Mirror)"
-          >
-            <span>⚖️ מראת החלטות</span>
+            <Sparkles size={18} />
+            <span>💡 תובנות ומכ"ם גוף–נפש</span>
           </button>
 
           <button
-            className={`sidebar-btn ${activeTab === 'knowledge' || activeTab === 'knowledge-graph' ? 'active' : ''}`}
-            onClick={() => setActiveTab('knowledge-graph')}
-            title="בסיס ידע אקדמי (גרף 3D)"
+            className={`sidebar-btn ${(activeTab === 'graph-deep' || activeTab.startsWith('graph')) ? 'active' : ''}`}
+            onClick={() => setActiveTab('graph-deep')}
+            title="🧭 מפת עומק וקשרים"
           >
-            <span>בסיס ידע אקדמי</span>
+            <Network size={18} />
+            <span>🧭 מפת עומק וקשרים</span>
           </button>
 
           <button
-            className={`sidebar-btn ${activeTab === 'knowledge-frequency' ? 'active' : ''}`}
-            onClick={() => setActiveTab('knowledge-frequency')}
-            style={{
-              paddingRight: '28px',
-              fontSize: '0.85rem',
-              borderRight: activeTab === 'knowledge-frequency' ? '3px solid var(--accent-color)' : 'none'
-            }}
-            title="שכיחות מושגים ברשומות"
+            className={`sidebar-btn ${(activeTab === 'analysis' || activeTab === 'readings') ? 'active' : ''}`}
+            onClick={() => setActiveTab('analysis')}
+            title="🧠 דיוקן פסיכולוגי"
           >
-            <span>↳ שכיחות מושגים</span>
-          </button>
-
-          <button
-            className={`sidebar-btn ${activeTab === 'ontology' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ontology')}
-            style={{
-              marginTop: '6px',
-              background: activeTab === 'ontology' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.08)',
-              border: '1px solid rgba(99, 102, 241, 0.3)',
-              color: '#c7d2fe'
-            }}
-            title="מרכז שליטה והתערבות באונטולוגיה (Ontology Studio)"
-          >
-            <span>⚙️ אונטולוגיה (ניהול)</span>
+            <Brain size={18} />
+            <span>🧠 דיוקן פסיכולוגי</span>
           </button>
         </nav>
 
-        {/* Connection status */}
-        <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Discreet Footer Maintenance Drawer Button (⚙️) & Status */}
+        <div style={{ marginTop: 'auto', padding: '12px', borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%', display: 'flex', flexDirection: 'column', gap: '8px', boxSizing: 'border-box' }}>
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '8px',
+              color: '#cbd5e1',
+              fontSize: '0.78rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              transition: 'all 0.2s ease'
+            }}
+            title="פתיחת פאנל ניהול אונטולוגיה, עלויות מערכת ומיזוג ישויות"
+          >
+            <Settings size={14} />
+            <span>⚙️ ניהול אונטולוגיה ומערכת</span>
+          </button>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 4px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div 
                 style={{ 
@@ -394,17 +261,17 @@ function AppContent({
                   height: '8px', 
                   borderRadius: '50%', 
                   backgroundColor: authLoading ? 'var(--text-muted)' : 'var(--accent-color)' 
-                  }} 
+                }} 
                 title={authLoading ? "מתחבר..." : "מחובר ל-Firebase"}
               />
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>פיירבייס</span>
+              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>פיירבייס</span>
             </div>
             {isaLoading ? (
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>סנכרון ISA...</span>
             ) : isaData ? (
-              <span style={{ fontSize: '0.7rem', color: '#10b981' }} title="נתוני ISA מסונכרנים אוטומטית בכל יום ב-23:59">ISA מסונכרן ✓</span>
+              <span style={{ fontSize: '0.7rem', color: '#10b981' }} title="נתוני ISA מסונכרנים">ISA מסונכרן ✓</span>
             ) : (
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ללא נתוני ISA</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>ללא ISA</span>
             )}
           </div>
         </div>
@@ -412,6 +279,166 @@ function AppContent({
 
       {/* Main View Area */}
       {renderContent(diaryData)}
+
+      {/* Sleek Admin / Settings Modal Drawer */}
+      {isSettingsOpen && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 110,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px',
+          direction: 'rtl'
+        }}>
+          <div style={{
+            maxWidth: '560px',
+            width: '100%',
+            background: '#0f172a',
+            border: '1px solid #1e293b',
+            borderRadius: '20px',
+            padding: '24px',
+            color: '#f8fafc',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '20px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6)'
+          }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b', paddingBottom: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Settings size={20} style={{ color: '#818cf8' }} />
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0, color: '#f8fafc' }}>
+                  ⚙️ ניהול אונטולוגיה ומערכת (Admin Drawer)
+                </h2>
+              </div>
+              <button
+                onClick={() => setIsSettingsOpen(false)}
+                style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#94a3b8', borderRadius: '8px', padding: '6px 10px', cursor: 'pointer' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Ontology Version Toggle */}
+            <div style={{
+              background: 'rgba(30, 41, 59, 0.6)',
+              border: '1px solid rgba(255,255,255,0.06)',
+              borderRadius: '12px',
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <div>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: ontologyVersion === 'v2' ? '#818cf8' : '#94a3b8' }}>
+                  {ontologyVersion === 'v2' ? '🌟 אונטולוגיה v2 (קנונית)' : '🏛️ ארכיון Legacy'}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '2px' }}>
+                  מקור הנתונים והאונטולוגיה הפעיל בממשק
+                </div>
+              </div>
+
+              <button
+                onClick={() => setOntologyVersion(prev => prev === 'v2' ? 'legacy' : 'v2')}
+                style={{
+                  background: 'rgba(99, 102, 241, 0.2)',
+                  color: '#c7d2fe',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                החלף ל-{ontologyVersion === 'v2' ? 'Legacy' : 'v2 (קנונית)'}
+              </button>
+            </div>
+
+            {/* Token Cost Tracker */}
+            <div style={{ background: 'rgba(30, 41, 59, 0.6)', borderRadius: '12px', padding: '12px 14px', border: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px' }}>מעקב עלויות טוקנים ו-AI:</div>
+              <TokenCostTracker uid={uid} />
+            </div>
+
+            {/* Quick Action Navigation Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                onClick={() => {
+                  setActiveTab('ontology');
+                  setIsSettingsOpen(false);
+                }}
+                style={{
+                  background: 'rgba(99, 102, 241, 0.15)',
+                  border: '1px solid rgba(99, 102, 241, 0.3)',
+                  color: '#c7d2fe',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <span>🧬 מרכז שליטה וניהול אונטולוגיה ומועמדים</span>
+                <span>➔</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsSettingsOpen(false);
+                  openReconciliation();
+                }}
+                style={{
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  color: '#a7f3d0',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <span>🔗 מיזוג וסקירת ישויות כפולות (Reconciliation)</span>
+                <span>➔</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsSettingsOpen(false);
+                  setIsHealthModalOpen(true);
+                }}
+                style={{
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  color: '#bae6fd',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <span>⚖️ בריאות הידע, החלטות וכיול אפיסטמי</span>
+                <span>➔</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Entity Reconciliation Modal */}
       <EntityReconciliationModal
@@ -425,23 +452,36 @@ function AppContent({
         isOpen={isHealthModalOpen}
         onClose={() => setIsHealthModalOpen(false)}
         uid={uid}
+        entries={diaryData.entries || []}
+        graphNodes={diaryData.rawGraphData?.nodes || []}
+        v2RawData={diaryData.v2RawData}
       />
 
-      {/* Epistemic Traceability Modal / Drawer */}
-      {isTraceabilityOpen && (
+      {/* Epistemic Traceability Modal Overlay */}
+      {traceabilityTarget && (
         <div style={{
           position: 'fixed',
           inset: 0,
-          zIndex: 60,
+          zIndex: 120,
           background: 'rgba(0, 0, 0, 0.75)',
-          backdropFilter: 'blur(4px)',
+          backdropFilter: 'blur(5px)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           padding: '24px'
         }}>
-          <div style={{ maxWidth: '800px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
-            <EpistemicTraceabilityView onClose={() => setIsTraceabilityOpen(false)} />
+          <div style={{ maxWidth: '860px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}>
+            <EpistemicTraceabilityView 
+              insight={traceabilityTarget}
+              entries={diaryData.entries || []}
+              graphNodes={diaryData.rawGraphData?.nodes || []}
+              v2RawData={diaryData.v2RawData}
+              onClose={() => setTraceabilityTarget(null)}
+              onNavigateToEntry={(entryId) => {
+                setTraceabilityTarget(null);
+                handleNavigateToEntry(entryId);
+              }}
+            />
           </div>
         </div>
       )}
@@ -456,6 +496,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('feed');
   const [authLoading, setAuthLoading] = useState(true);
   const [selectedEntryId, setSelectedEntryId] = useState(null);
+  const [traceabilityTarget, setTraceabilityTarget] = useState(null);
   const uid = FIREBASE_UID_FALLBACK;
   const dataSource = 'firebase';
 
@@ -509,95 +550,97 @@ function App() {
         return (
           <FeedView 
             {...props} 
+            entries={diaryData.entries || []}
+            graphNodes={diaryData.rawGraphData?.nodes || []}
             selectedEntryId={selectedEntryId} 
             onSelectEntry={setSelectedEntryId} 
             onNavigateToTab={setActiveTab}
+            onNavigateToEntry={handleNavigateToEntry}
           />
-        );
-      case 'graph':
-      case 'graph-stars':
-        return (
-          <div style={{ flexGrow: 1, height: '100%' }}>
-            <GraphView 
-              {...props} 
-              onNavigateToEntry={handleNavigateToEntry} 
-            />
-          </div>
-        );
-      case 'graph-mindmap':
-        return (
-          <div style={{ flexGrow: 1, height: '100%' }}>
-            <MindMapBuilderView />
-          </div>
-        );
-      case 'graph-domains':
-        return (
-          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
-            <DomainInsightExplorer diaryData={diaryData} />
-          </div>
-        );
-      case 'graph-deep':
-      case 'deep-graph':
-        return (
-          <div style={{ flexGrow: 1, height: '100%' }}>
-            <DeepKnowledgeView 
-              {...props} 
-              onNavigateToEntry={handleNavigateToEntry} 
-            />
-          </div>
-        );
-      case 'analysis':
-        return (
-          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
-            <PersonalityAnalysisView {...props} />
-          </div>
-        );
-      case 'insights':
-        return (
-          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
-            <InsightsView {...props} />
-          </div>
-        );
-      case 'readings':
-        return (
-          <div style={{ flexGrow: 1, height: '100%', overflowY: 'auto', padding: '24px 32px' }}>
-            <div style={{ maxWidth: '720px', width: '100%', margin: '0 auto' }}>
-              <RecommendedReadingsCard uid={uid} onNavigateToNewEntry={handleNavigateToEntry} />
-            </div>
-          </div>
-        );
-      case 'quotes':
-        return (
-          <QuotesView 
-            onNavigateToEntry={handleNavigateToEntry} 
-          />
-        );
-      case 'knowledge':
-      case 'knowledge-graph':
-      case 'knowledge-frequency':
-        return (
-          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
-            <KnowledgeBaseGraphView 
-              initialTab={activeTab === 'knowledge-frequency' ? 'frequency' : 'graph'} 
-              onNavigateToEntry={handleNavigateToEntry} 
-            />
-          </div>
-        );
-      case 'ontology':
-        return (
-          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
-            <OntologyView />
-          </div>
         );
       case 'mirror':
       case 'ask':
         return (
           <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
-            <AskView {...props} onNavigateToEntry={handleNavigateToEntry} />
+            <AskView 
+              {...props} 
+              entries={diaryData.entries || []}
+              graphNodes={diaryData.rawGraphData?.nodes || []}
+              v2RawData={diaryData.v2RawData}
+              onNavigateToEntry={handleNavigateToEntry} 
+              onOpenTraceability={(item) => setTraceabilityTarget(item)}
+            />
+          </div>
+        );
+      case 'insights':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
+            <InsightsView 
+              {...props} 
+              entries={diaryData.entries || []}
+              graphNodes={diaryData.rawGraphData?.nodes || []}
+              onNavigateToEntry={handleNavigateToEntry}
+              onOpenTraceability={(item) => setTraceabilityTarget(item)}
+            />
+          </div>
+        );
+      case 'graph-deep':
+      case 'deep-graph':
+      case 'graph':
+      case 'graph-stars':
+        return (
+          <div style={{ flexGrow: 1, height: '100%' }}>
+            <DeepKnowledgeView 
+              {...props} 
+              entries={diaryData.entries || []}
+              graphNodes={diaryData.rawGraphData?.nodes || []}
+              v2RawData={diaryData.v2RawData}
+              onNavigateToEntry={handleNavigateToEntry} 
+              onOpenTraceability={(item) => setTraceabilityTarget(item)}
+            />
+          </div>
+        );
+      case 'analysis':
+      case 'readings':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden' }}>
+            <PersonalityAnalysisView 
+              {...props} 
+              entries={diaryData.entries || []}
+              graphNodes={diaryData.rawGraphData?.nodes || []}
+              onNavigateToEntry={handleNavigateToEntry}
+            />
+          </div>
+        );
+      case 'ontology':
+        return (
+          <div style={{ flexGrow: 1, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '8px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: '0.85rem', color: '#c7d2fe', fontWeight: 600 }}>⚙️ מסך ניהול אונטולוגיה (Developer Mode)</span>
+              <button 
+                onClick={() => setActiveTab('feed')} 
+                style={{ background: 'rgba(255,255,255,0.08)', border: 'none', color: '#fff', borderRadius: '6px', padding: '4px 12px', fontSize: '0.8rem', cursor: 'pointer' }}
+              >
+                חזרה ליומן ➔
+              </button>
+            </div>
+            <div style={{ flexGrow: 1, overflow: 'hidden' }}>
+              <OntologyView />
+            </div>
           </div>
         );
       default:
-        return null;
+        return (
+          <FeedView 
+            {...props} 
+            entries={diaryData.entries || []}
+            graphNodes={diaryData.rawGraphData?.nodes || []}
+            selectedEntryId={selectedEntryId} 
+            onSelectEntry={setSelectedEntryId} 
+            onNavigateToTab={setActiveTab}
+            onNavigateToEntry={handleNavigateToEntry}
+          />
+        );
     }
   };
 
@@ -619,6 +662,8 @@ function App() {
         authLoading={authLoading}
         handleNavigateToEntry={handleNavigateToEntry}
         renderContent={renderContent}
+        traceabilityTarget={traceabilityTarget}
+        setTraceabilityTarget={setTraceabilityTarget}
       />
     </DiaryDataProvider>
   );

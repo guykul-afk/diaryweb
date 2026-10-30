@@ -1,6 +1,28 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Calendar, Tag, RefreshCw, Search, BookOpen, Activity, Heart, Moon, Zap, Sparkles } from 'lucide-react';
+import { 
+  Calendar, 
+  Tag, 
+  RefreshCw, 
+  Search, 
+  BookOpen, 
+  Activity, 
+  Heart, 
+  Moon, 
+  Zap, 
+  Sparkles,
+  Quote,
+  Flame,
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Filter
+} from 'lucide-react';
 import { fetchFirebaseEntries, fetchFirebaseGraph, fetchTheoreticalConcepts } from './firebase';
+import { 
+  extractHealthMetricsMap, 
+  computePersonalRollingBaselines, 
+  detectSomaticDissonance 
+} from './utils/somaticCausalityEngine';
 import LocalGraph from './LocalGraph';
 
 const getHebrewDayOfWeek = (dateStr) => {
@@ -46,6 +68,7 @@ const getHrvBadgeStyle = (hrv) => {
   if (val >= 29) return { color: '#b45309', backgroundColor: '#fef3c7', border: '1px solid #fde68a' };
   return { color: '#b91c1c', backgroundColor: '#fee2e2', border: '1px solid #fca5a5' };
 };
+
 const findBestConceptMatch = (refId, concepts) => {
   if (!refId) return null;
   const ref = refId.toLowerCase().trim();
@@ -54,14 +77,14 @@ const findBestConceptMatch = (refId, concepts) => {
   let match = concepts.find(c => c.id.toLowerCase() === ref);
   if (match) return match;
   
-  // 2. Contains match (concept ID contains ref, or ref contains concept ID)
+  // 2. Contains match
   match = concepts.find(c => {
     const cid = c.id.toLowerCase();
     return cid.includes(ref) || ref.includes(cid);
   });
   if (match) return match;
   
-  // 3. Match by cleaning up prefixes and comparing
+  // 3. Match by cleaning up prefixes
   const clean = (str) => str.replace(/knowledge_base_/g, '').replace(/_/g, ' ').replace(/[a-zA-Z]/g, '').trim();
   const cleanRef = clean(ref);
   if (cleanRef) {
@@ -82,7 +105,6 @@ const cleanConceptId = (ref) => {
   return name.trim();
 };
 
-
 export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEntry, isaData, onNavigateToTab }) {
   const [entries, setEntries] = useState([]);
   const [graphData, setGraphData] = useState({ nodes: [], links: [] });
@@ -93,73 +115,160 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
   const [searchQuery, setSearchQuery] = useState('');
   const [sliderValue, setSliderValue] = useState(0);
 
+  // Quick Filter Chips: 'all', 'quotes', 'dissonance', 'high_strain'
+  const [activeQuickFilter, setActiveQuickFilter] = useState('all');
+
+  // Multi-Year Heatmap period selector: 'last12', 'all', or a year string (e.g. '2026', '2025')
+  const [heatmapPeriod, setHeatmapPeriod] = useState('last12');
+
   // Map of entries by YYYY-MM-DD
   const entriesByDate = useMemo(() => {
     const map = {};
     entries.forEach(e => {
-      if (e.frontmatter.date) {
+      if (e.frontmatter?.date) {
         map[e.frontmatter.date] = e;
       }
     });
     return map;
   }, [entries]);
 
-  // Map of HealthMetrics by YYYY-MM-DD
+  // Extract health metrics from graph nodes
   const healthMetricsByDate = useMemo(() => {
-    const map = {};
-    if (graphData && graphData.nodes) {
-      graphData.nodes.forEach(node => {
-        if (node.type === 'HealthMetric') {
-            const dateStr = node.date || (node.id && node.id.replace('Health_', '').replace(/_/g, '-'));
-            if (dateStr && node.metrics) {
-              map[dateStr] = node.metrics;
-            }
-        }
-      });
-    }
-    return map;
+    return extractHealthMetricsMap(graphData.nodes || []);
   }, [graphData]);
 
-  // Generate 12 months for the heatmap (ending in the current month)
+  // Compute Personal Rolling Baselines & Z-Scores
+  const baselinesData = useMemo(() => {
+    return computePersonalRollingBaselines(healthMetricsByDate, 30);
+  }, [healthMetricsByDate]);
+
+  // Detect Somatic Dissonance
+  const dissonanceEvents = useMemo(() => {
+    return detectSomaticDissonance(entries, baselinesData);
+  }, [entries, baselinesData]);
+
+  const dissonanceMap = useMemo(() => {
+    const map = {};
+    dissonanceEvents.forEach(evt => {
+      map[evt.date] = evt;
+    });
+    return map;
+  }, [dissonanceEvents]);
+
+  // Available years from entries
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    entries.forEach(e => {
+      const d = e.frontmatter?.date;
+      if (d && /^\d{4}/.test(d)) {
+        years.add(d.substring(0, 4));
+      }
+    });
+    return Array.from(years).sort().reverse();
+  }, [entries]);
+
+  // Heatmap Months generation based on selected period
   const heatmapMonths = useMemo(() => {
     const months = [];
     const now = new Date();
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const year = d.getFullYear();
-      const month = d.getMonth();
-      const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const firstDayOfWeek = new Date(year, month, 1).getDay(); // 0 = Sunday, 1 = Monday...
-      months.push({
-        year,
-        month,
-        daysInMonth,
-        firstDayOfWeek,
-        name: d.toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })
-      });
+
+    if (heatmapPeriod === 'last12') {
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = d.getFullYear();
+        const month = d.getMonth();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const firstDayOfWeek = new Date(year, month, 1).getDay();
+        months.push({
+          year,
+          month,
+          daysInMonth,
+          firstDayOfWeek,
+          name: d.toLocaleDateString('he-IL', { month: 'short', year: 'numeric' })
+        });
+      }
+    } else if (heatmapPeriod === 'all') {
+      // Span all available years
+      const sortedYears = [...availableYears].sort();
+      if (sortedYears.length > 0) {
+        const startYear = parseInt(sortedYears[0], 10);
+        const endYear = parseInt(sortedYears[sortedYears.length - 1], 10);
+        for (let y = startYear; y <= endYear; y++) {
+          for (let m = 0; m < 12; m++) {
+            const d = new Date(y, m, 1);
+            if (y === now.getFullYear() && m > now.getMonth()) break;
+            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            const firstDayOfWeek = new Date(y, m, 1).getDay();
+            months.push({
+              year: y,
+              month: m,
+              daysInMonth,
+              firstDayOfWeek,
+              name: d.toLocaleDateString('he-IL', { month: 'short', year: '2-digit' })
+            });
+          }
+        }
+      }
+    } else {
+      // Specific single year
+      const y = parseInt(heatmapPeriod, 10);
+      if (!isNaN(y)) {
+        for (let m = 0; m < 12; m++) {
+          const d = new Date(y, m, 1);
+          if (y === now.getFullYear() && m > now.getMonth()) break;
+          const daysInMonth = new Date(y, m + 1, 0).getDate();
+          const firstDayOfWeek = new Date(y, m, 1).getDay();
+          months.push({
+            year: y,
+            month: m,
+            daysInMonth,
+            firstDayOfWeek,
+            name: d.toLocaleDateString('he-IL', { month: 'short', year: 'numeric' })
+          });
+        }
+      }
     }
     return months;
-  }, []);
+  }, [heatmapPeriod, availableYears]);
 
+  // High-contrast color scale for mood polarity
   const getMoodColor = (mood) => {
-    if (!mood) return 'rgba(148, 163, 184, 0.1)';
+    if (!mood) return 'rgba(148, 163, 184, 0.15)';
     const m = mood.toLowerCase();
-    if (m.includes('שמח') || m.includes('טוב') || m.includes('אהב') || m.includes('רוגע') || m.includes('חיובי') || m.includes('joy') || m.includes('happy') || m.includes('calm') || m.includes('love') || m.includes('peace') || m.includes('בטוח')) {
-      return '#005f9e'; // Medium Blue
+    
+    // Emerald: Positive & Uplifting
+    if (m.includes('שמח') || m.includes('טוב') || m.includes('אהב') || m.includes('רוגע') || m.includes('חיובי') || m.includes('joy') || m.includes('happy') || m.includes('calm') || m.includes('love') || m.includes('peace') || m.includes('בטוח') || m.includes('מעולה') || m.includes('סיפוק')) {
+      return '#10b981';
     }
-    if (m.includes('עצב') || m.includes('בדידות') || m.includes('דאגה') || m.includes('ספק') || m.includes('sad') || m.includes('worr') || m.includes('lonel')) {
-      return '#2b78b0'; // Steel Blue
+    // Amber: Mixed / Reflective
+    if (m.includes('הרהור') || m.includes('מעורב') || m.includes('מחשבה') || m.includes('געגוע') || m.includes('סקרנות') || m.includes('שאלה') || m.includes('ציפייה') || m.includes('neutral') || m.includes('בינוני')) {
+      return '#f59e0b';
     }
-    if (m.includes('לחץ') || m.includes('חרד') || m.includes('עומס') || m.includes('מתח') || m.includes('תסכול') || m.includes('כעס') || m.includes('פחד') || m.includes('stress') || m.includes('anxiety') || m.includes('frust') || m.includes('angr') || m.includes('fear')) {
-      return '#00355f'; // Primary Blue
+    // Rose: Stressed / Negative
+    if (m.includes('לחץ') || m.includes('חרד') || m.includes('עצב') || m.includes('עומס') || m.includes('מתח') || m.includes('תסכול') || m.includes('כעס') || m.includes('פחד') || m.includes('דאגה') || m.includes('בדידות') || m.includes('stress') || m.includes('sad') || m.includes('anxiety') || m.includes('fear') || m.includes('overwhelmed')) {
+      return '#f43f5e';
     }
-    return '#708a9f'; // Blue-Gray (neutral/other)
+    // Indigo: Neutral / Task-focused
+    return '#6366f1';
   };
 
   const formatDateString = (year, month, day) => {
     const mm = String(month + 1).padStart(2, '0');
     const dd = String(day).padStart(2, '0');
     return `${year}-${mm}-${dd}`;
+  };
+
+  // Helper to extract formative quotes from an entry
+  const extractQuoteFromEntry = (content) => {
+    if (!content) return null;
+    const lines = content.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('>') || trimmed.toLowerCase().includes('ציטוט:') || (trimmed.startsWith('"') && trimmed.endsWith('"') && trimmed.length > 15)) {
+        return trimmed.replace(/^>\s*/, '').replace(/^ציטוט:\s*/i, '').replace(/^["']|["']$/g, '').trim();
+      }
+    }
+    return null;
   };
 
   const fetchEntriesAndGraph = async () => {
@@ -178,7 +287,6 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
       setGraphData(graphDataRes);
       setConcepts(theoreticalRes.nodes || []);
 
-      // Auto-select first entry if none selected
       if (entriesData.length > 0 && !selectedEntryId) {
         onSelectEntry(entriesData[0].id);
       }
@@ -196,22 +304,21 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
     }
   }, [uid]);
 
-  // Sync selectedEntryId if it changes and is not in filtered list, or set default
   const selectedEntry = useMemo(() => {
     return entries.find(e => e.id === selectedEntryId) || null;
   }, [entries, selectedEntryId]);
 
-  // Calculate the min/max dates and sort them for the timeline
+  // Timeline slider range
   const dateRange = useMemo(() => {
     if (entries.length === 0) return { min: 0, max: 0, list: [] };
     const list = entries
       .map(e => ({
         id: e.id,
-        dateStr: e.frontmatter.date,
-        time: new Date(e.frontmatter.date).getTime()
+        dateStr: e.frontmatter?.date,
+        time: new Date(e.frontmatter?.date).getTime()
       }))
       .filter(e => !isNaN(e.time))
-      .sort((a, b) => a.time - b.time); // Oldest to newest
+      .sort((a, b) => a.time - b.time);
       
     if (list.length === 0) return { min: 0, max: 0, list: [] };
     return {
@@ -221,20 +328,17 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
     };
   }, [entries]);
 
-  // Sync slider value when entries load
   useEffect(() => {
     if (dateRange.list.length > 0) {
-      setSliderValue(dateRange.max); // Default to the newest entry
+      setSliderValue(dateRange.max);
     }
   }, [dateRange]);
 
   const handleSliderChange = (e) => {
     const targetTime = parseInt(e.target.value);
     setSliderValue(targetTime);
-    
     if (dateRange.list.length === 0) return;
     
-    // Find closest entry
     let closestEntry = dateRange.list[0];
     let minDiff = Math.abs(dateRange.list[0].time - targetTime);
     
@@ -245,11 +349,9 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
         closestEntry = dateRange.list[i];
       }
     }
-    
     onSelectEntry(closestEntry.id);
   };
 
-  // Scroll active entry into view in the main pane
   useEffect(() => {
     if (selectedEntryId) {
       const element = document.getElementById(`entry-card-${selectedEntryId}`);
@@ -264,41 +366,97 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
     return new Date(time).toISOString().split('T')[0];
   };
 
-  // Client-side filtering by name, mood, hashtag, or keyword
-  const filteredEntries = useMemo(() => {
-    if (!searchQuery.trim()) return entries;
-    const query = searchQuery.toLowerCase().trim();
-    
-    return entries.filter(entry => {
-      const contentMatch = (entry.content || '').toLowerCase().includes(query);
-      const topicsMatch = entry.frontmatter.topics && 
-        entry.frontmatter.topics.some(topic => topic.toLowerCase().includes(query));
-      const moodMatch = entry.frontmatter.mood && 
-        entry.frontmatter.mood.toLowerCase().includes(query);
-      const triplesMatch = entry.frontmatter.triples && 
-        entry.frontmatter.triples.some(t => {
-          const s = (t.subject || t.s || '').toLowerCase();
-          const o = (t.object || t.o || '').toLowerCase();
-          const r = (t.relation || t.r || '').toLowerCase();
-          return s.includes(query) || o.includes(query) || r.includes(query);
-        });
-      
-      let isaTagMatch = false;
-      if (isaData && isaData[entry.frontmatter.date]) {
-        const dayData = isaData[entry.frontmatter.date];
-        const tags = [];
-        if (dayData.sleep === 'bad') tags.push('שינה_גרועה');
-        if (dayData.sleep === 'good') tags.push('שינה_מעולה');
-        if (dayData.sportsSets === 'good' || dayData.cardio === 'good') tags.push('יום_אימון');
-        if (dayData.efficacy === 'good') tags.push('פרודוקטיביות_שיא');
-        if (dayData.social === 'good') tags.push('חברתי');
-        isaTagMatch = tags.some(t => t.toLowerCase().includes(query));
-      }
-        
-      return contentMatch || topicsMatch || moodMatch || triplesMatch || isaTagMatch;
-    });
-  }, [entries, searchQuery, isaData]);
+  // Quick Filter counts
+  const filterCounts = useMemo(() => {
+    let quotesCount = 0;
+    let highStrainCount = 0;
 
+    entries.forEach(entry => {
+      const content = (entry.content || '').toLowerCase();
+      const title = (entry.frontmatter?.title || '').toLowerCase();
+      if (content.includes('ציטוט') || title.includes('ציטוט') || content.includes('\n>') || (entry.frontmatter?.quotes && entry.frontmatter.quotes.length > 0)) {
+        quotesCount++;
+      }
+
+      const base = baselinesData.byDate?.[entry.frontmatter?.date];
+      if (base?.zScores) {
+        const zHrv = base.zScores.hrv;
+        const zRhr = base.zScores.resting_hr;
+        if ((zHrv !== null && zHrv <= -1.0) || (zRhr !== null && zRhr >= 1.0)) {
+          highStrainCount++;
+        }
+      }
+    });
+
+    return {
+      all: entries.length,
+      quotes: quotesCount,
+      dissonance: dissonanceEvents.length,
+      highStrain: highStrainCount
+    };
+  }, [entries, baselinesData, dissonanceEvents]);
+
+  // Client-side filtering by Quick Filter Chips & Text Search
+  const filteredEntries = useMemo(() => {
+    let list = entries;
+
+    // Apply Quick Filter Chip
+    if (activeQuickFilter === 'quotes') {
+      list = list.filter(entry => {
+        const content = (entry.content || '').toLowerCase();
+        const title = (entry.frontmatter?.title || '').toLowerCase();
+        return content.includes('ציטוט') || title.includes('ציטוט') || content.includes('\n>') || (entry.frontmatter?.quotes && entry.frontmatter.quotes.length > 0);
+      });
+    } else if (activeQuickFilter === 'dissonance') {
+      const dissDates = new Set(dissonanceEvents.map(d => d.date));
+      list = list.filter(entry => dissDates.has(entry.frontmatter?.date));
+    } else if (activeQuickFilter === 'high_strain') {
+      list = list.filter(entry => {
+        const base = baselinesData.byDate?.[entry.frontmatter?.date];
+        if (!base?.zScores) return false;
+        const zHrv = base.zScores.hrv;
+        const zRhr = base.zScores.resting_hr;
+        return (zHrv !== null && zHrv <= -1.0) || (zRhr !== null && zRhr >= 1.0);
+      });
+    }
+
+    // Apply Text Search Query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      list = list.filter(entry => {
+        const contentMatch = (entry.content || '').toLowerCase().includes(query);
+        const topicsMatch = entry.frontmatter?.topics && 
+          entry.frontmatter.topics.some(topic => topic.toLowerCase().includes(query));
+        const moodMatch = entry.frontmatter?.mood && 
+          entry.frontmatter.mood.toLowerCase().includes(query);
+        const triplesMatch = entry.frontmatter?.triples && 
+          entry.frontmatter.triples.some(t => {
+            const s = (t.subject || t.s || '').toLowerCase();
+            const o = (t.object || t.o || '').toLowerCase();
+            const r = (t.relation || t.r || '').toLowerCase();
+            return s.includes(query) || o.includes(query) || r.includes(query);
+          });
+        
+        let isaTagMatch = false;
+        if (isaData && isaData[entry.frontmatter?.date]) {
+          const dayData = isaData[entry.frontmatter.date];
+          const tags = [];
+          if (dayData.sleep === 'bad') tags.push('שינה_גרועה');
+          if (dayData.sleep === 'good') tags.push('שינה_מעולה');
+          if (dayData.sportsSets === 'good' || dayData.cardio === 'good') tags.push('יום_אימון');
+          if (dayData.efficacy === 'good') tags.push('פרודוקטיביות_שיא');
+          if (dayData.social === 'good') tags.push('חברתי');
+          isaTagMatch = tags.some(t => t.toLowerCase().includes(query));
+        }
+          
+        return contentMatch || topicsMatch || moodMatch || triplesMatch || isaTagMatch;
+      });
+    }
+
+    return list;
+  }, [entries, activeQuickFilter, searchQuery, isaData, dissonanceEvents, baselinesData]);
+
+  // Habit-Triggered Prompts from ISA Data
   const writingPrompts = useMemo(() => {
     if (!isaData) return [];
     const dates = Object.keys(isaData).sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
@@ -361,9 +519,212 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
   return (
     <div style={{ display: 'flex', flexGrow: 1, height: '100%', overflow: 'hidden' }}>
       
+      {/* 1. Main Reader Pane */}
       <main className="reader-pane" style={{ overflowY: 'auto', flexGrow: 1, padding: '24px 32px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', maxWidth: '720px', width: '100%', margin: '0 auto' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '780px', width: '100%', margin: '0 auto' }}>
           
+          {/* Multi-Year Activity Heatmap with Period Selector */}
+          <div style={{
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px 24px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            boxShadow: 'var(--shadow-sm)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar size={18} style={{ color: 'var(--accent-color)' }} />
+                  מפת פעילות יומן ופולריות רגשית
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {entries.length} רשומות מתועדות | בחר שנה או תקופה לתצוגה
+                </span>
+              </div>
+
+              {/* Multi-Year Period Selector Buttons */}
+              <div style={{ display: 'flex', gap: '6px', background: 'var(--bg-color)', padding: '3px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                <button
+                  onClick={() => setHeatmapPeriod('last12')}
+                  style={{
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    fontWeight: heatmapPeriod === 'last12' ? 700 : 500,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    background: heatmapPeriod === 'last12' ? 'var(--accent-color)' : 'transparent',
+                    color: heatmapPeriod === 'last12' ? '#fff' : 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  12 חודשים אחרונים
+                </button>
+                {availableYears.map(yr => (
+                  <button
+                    key={yr}
+                    onClick={() => setHeatmapPeriod(yr)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '0.75rem',
+                      fontWeight: heatmapPeriod === yr ? 700 : 500,
+                      borderRadius: 'var(--radius-sm)',
+                      border: 'none',
+                      background: heatmapPeriod === yr ? 'var(--accent-color)' : 'transparent',
+                      color: heatmapPeriod === yr ? '#fff' : 'var(--text-secondary)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {yr}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setHeatmapPeriod('all')}
+                  style={{
+                    padding: '4px 8px',
+                    fontSize: '0.75rem',
+                    fontWeight: heatmapPeriod === 'all' ? 700 : 500,
+                    borderRadius: 'var(--radius-sm)',
+                    border: 'none',
+                    background: heatmapPeriod === 'all' ? 'var(--accent-color)' : 'transparent',
+                    color: heatmapPeriod === 'all' ? '#fff' : 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  הכל
+                </button>
+              </div>
+            </div>
+
+            {/* High-Contrast Legend */}
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#10b981' }} /> חיובי ומרומם (Emerald)
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#f59e0b' }} /> מעורב / רפלקטיבי (Amber)
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#f43f5e' }} /> עומס / מתח / עצב (Rose)
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#6366f1' }} /> ענייני / משימתי (Indigo)
+              </span>
+            </div>
+
+            {/* Render Heatmap Months Grid */}
+            <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px' }}>
+              {heatmapMonths.map((mObj, mi) => (
+                <div key={mi} style={{ display: 'flex', flexDirection: 'column', gap: '6px', minWidth: '85px' }}>
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textAlign: 'center' }}>
+                    {mObj.name}
+                  </span>
+                  
+                  {/* Days grid: 7 rows (Sunday to Saturday) */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateRows: 'repeat(7, 12px)',
+                    gridAutoFlow: 'column',
+                    gap: '3px'
+                  }}>
+                    {Array.from({ length: mObj.firstDayOfWeek }).map((_, bi) => (
+                      <div key={`blank-${bi}`} style={{ width: '12px', height: '12px' }} />
+                    ))}
+
+                    {Array.from({ length: mObj.daysInMonth }).map((_, di) => {
+                      const dayNum = di + 1;
+                      const dateStr = formatDateString(mObj.year, mObj.month, dayNum);
+                      const entry = entriesByDate[dateStr];
+                      const hasEntry = !!entry;
+                      const mood = entry?.frontmatter?.mood;
+                      const cellColor = hasEntry ? getMoodColor(mood) : 'rgba(148, 163, 184, 0.12)';
+                      const isSelected = entry && entry.id === selectedEntryId;
+
+                      return (
+                        <div
+                          key={`day-${dayNum}`}
+                          onClick={() => {
+                            if (entry) {
+                              onSelectEntry(entry.id);
+                            }
+                          }}
+                          style={{
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '2px',
+                            background: cellColor,
+                            cursor: hasEntry ? 'pointer' : 'default',
+                            outline: isSelected ? '2px solid var(--accent-color)' : 'none',
+                            transform: isSelected ? 'scale(1.2)' : 'none',
+                            transition: 'all 0.1s ease'
+                          }}
+                          title={hasEntry ? `${dateStr} (${getHebrewDayOfWeek(dateStr)}): ${mood || 'רשומה ללא הגדרת רגש'}` : dateStr}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Quick Filter Chips Bar */}
+          <div style={{
+            display: 'flex',
+            gap: '8px',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            padding: '12px 16px',
+            background: 'var(--panel-bg)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-lg)'
+          }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Filter size={14} /> סינון מהיר:
+            </span>
+
+            {[
+              { id: 'all', label: 'הכל', count: filterCounts.all, color: '#3b82f6' },
+              { id: 'quotes', label: '💬 רשומות עם ציטוטים מכוננים', count: filterCounts.quotes, color: '#f59e0b' },
+              { id: 'dissonance', label: '⚡ דיסוננס גוף–נפש', count: filterCounts.dissonance, color: '#8b5cf6' },
+              { id: 'high_strain', label: '🔥 עומס פיזיולוגי גבוה', count: filterCounts.highStrain, color: '#ef4444' }
+            ].map(chip => {
+              const isActive = activeQuickFilter === chip.id;
+              return (
+                <button
+                  key={chip.id}
+                  onClick={() => setActiveQuickFilter(chip.id)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '0.78rem',
+                    fontWeight: isActive ? 700 : 500,
+                    cursor: 'pointer',
+                    border: isActive ? `1px solid ${chip.color}` : '1px solid var(--border-color)',
+                    background: isActive ? `${chip.color}20` : 'var(--bg-color)',
+                    color: isActive ? (chip.color === '#f59e0b' ? '#d97706' : chip.color) : 'var(--text-secondary)',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  <span>{chip.label}</span>
+                  <span style={{ 
+                    fontSize: '0.7rem', 
+                    padding: '1px 6px', 
+                    borderRadius: '10px', 
+                    background: isActive ? chip.color : 'rgba(255,255,255,0.08)',
+                    color: isActive ? '#fff' : 'var(--text-muted)'
+                  }}>
+                    {chip.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
 
           {/* Habit-Triggered Prompts */}
           {writingPrompts.length > 0 && (
@@ -389,15 +750,15 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                     key={idx} 
                     style={{ 
                       fontSize: '0.85rem', 
-                      lineHeight: '1.5',
-                      color: 'var(--text-secondary)',
-                      padding: '10px 14px',
-                      borderRadius: 'var(--radius-md)',
-                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
-                      borderRight: `3px solid ${prompt.color}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
+                      lineHeight: '1.5', 
+                      color: 'var(--text-secondary)', 
+                      padding: '10px 14px', 
+                      borderRadius: 'var(--radius-md)', 
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+                      borderRight: `3px solid ${prompt.color}`, 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '8px' 
                     }}
                   >
                     <span>{prompt.text}</span>
@@ -407,8 +768,15 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
             </div>
           )}
 
+          {/* Entries Feed Cards */}
           {filteredEntries.map(entry => {
             const isSelected = entry.id === selectedEntryId;
+            const dateStr = entry.frontmatter?.date;
+            const baseData = baselinesData.byDate?.[dateStr];
+            const zScores = baseData?.zScores;
+            const dissEvent = dissonanceMap[dateStr];
+            const quoteSnippet = extractQuoteFromEntry(entry.content);
+
             return (
               <div 
                 key={entry.id} 
@@ -417,12 +785,12 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                   display: 'flex', 
                   flexDirection: 'column', 
                   gap: '16px', 
-                  padding: '24px',
-                  borderRadius: 'var(--radius-lg)',
-                  backgroundColor: 'var(--panel-bg)',
-                  border: isSelected ? '2px solid var(--accent-color)' : '1px solid var(--border-color)',
-                  boxShadow: isSelected ? '0 4px 20px rgba(0, 53, 95, 0.08)' : '0 2px 8px rgba(0,0,0,0.01)',
-                  transition: 'all 0.2s ease-in-out'
+                  padding: '24px', 
+                  borderRadius: 'var(--radius-lg)', 
+                  backgroundColor: 'var(--panel-bg)', 
+                  border: isSelected ? '2px solid var(--accent-color)' : '1px solid var(--border-color)', 
+                  boxShadow: isSelected ? '0 4px 20px rgba(0, 53, 95, 0.08)' : '0 2px 8px rgba(0,0,0,0.01)', 
+                  transition: 'all 0.2s ease-in-out' 
                 }}
               >
                 {/* Header Container */}
@@ -433,7 +801,7 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                   borderBottom: '1px solid var(--border-color)', 
                   paddingBottom: '16px', 
                   gap: '20px', 
-                  flexWrap: 'wrap'
+                  flexWrap: 'wrap' 
                 }}>
                   
                   {/* Right Side: Date, Mood, Hashtags */}
@@ -441,21 +809,28 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                     display: 'flex', 
                     flexDirection: 'column', 
                     gap: '12px', 
-                    flex: '1 1 250px',
-                    alignItems: 'flex-start'
+                    flex: '1 1 250px', 
+                    alignItems: 'flex-start' 
                   }}>
                     {/* Date & Mood */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                       <Calendar size={16} style={{ color: 'var(--text-muted)' }} />
                       <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                        {entry.frontmatter.date} ({getHebrewDayOfWeek(entry.frontmatter.date)})
+                        {dateStr} ({getHebrewDayOfWeek(dateStr)})
                       </span>
-                      {entry.frontmatter.mood && (
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', backgroundColor: 'var(--accent-light)', padding: '2px 8px', borderRadius: '10px' }}>
+                      {entry.frontmatter?.mood && (
+                        <span style={{ 
+                          fontSize: '0.75rem', 
+                          color: '#fff', 
+                          backgroundColor: getMoodColor(entry.frontmatter.mood), 
+                          padding: '2px 8px', 
+                          borderRadius: '10px',
+                          fontWeight: 600
+                        }}>
                           רגש: {entry.frontmatter.mood}
                         </span>
                       )}
-                      {entry.frontmatter.tkb_reference && (
+                      {entry.frontmatter?.tkb_reference && (
                         <button 
                           onClick={() => {
                             const match = findBestConceptMatch(entry.frontmatter.tkb_reference, concepts);
@@ -476,33 +851,24 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                           }}
                         >
                           <BookOpen size={12} />
-                          מושג: {(() => {
-                            const ref = entry.frontmatter.tkb_reference;
-                            const match = findBestConceptMatch(ref, concepts);
-                            if (match) {
-                              // If matched, use title/label. Clean up if it ends with .md
-                              const title = match.title || match.label || ref;
-                              return title.replace(/\.md$/i, '').trim();
-                            }
-                            return cleanConceptId(ref);
-                          })()}
+                          מושג: {cleanConceptId(entry.frontmatter.tkb_reference)}
                         </button>
                       )}
                     </div>
 
-                    {/* Hashtags (Right aligned) */}
+                    {/* Hashtags */}
                     <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
                       {(() => {
                         const isaTags = [];
-                        if (isaData && isaData[entry.frontmatter.date]) {
-                          const dayData = isaData[entry.frontmatter.date];
+                        if (isaData && isaData[dateStr]) {
+                          const dayData = isaData[dateStr];
                           if (dayData.sleep === 'bad') isaTags.push('שינה_גרועה');
                           if (dayData.sleep === 'good') isaTags.push('שינה_מעולה');
                           if (dayData.sportsSets === 'good' || dayData.cardio === 'good') isaTags.push('יום_אימון');
                           if (dayData.efficacy === 'good') isaTags.push('פרודוקטיביות_שיא');
                           if (dayData.social === 'good') isaTags.push('חברתי');
                         }
-                        const allTopics = [...(entry.frontmatter.topics || []), ...isaTags];
+                        const allTopics = [...(entry.frontmatter?.topics || []), ...isaTags];
                         return allTopics.map((topic, i) => (
                           <span 
                             key={i} 
@@ -511,9 +877,9 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                               backgroundColor: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? 'rgba(16, 185, 129, 0.1)' : 'var(--bg-color)', 
                               border: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? '1px solid rgba(16, 185, 129, 0.2)' : '1px solid var(--border-color)', 
                               borderRadius: 'var(--radius-sm)', 
-                              padding: '2px 6px',
-                              color: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? '#10b981' : 'var(--text-secondary)',
-                              whiteSpace: 'nowrap'
+                              padding: '2px 6px', 
+                              color: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? '#10b981' : 'var(--text-secondary)', 
+                              whiteSpace: 'nowrap' 
                             }}
                           >
                             #{topic}
@@ -523,189 +889,228 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                     </div>
                   </div>
 
-                  {/* Left Side: Dedicated Separate Area for Health & ISA Metrics */}
+                  {/* Left Side: Biometrics with Calibrated Rolling Z-Scores */}
                   <div style={{ 
                     display: 'flex', 
                     flexDirection: 'column', 
-                    gap: '12px', 
+                    gap: '8px', 
                     alignItems: 'flex-end', 
-                    flex: '1 1 320px',
-                    maxWidth: '480px',
+                    flex: '1 1 320px', 
+                    maxWidth: '480px', 
                     borderRight: '1px solid var(--border-color)', 
-                    paddingRight: '16px'
+                    paddingRight: '16px' 
                   }}>
-                    {/* Google Health Metrics */}
-                    {healthMetricsByDate && healthMetricsByDate[entry.frontmatter.date] && (
+                    {/* Google Health Metrics with Personal Rolling Z-Score Anomaly Badges */}
+                    {healthMetricsByDate && healthMetricsByDate[dateStr] && (
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {healthMetricsByDate[entry.frontmatter.date].sleep_score && (
+                        
+                        {/* HRV Badge with Z-score Anomaly */}
+                        {healthMetricsByDate[dateStr].hrv && (() => {
+                          const val = healthMetricsByDate[dateStr].hrv;
+                          const z = zScores?.hrv;
+                          const isHigh = z !== null && z !== undefined && z >= 0.8;
+                          const isLow = z !== null && z !== undefined && z <= -0.8;
+                          
+                          let bg = '#ede9fe';
+                          let textCol = '#8b5cf6';
+                          let borderCol = '#ddd6fe';
+                          let label = `HRV: ${val}`;
+
+                          if (isHigh) {
+                            bg = '#d1fae5';
+                            textCol = '#047857';
+                            borderCol = '#a7f3d0';
+                            label = `HRV ${val} (↑ ${z}σ התאוששות)`;
+                          } else if (isLow) {
+                            bg = '#fee2e2';
+                            textCol = '#b91c1c';
+                            borderCol = '#fca5a5';
+                            label = `HRV ${val} (↓ ${Math.abs(z)}σ עומס)`;
+                          }
+
+                          return (
+                            <span 
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                fontSize: '0.75rem', 
+                                padding: '2px 8px', 
+                                borderRadius: '10px', 
+                                backgroundColor: bg, 
+                                color: textCol, 
+                                border: `1px solid ${borderCol}`,
+                                fontWeight: (isHigh || isLow) ? 700 : 500
+                              }}
+                              title={z !== null ? `Z-Score ביחס לבייסליין 30 יום שלך: ${z}σ` : ''}
+                            >
+                              <Zap size={12} /> {label}
+                            </span>
+                          );
+                        })()}
+
+                        {/* Resting HR Badge with Z-score Anomaly */}
+                        {healthMetricsByDate[dateStr].resting_hr && (() => {
+                          const val = healthMetricsByDate[dateStr].resting_hr;
+                          const z = zScores?.resting_hr;
+                          const isHigh = z !== null && z !== undefined && z >= 0.8;
+                          const isLow = z !== null && z !== undefined && z <= -0.8;
+
+                          let bg = '#fee2e2';
+                          let textCol = '#ef4444';
+                          let borderCol = '#fca5a5';
+                          let label = `מנוחה: ${val}`;
+
+                          if (isLow) {
+                            bg = '#d1fae5';
+                            textCol = '#047857';
+                            borderCol = '#a7f3d0';
+                            label = `מנוחה ${val} (↓ ${Math.abs(z)}σ רגיעה)`;
+                          } else if (isHigh) {
+                            bg = '#fee2e2';
+                            textCol = '#b91c1c';
+                            borderCol = '#fca5a5';
+                            label = `מנוחה ${val} (↑ ${z}σ דופק מוגבר)`;
+                          }
+
+                          return (
+                            <span 
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                fontSize: '0.75rem', 
+                                padding: '2px 8px', 
+                                borderRadius: '10px', 
+                                backgroundColor: bg, 
+                                color: textCol, 
+                                border: `1px solid ${borderCol}`,
+                                fontWeight: (isHigh || isLow) ? 700 : 500
+                              }}
+                              title={z !== null ? `Z-Score ביחס לבייסליין 30 יום שלך: ${z}σ` : ''}
+                            >
+                              <Heart size={12} /> {label}
+                            </span>
+                          );
+                        })()}
+
+                        {/* Sleep Score Badge with Z-score Anomaly */}
+                        {healthMetricsByDate[dateStr].sleep_score && (() => {
+                          const val = healthMetricsByDate[dateStr].sleep_score;
+                          const z = zScores?.sleep_score;
+                          const isHigh = z !== null && z !== undefined && z >= 0.8;
+                          const isLow = z !== null && z !== undefined && z <= -0.8;
+
+                          let bg = '#e0e7ff';
+                          let textCol = '#6366f1';
+                          let borderCol = '#c7d2fe';
+                          let label = `שינה: ${val}`;
+
+                          if (isHigh) {
+                            bg = '#d1fae5';
+                            textCol = '#047857';
+                            borderCol = '#a7f3d0';
+                            label = `שינה ${val} (↑ ${z}σ איכותית)`;
+                          } else if (isLow) {
+                            bg = '#fee2e2';
+                            textCol = '#b91c1c';
+                            borderCol = '#fca5a5';
+                            label = `שינה ${val} (↓ ${Math.abs(z)}σ ירודה)`;
+                          }
+
+                          return (
+                            <span 
+                              style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '4px', 
+                                fontSize: '0.75rem', 
+                                padding: '2px 8px', 
+                                borderRadius: '10px', 
+                                backgroundColor: bg, 
+                                color: textCol, 
+                                border: `1px solid ${borderCol}`,
+                                fontWeight: (isHigh || isLow) ? 700 : 500
+                              }}
+                              title={z !== null ? `Z-Score ביחס לבייסליין 30 יום שלך: ${z}σ` : ''}
+                            >
+                              <Moon size={12} /> {label}
+                            </span>
+                          );
+                        })()}
+
+                        {/* Steps Badge */}
+                        {healthMetricsByDate[dateStr].steps && (
                           <span style={{ 
                             display: 'flex', 
                             alignItems: 'center', 
                             gap: '4px', 
                             fontSize: '0.75rem', 
                             padding: '2px 8px', 
-                            borderRadius: '10px',
-                            ...getSleepBadgeStyle(healthMetricsByDate[entry.frontmatter.date].sleep_score)
+                            borderRadius: '10px', 
+                            ...getStepsBadgeStyle(healthMetricsByDate[dateStr].steps) 
                           }}>
-                            <Moon size={12} /> שינה: {healthMetricsByDate[entry.frontmatter.date].sleep_score}
+                            <Activity size={12} /> צעדים: {parseInt(healthMetricsByDate[dateStr].steps, 10).toLocaleString()}
                           </span>
                         )}
-                        {healthMetricsByDate[entry.frontmatter.date].steps && (
-                          <span style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '4px', 
-                            fontSize: '0.75rem', 
-                            padding: '2px 8px', 
-                            borderRadius: '10px',
-                            ...getStepsBadgeStyle(healthMetricsByDate[entry.frontmatter.date].steps)
-                          }}>
-                            <Activity size={12} /> צעדים: {healthMetricsByDate[entry.frontmatter.date].steps}
-                          </span>
-                        )}
-                        {healthMetricsByDate[entry.frontmatter.date].resting_hr && (
-                          <span style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '4px', 
-                            fontSize: '0.75rem', 
-                            padding: '2px 8px', 
-                            borderRadius: '10px',
-                            ...getRestingHrBadgeStyle(healthMetricsByDate[entry.frontmatter.date].resting_hr)
-                          }}>
-                            <Heart size={12} /> מנוחה: {healthMetricsByDate[entry.frontmatter.date].resting_hr}
-                          </span>
-                        )}
-                        {healthMetricsByDate[entry.frontmatter.date].hrv && (
-                          <span style={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: '4px', 
-                            fontSize: '0.75rem', 
-                            padding: '2px 8px', 
-                            borderRadius: '10px',
-                            ...getHrvBadgeStyle(healthMetricsByDate[entry.frontmatter.date].hrv)
-                          }}>
-                            <Zap size={12} /> HRV: {healthMetricsByDate[entry.frontmatter.date].hrv}
-                          </span>
-                        )}
+
                       </div>
                     )}
 
-                    {/* ISA Metrics */}
-                    {isaData && isaData[entry.frontmatter.date] && (
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        {/* Weighted ISA Score */}
-                        <span style={{ 
-                          fontSize: '0.75rem', 
-                          fontWeight: 'bold', 
-                          color: '#fff', 
-                          backgroundColor: '#059669', 
-                          padding: '2px 8px', 
-                          borderRadius: '10px'
-                        }} title="ציון ISA יומי משוקלל">
-                          ציון ISA: {(() => {
-                            const dayData = isaData[entry.frontmatter.date];
-                            let score = 0;
-                            const qualityScore = (val) => {
-                              if (val === 'good') return 10;
-                              if (val === 'medium') return 5;
-                              return 0;
-                            };
-                            score += qualityScore(dayData.sportsSets);
-                            score += qualityScore(dayData.cardio);
-                            score += qualityScore(dayData.meditation);
-                            score += qualityScore(dayData.journal);
-                            score += qualityScore(dayData.book);
-                            score += qualityScore(dayData.efficacy);
-                            score += qualityScore(dayData.nutrition);
-                            score += qualityScore(dayData.sleep);
-                            score += qualityScore(dayData.work);
-                            score += qualityScore(dayData.family);
-                            score += qualityScore(dayData.social);
-                            return Math.round((score / 110) * 100);
-                          })()}%
-                        </span>
-
-                        {/* All 11 ISA Metrics sorted by Score */}
-                        {(() => {
-                          const dayData = isaData[entry.frontmatter.date];
-                          const isaLabels = {
-                            sportsSets: "ספורט",
-                            cardio: "אירובי",
-                            meditation: "מדיטציה",
-                            journal: "יומן",
-                            book: "ספר",
-                            efficacy: "חוללות",
-                            nutrition: "תזונה",
-                            sleep: "שינה",
-                            work: "עבודה",
-                            family: "משפחה",
-                            social: "חברה"
-                          };
-
-                          const keys = Object.keys(isaLabels);
-                          const sortedKeys = [...keys].sort((a, b) => {
-                            const scoreVal = (k) => {
-                              const val = dayData[k];
-                              if (val === 'good') return 3;
-                              if (val === 'medium') return 2;
-                              if (val === 'bad') return 1;
-                              return 0; // Not selected
-                            };
-                            return scoreVal(b) - scoreVal(a);
-                          });
-
-                          return sortedKeys.map(key => {
-                            const val = dayData[key];
-                            const label = isaLabels[key];
-                            
-                            let badgeStyle = {};
-                            let prefix = '';
-                            let statusText = '';
-
-                            if (val === 'good') {
-                              badgeStyle = { color: '#047857', backgroundColor: '#d1fae5', border: '1px solid #a7f3d0' };
-                              prefix = '✓';
-                              statusText = 'טוב';
-                            } else if (val === 'medium') {
-                              badgeStyle = { color: '#b45309', backgroundColor: '#fef3c7', border: '1px solid #fde68a' };
-                              prefix = '~';
-                              statusText = 'בינוני';
-                            } else if (val === 'bad') {
-                              badgeStyle = { color: '#b91c1c', backgroundColor: '#fee2e2', border: '1px solid #fca5a5' };
-                              prefix = '✗';
-                              statusText = 'גרוע';
-                            } else {
-                              badgeStyle = { color: '#6b7280', backgroundColor: '#f3f4f6', border: '1px solid #e5e7eb' };
-                              prefix = '○';
-                              statusText = 'לא נבחר';
-                            }
-
-                            return (
-                              <span 
-                                key={key} 
-                                style={{ 
-                                  fontSize: '0.7rem', 
-                                  padding: '1px 6px', 
-                                  borderRadius: '8px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '2px',
-                                  whiteSpace: 'nowrap',
-                                  ...badgeStyle
-                                }}
-                                title={`${label}: ${statusText}`}
-                              >
-                                {prefix} {label}
-                              </span>
-                            );
-                          });
-                        })()}
-                      </div>
+                    {/* Composite Physiological Status Indicator */}
+                    {baseData && (
+                      <span style={{ 
+                        fontSize: '0.7rem', 
+                        fontWeight: 700, 
+                        color: baseData.statusColor, 
+                        background: `${baseData.statusColor}15`, 
+                        padding: '2px 8px', 
+                        borderRadius: '6px',
+                        border: `1px solid ${baseData.statusColor}30`
+                      }}>
+                        מצב פיזיולוגי: {baseData.statusLabelHe}
+                      </span>
                     )}
                   </div>
                 </div>
+
+                {/* Somatic Dissonance Banner if detected for this entry */}
+                {dissEvent && (
+                  <div style={{
+                    background: `${dissEvent.typeBadgeColor}12`,
+                    border: `1px solid ${dissEvent.typeBadgeColor}35`,
+                    borderRadius: 'var(--radius-md)',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}>
+                    <Zap size={16} style={{ color: dissEvent.typeBadgeColor, flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.8rem', color: dissEvent.typeBadgeColor }}>
+                      <strong>{dissEvent.typeLabelHe}:</strong> {dissEvent.explanationHe}
+                    </span>
+                  </div>
+                )}
+
+                {/* Formative Quote Highlight */}
+                {quoteSnippet && (
+                  <div style={{
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    borderRight: '4px solid #f59e0b',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '10px 14px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', fontWeight: 700, color: '#f59e0b' }}>
+                      <Quote size={13} /> ציטוט מכונן מתוך הרשומה
+                    </div>
+                    <div style={{ fontSize: '0.88rem', fontStyle: 'italic', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                      "{quoteSnippet}"
+                    </div>
+                  </div>
+                )}
 
                 {/* Entry Content Body */}
                 <article style={{ 
@@ -713,13 +1118,13 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                   lineHeight: '1.7', 
                   color: 'var(--text-secondary)', 
                   whiteSpace: 'pre-wrap', 
-                  fontFamily: 'var(--font-sans)'
+                  fontFamily: 'var(--font-sans)' 
                 }}>
                   {entry.content}
                 </article>
 
-                {/* Open Threads / Actions */}
-                {entry.frontmatter.open_threads && entry.frontmatter.open_threads.length > 0 && (
+                {/* Open Threads / Action Items */}
+                {entry.frontmatter?.open_threads && entry.frontmatter.open_threads.length > 0 && (
                   <div style={{ 
                     marginTop: '8px', 
                     backgroundColor: 'var(--bg-color)', 
@@ -766,13 +1171,13 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
               background: 'none', 
               border: '1px solid var(--border-color)', 
               borderRadius: 'var(--radius-sm)', 
-              width: '28px',
-              height: '28px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              color: 'var(--text-secondary)'
+              width: '28px', 
+              height: '28px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              cursor: 'pointer', 
+              color: 'var(--text-secondary)' 
             }}
             title="רענן מידע"
           >
@@ -839,11 +1244,16 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
           {error && <div style={{ padding: '12px', color: '#ef4444', fontSize: '0.8rem' }}>{error}</div>}
           
           {!loading && !error && filteredEntries.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>לא נמצאו רשומות.</div>
+            <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>לא נמצאו רשומות העונות על הסינון.</div>
           )}
 
           {!loading && !error && filteredEntries.map((entry) => {
             const isSelected = entry.id === selectedEntryId;
+            const dateStr = entry.frontmatter?.date;
+            const baseData = baselinesData.byDate?.[dateStr];
+            const hasHighStrain = baseData?.zScores?.hrv <= -1.0 || baseData?.zScores?.resting_hr >= 1.0;
+            const hasDissonance = !!dissonanceMap[dateStr];
+
             return (
               <div
                 key={entry.id}
@@ -863,35 +1273,46 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                    {entry.frontmatter.date}
+                    {dateStr}
                   </span>
-                  {entry.frontmatter.mood && (
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                      רגש: {entry.frontmatter.mood}
-                    </span>
-                  )}
+                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                    {hasDissonance && (
+                      <span title="דיסוננס גוף-נפש" style={{ color: '#8b5cf6', fontSize: '0.7rem' }}>⚡</span>
+                    )}
+                    {hasHighStrain && (
+                      <span title="עומס פיזיולוגי גבוה" style={{ color: '#ef4444', fontSize: '0.7rem' }}>🔥</span>
+                    )}
+                    {entry.frontmatter?.mood && (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        {entry.frontmatter.mood}
+                      </span>
+                    )}
+                  </div>
                 </div>
+
                 <div style={{ 
                   fontSize: '0.85rem', 
                   fontWeight: 600, 
-                  color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)', 
+                  overflow: 'hidden', 
+                  textOverflow: 'ellipsis', 
+                  whiteSpace: 'nowrap' 
                 }}>
                   {entry.content ? entry.content.substring(0, 50) + (entry.content.length > 50 ? '...' : '') : 'רשומה ללא כותרת'}
                 </div>
+
+                {/* Topics & tags */}
                 {(() => {
                   const isaTags = [];
-                  if (isaData && isaData[entry.frontmatter.date]) {
-                    const dayData = isaData[entry.frontmatter.date];
+                  if (isaData && isaData[dateStr]) {
+                    const dayData = isaData[dateStr];
                     if (dayData.sleep === 'bad') isaTags.push('שינה_גרועה');
                     if (dayData.sleep === 'good') isaTags.push('שינה_מעולה');
                     if (dayData.sportsSets === 'good' || dayData.cardio === 'good') isaTags.push('יום_אימון');
                     if (dayData.efficacy === 'good') isaTags.push('פרודוקטיביות_שיא');
                     if (dayData.social === 'good') isaTags.push('חברתי');
                   }
-                  const allTopics = [...(entry.frontmatter.topics || []), ...isaTags];
+                  const allTopics = [...(entry.frontmatter?.topics || []), ...isaTags];
                   if (allTopics.length === 0) return null;
                   return (
                     <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
@@ -902,8 +1323,8 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                             fontSize: '0.65rem', 
                             padding: '2px 6px', 
                             borderRadius: '10px', 
-                            backgroundColor: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? 'rgba(16, 185, 129, 0.15)' : (isSelected ? '#ffffff' : 'var(--accent-light)'),
-                            color: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? '#10b981' : 'var(--text-muted)'
+                            backgroundColor: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? 'rgba(16, 185, 129, 0.15)' : (isSelected ? '#ffffff' : 'var(--accent-light)'), 
+                            color: topic.startsWith('שינה_') || topic === 'יום_אימון' || topic === 'פרודוקטיביות_שיא' || topic === 'חברתי' ? '#10b981' : 'var(--text-muted)' 
                           }}
                         >
                           #{topic}
@@ -999,8 +1420,7 @@ export default function FeedView({ dataSource, uid, selectedEntryId, onSelectEnt
                   padding: '8px 16px',
                   fontSize: '0.8rem',
                   fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'opacity 0.15s'
+                  cursor: 'pointer'
                 }}
               >
                 צפה בגרף הידע האקדמי

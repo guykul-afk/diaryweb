@@ -1,4 +1,5 @@
 import os
+import uuid
 import json
 import logging
 import datetime
@@ -12,6 +13,15 @@ from pydantic import BaseModel, Field
 from firebase_functions import https_fn, scheduler_fn, firestore_fn
 from firebase_admin import initialize_app, firestore
 import urllib.request
+
+try:
+    from knowledge.outcome_matcher import PassiveOutcomeMatcher, DecisionMirrorEngine, OutcomeMatchCandidate
+    from knowledge.decisions import DecisionRecord, Prediction, OutcomeEvent, EmpiricalStatus
+    from extraction.candidate_extractor import CandidateExtractor
+except ImportError:
+    from .knowledge.outcome_matcher import PassiveOutcomeMatcher, DecisionMirrorEngine, OutcomeMatchCandidate
+    from .knowledge.decisions import DecisionRecord, Prediction, OutcomeEvent, EmpiricalStatus
+    from .extraction.candidate_extractor import CandidateExtractor
 
 # Configure logging - Force redeployment v2
 logging.basicConfig(level=logging.INFO)
@@ -124,11 +134,44 @@ class MetricsOutput(BaseModel):
     recommended_readings: List[RecommendedReading] = Field(..., max_length=1, description="List of reading recommendations. (STRICT LIMIT: MAXIMUM 1 READING).")
 
 class GraphNodesOutput(BaseModel):
-    new_nodes: List[GraphNode] = Field(..., max_length=2, description="New psychological insight nodes to add to the knowledge graph. (STRICT LIMIT: MAXIMUM 2 NODES TOTAL).")
+    new_nodes: List[GraphNode] = Field(..., max_length=15, description="New psychological insight nodes to add to the knowledge graph.")
 
 class SummaryOutput(BaseModel):
     executive_summary: str = Field(..., max_length=2500, description="Integrative summary merging the insights, written in Hebrew. (STRICT LIMIT: 1-2 paragraphs max).")
     bio_psycho_correlation: str = Field(..., max_length=500, description="Brief analysis of physiological/mental correlation. (MAXIMUM 2 sentences).")
+
+class PrecedentItem(BaseModel):
+    date: str = Field(..., description="תאריך או תקופת תקדים העבר")
+    entryId: str = Field(default="", description="מזהה רשומת היומן")
+    quote: str = Field(..., description="ציטוט ישיר או עדות מהעבר")
+    whatHappened: str = Field(..., description="מה קרה בפועל באותו מקרה")
+    lesson: str = Field(..., description="הלקח שהופק מהתקדים")
+
+class HistorianVoiceOutput(BaseModel):
+    title: str = Field(..., description="כותרת קול ההיסטוריון")
+    patternSummary: str = Field(..., description="סיכום דפוסי עבר החוזרים על עצמם בהחלטות דומות")
+    pastPrecedents: List[PrecedentItem] = Field(default_factory=list, description="רשימת תקדימי עבר מהיומנים וההחלטות")
+    blindSpotWarning: str = Field(..., description="אזהרת נקודה עיוורת או אשליה עצמית שהתגלתה בעבר")
+
+class ValueCompassVoiceOutput(BaseModel):
+    alignmentScore: int = Field(..., description="ציון תאימות ערכית 0-100")
+    alignedValues: List[str] = Field(default_factory=list, description="ערכים שמקבלים ביטוי ותואמים את הדילמה")
+    conflictedValues: List[str] = Field(default_factory=list, description="ערכים שמתנגשים או מוקרבים בדילמה זו")
+    aspirationVsActionVerdict: str = Field(..., description="ניתוח הפער בין שאיפה מוצהרת לפעולה בפועל")
+    recommendation: str = Field(..., description="המלצת מצפן הערכים")
+
+class ScientistPreMortemVoiceOutput(BaseModel):
+    hiddenAssumptions: List[str] = Field(default_factory=list, description="הנחות סמויות בלתי בדוקות של המשתמש")
+    preMortemScenario: str = Field(..., description="תרחיש פרה-מורטם: אם ההחלטה נכשלה כליל בעוד חצי שנה, מה גרם לכך")
+    earlyWarningSignal30d: str = Field(..., description="סימן אזהרה מוקדם בתוך 30 יום שיעיד על בעיה")
+    suggestedExperiment: str = Field(..., description="ניסוי קטן וזול לבדיקת ההנחה לפני קפיצה למים")
+    calibratedProbability: int = Field(..., description="הסתברות הצלחה מכוילת 0-100")
+
+class DecisionMirrorOutput(BaseModel):
+    historianVoice: HistorianVoiceOutput
+    valueCompassVoice: ValueCompassVoiceOutput
+    scientistPreMortemVoice: ScientistPreMortemVoiceOutput
+    synthesisVerdict: str = Field(..., description="פסק דין וסינתזה אופרטיבית מנהיגותית של מועצת 3 הקולות")
 
 # =====================================================================
 # Specialized System Prompts
@@ -249,14 +292,14 @@ def get_okf_cached_content(client: genai.Client, system_prompt: str):
         try:
             logger.info("Creating Gemini Context Cache for OKF Psychology Base...")
             _okf_cache_object = client.caches.create(
-                model="gemini-2.5-flash",
+                model="gemini-3.8-flash",
                 config=types.CreateCachedContentConfig(
                     system_instruction=system_prompt,
                     contents=[f"=== PSYCHOLOGICAL KNOWLEDGE BASE (OKF) ===\n{PSYCHOLOGY_KNOWLEDGE_BASE}"],
                     ttl="3600s",
                     display_name="okf_psychology_base_cache"
+                    )
                 )
-            )
             _okf_cache_created_at = now
             return _okf_cache_object
         except Exception as e:
@@ -346,7 +389,7 @@ def log_token_usage(uid: str, feature_name: str, response):
         if input_tokens == 0 and output_tokens == 0:
             return
 
-        # Pricing Gemini 2.5 Flash:
+        # Pricing October 2026 (gemini-3.8-flash / gemini-3.5-flash-lite):
         # Input: $0.075 per 1,000,000 tokens ($0.000000075 / token)
         # Output: $0.30 per 1,000,000 tokens ($0.00000030 / token)
         input_cost = input_tokens * 0.000000075
@@ -418,7 +461,7 @@ def log_token_usage(uid: str, feature_name: str, response):
     except Exception as e:
         logger.error(f"Error logging token usage: {e}")
 
-def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_tokens: int = None, is_json: bool = False, uid: str = None) -> str:
+def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_tokens: int = None, is_json: bool = False, uid: str = None, model: str = "gemini-3.8-flash") -> str:
     """Helper function to call Gemini model for an individual agent."""
     try:
         api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
@@ -437,15 +480,15 @@ def run_agent(agent_name: str, system_prompt: str, prompt_content: str, max_toke
                 types.SafetySetting(category="HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold="BLOCK_NONE"),
                 types.SafetySetting(category="HARM_CATEGORY_DANGEROUS_CONTENT", threshold="BLOCK_NONE")
             ]
-        )
+            )
         if is_json:
             config.response_mime_type = "application/json"
             
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model,
             contents=prompt_content,
             config=config
-        )
+            )
         if uid:
             log_token_usage(uid, f"agent_{agent_name}", response)
 
@@ -474,12 +517,21 @@ def get_embedding(text: str) -> List[float]:
             logger.warning("No API key for embeddings")
             return []
         client = genai.Client(api_key=api_key)
-        result = client.models.embed_content(
-            model="gemini-embedding-2",
-            contents=text,
-            config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
-        )
-        return result.embeddings[0].values
+        try:
+            result = client.models.embed_content(
+                model="gemini-embedding-2-preview",
+                contents=text,
+                config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
+            )
+            return result.embeddings[0].values
+        except Exception as e_preview:
+            logger.warning(f"Failed with gemini-embedding-2-preview: {e_preview}. Falling back to gemini-embedding-001")
+            result = client.models.embed_content(
+                model="gemini-embedding-001",
+                    contents=text,
+                    config=types.EmbedContentConfig(task_type="RETRIEVAL_DOCUMENT")
+                )
+            return result.embeddings[0].values
     except Exception as e:
         logger.error(f"Failed to generate embedding: {e}")
         return []
@@ -507,7 +559,7 @@ def extract_entities_from_text(text: str) -> List[str]:
     )
     prompt = f"Text to extract entities from:\n{text}\n\nOutput JSON list:"
     
-    response = run_agent("EntityExtractor", system_prompt, prompt)
+    response = run_agent("EntityExtractor", system_prompt, prompt, model="gemini-3.5-flash-lite")
     
     entities = []
     try:
@@ -657,8 +709,23 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
 
     # 5. Fetch Previous Analysis to decide if it's baseline or delta
     analysis_ref = get_db().collection('users').document(uid).collection('personality_analysis')
-    prev_analysis_query = analysis_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(1).stream()
-    prev_analyses = list(prev_analysis_query)
+    past_analyses_snap = list(analysis_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(6).stream())
+    past_epochs = []
+    for p_doc in past_analyses_snap:
+        p_data = p_doc.to_dict()
+        p_time = p_data.get('timestamp') or p_data.get('created_at_ms')
+        p_date = ""
+        if hasattr(p_time, 'strftime'):
+            p_date = p_time.strftime('%Y-%m-%d')
+        elif isinstance(p_time, str):
+            p_date = p_time.split('T')[0]
+        past_epochs.append({
+            "epochId": p_doc.id,
+            "date": p_date or p_doc.id,
+            "summary": (p_data.get('executive_summary') or '')[:500],
+            "ocean": p_data.get('metrics', {}).get('ocean', {})
+        })
+    prev_analyses = past_analyses_snap[:1]
     
     is_full = req.data.get('is_full', False)
     health_only = req.data.get('health_only', False)
@@ -718,10 +785,16 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         prompt_context += f"{prev_analysis.get('executive_summary', '')}\n\n"
         prompt_context += "=== PREVIOUS REPORTS ===\n"
         for k, v in prev_analysis.get('reports', {}).items():
-            prompt_context += f"Agent {k}: {v[:300]}...\n"
+            prompt_context += f"Agent {k}:\n{v[:2000]}\n\n"
         prompt_context += "\n=== NEW JOURNAL ENTRIES SINCE LAST ANALYSIS ===\n"
     else:
         prompt_context += "=== ALL JOURNAL ENTRIES ===\n"
+
+    if past_epochs:
+        prompt_context += "\n=== LONGITUDINAL TEMPORAL EPOCHS & MULTI-MONTH TRAJECTORY ===\n"
+        for ep in reversed(past_epochs):
+            prompt_context += f"- Epoch [{ep['date']}]: {ep['summary']} | OCEAN: {ep['ocean']}\n"
+        prompt_context += "\n"
 
     for entry in target_entries:
         date_str = entry.get('date') or str(entry.get('timestamp'))
@@ -811,6 +884,7 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         "humanistic": "שגיאה בטעינת הדוח ההומניסטי.", "fareast": "שגיאה בטעינת דוח המזרח הרחוק."
     }
 
+    model = "gemini-3.8-flash"
     # Step 1: Metrics Extraction
     try:
         logger.info("Running Step 1: Metrics Extraction")
@@ -821,12 +895,12 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             max_output_tokens=8192,
             thinking_config=types.ThinkingConfig(thinking_budget=0),
             safety_settings=safety_settings
-        )
+            )
         metrics_resp = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model,
             contents=common_prompt,
             config=metrics_config
-        )
+            )
         log_token_usage(uid, "personality_metrics", metrics_resp)
         metrics_output = MetricsOutput.model_validate_json(metrics_resp.text)
     except Exception as e:
@@ -844,12 +918,12 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             max_output_tokens=8192,
             thinking_config=types.ThinkingConfig(thinking_budget=0),
             safety_settings=safety_settings
-        )
+            )
         nodes_resp = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model,
             contents=common_prompt,
             config=nodes_config
-        )
+            )
         log_token_usage(uid, "personality_nodes", nodes_resp)
         nodes_output = GraphNodesOutput.model_validate_json(nodes_resp.text)
     except Exception as e:
@@ -867,12 +941,12 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
             max_output_tokens=8192,
             thinking_config=types.ThinkingConfig(thinking_budget=0),
             safety_settings=safety_settings
-        )
+            )
         summary_resp = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model,
             contents=common_prompt,
             config=summary_config
-        )
+            )
         log_token_usage(uid, "personality_summary", summary_resp)
         summary_output = SummaryOutput.model_validate_json(summary_resp.text)
     except Exception as e:
@@ -911,7 +985,8 @@ def analyze_personality(req: https_fn.CallableRequest) -> dict:
         "recommended_readings": readings_data,
         "is_full": is_full,
         "analysis_type": "full" if is_full else ("delta" if is_delta else "full"),
-        "new_entries_since_last_analysis": 0
+        "new_entries_since_last_analysis": 0,
+        "temporal_epochs": past_epochs
     }
     
     analysis_ref.document(analysis_doc_id).set(analysis_payload)
@@ -1175,7 +1250,7 @@ Output strictly valid JSON mapping each Key to a list of related Node IDs:
 }}
 """
     
-    mapping_response = run_agent("Mapper", "You output only valid JSON without markdown formatting.", mapping_prompt)
+    mapping_response = run_agent("Mapper", "You output only valid JSON without markdown formatting.", mapping_prompt, model="gemini-3.5-flash-lite")
     
     relations_map = {}
     try:
@@ -1256,7 +1331,7 @@ def analyze_knowledge_graph(req: https_fn.CallableRequest) -> dict:
     
     prompt = f"User Query: {query}\n\nGraph Data:\n{graph_context}"
     
-    response = run_agent("Detective", DETECTIVE_SYSTEM_PROMPT, prompt)
+    response = run_agent("Detective", DETECTIVE_SYSTEM_PROMPT, prompt, uid=uid, model="gemini-3.8-flash")
     
     import uuid
     insight_id = f"graph_insight_{uuid.uuid4().hex[:8]}"
@@ -1274,7 +1349,7 @@ Output strictly valid JSON like:
 
 Insight:
 {response}"""
-    extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt)
+    extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt, uid=uid, model="gemini-3.5-flash-lite")
     
     label = "תובנת בלש (AI)"
     related_nodes = []
@@ -1337,6 +1412,12 @@ Insight:
         "status": "success",
         "result": response
     }
+
+
+@https_fn.on_call(timeout_sec=120)
+def analyze_graph_detective(req: https_fn.CallableRequest) -> dict:
+    """Alias for analyze_knowledge_graph."""
+    return analyze_knowledge_graph(req)
 
 
 INVESTIGATOR_SYSTEM_PROMPT = """You are an expert Psychological Investigator and Diary Analyst.
@@ -1441,13 +1522,13 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
             prompt += f"=== CONVERSATION HISTORY ===\n{history_context}\n\n"
         prompt += f"=== USER JOURNAL ENTRIES (TEXTS) ===\n{entries_context}\n\n=== USER STRUCTURED INSIGHTS ===\n{insights_context}\n\n=== USER KNOWLEDGE BASE (GRAPH CONCEPTS) ===\n{graph_context}"
 
-        response = run_agent("Investigator", INVESTIGATOR_SYSTEM_PROMPT, prompt, uid=uid)
+        response = run_agent("Investigator", INVESTIGATOR_SYSTEM_PROMPT, prompt, uid=uid, model="gemini-3.8-flash")
         
         import uuid
         insight_id = f"investigator_{uuid.uuid4().hex[:8]}"
         
         extraction_prompt = f"Extract a short Hebrew label (max 5 words) for this insight, and list 1-3 related node IDs from the knowledge base that it discusses. Output strictly valid JSON like: {{\n  \"label\": \"...\",\n  \"related_nodes\": [\"node1\", \"node2\"]\n}}\n\nInsight:\n{response}"
-        extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt, uid=uid)
+        extraction_response = run_agent("Extractor", "You output only valid JSON without markdown formatting.", extraction_prompt, uid=uid, model="gemini-3.5-flash-lite")
         
         label = "תשובת חוקר יומן (AI)"
         related_nodes = []
@@ -1495,6 +1576,16 @@ def query_diary_insights(req: https_fn.CallableRequest) -> dict:
         }
 
 @https_fn.on_call(timeout_sec=60)
+def ask_diary(req: https_fn.CallableRequest) -> dict:
+    """Alias for query_diary_insights."""
+    return query_diary_insights(req)
+
+@https_fn.on_call(timeout_sec=120)
+def ask_deep_knowledge(req: https_fn.CallableRequest) -> dict:
+    """Alias for query_diary_insights."""
+    return query_diary_insights(req)
+
+@https_fn.on_call(timeout_sec=60)
 def explain_graph_link(req: https_fn.CallableRequest) -> dict:
     uid = extract_authenticated_uid(req)
     source = req.data.get('source')
@@ -1517,7 +1608,7 @@ def explain_graph_link(req: https_fn.CallableRequest) -> dict:
     system_prompt = "You are an empathetic, insightful psychological analyzer. Explain in Hebrew in 1-2 sentences how these two concepts in the user's mind are connected, based on the provided context. Keep it direct and personal (using 'אתה'/'את')."
     prompt = f"Concept A: {source}\nDescription: {source_content}\n\nConcept B: {target}\nDescription: {target_content}\n\nRelation Label: {relation}\n\nExplain the connection:"
     
-    response = run_agent("LinkExplainer", system_prompt, prompt)
+    response = run_agent("LinkExplainer", system_prompt, prompt, model="gemini-3.5-flash-lite")
     
     # Auto-save AI explanation to the edge
     if source_snap.exists:
@@ -1727,7 +1818,7 @@ Only suggest merges/clusters that are highly relevant. Do not force them if not 
         except Exception as pe:
             logger.error(f"Failed to log prompt: {pe}")
             
-        response = run_agent("GraphOptimizer", system_prompt, prompt, max_tokens=None, is_json=False)
+        response = run_agent("GraphOptimizer", system_prompt, prompt, max_tokens=None, is_json=False, uid=uid, model="gemini-3.5-flash-lite")
         
         try:
             clean_json = response.strip().strip('`').replace('json\n', '')
@@ -1933,6 +2024,16 @@ Only suggest merges/clusters that are highly relevant. Do not force them if not 
         return {"status": "error", "message": f"שגיאת שרת פנימית: {str(e)}", "traceback": tb}
 
 
+@https_fn.on_call(timeout_sec=300)
+def reconcile_entities(req: https_fn.CallableRequest) -> dict:
+    """Alias for resolve_and_cluster_entities."""
+    return resolve_and_cluster_entities(req)
+
+@https_fn.on_call(timeout_sec=300)
+def merge_duplicates(req: https_fn.CallableRequest) -> dict:
+    """Alias for resolve_and_cluster_entities."""
+    return resolve_and_cluster_entities(req)
+
 @scheduler_fn.on_schedule(schedule="59 23 * * *")
 def scheduled_sync_isa_data(event: scheduler_fn.ScheduledEvent) -> None:
     logger.info("Starting scheduled sync of ISA data...")
@@ -2052,10 +2153,10 @@ def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
             "TKB Concepts:\n"
             f"{tkb_concepts_text}\n\n"
             "Output strictly valid JSON object with keys 'topics' (list of strings), 'mood' (string), and 'tkb_reference' (string or null). Do not include markdown formatting or explanations."
-        )
+            )
         prompt = f"Journal Entry Content:\n{text}\n\nOutput JSON:"
         
-        response = run_agent("EntityExtractor", system_prompt, prompt)
+        response = run_agent("EntityExtractor", system_prompt, prompt, model="gemini-3.5-flash-lite")
         clean_json = response.strip().strip('`').replace('json\n', '')
         extracted = json.loads(clean_json)
         
@@ -2076,6 +2177,30 @@ def on_entry_created(event: firestore_fn.Event[firestore_fn.DocumentSnapshot | N
         if update_payload:
             event.data.reference.update(update_payload)
             logger.info(f"Successfully auto-extracted tags/mood/tkb for entry {entry_id} of user {uid}: {update_payload}")
+            
+        # Epistemic candidate extraction on entry creation
+        try:
+            api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            client = genai.Client(api_key=api_key) if api_key else None
+            extractor = CandidateExtractor(model_client=client)
+            epistemic_data = extractor.extract(text, entry_date=data.get("date"), entry_id=entry_id, client=client, model="gemini-3.5-flash-lite")
+            if epistemic_data.get("ontologyCandidates"):
+                cand_ref = db.collection('users').document(uid).collection('epistemic_candidates')
+                for cand in epistemic_data["ontologyCandidates"]:
+                    cand_id = cand.get('id') or f"ont_{uuid.uuid4().hex[:8]}"
+                    cand["status"] = "PENDING_REVIEW"
+                    cand["candidateType"] = "ONTOLOGY"
+                    cand["created_at"] = firestore.SERVER_TIMESTAMP
+                    cand_ref.document(cand_id).set(cand)
+            if epistemic_data.get("implicitDecisions"):
+                dec_ref = db.collection('users').document(uid).collection('decisions')
+                for dec in epistemic_data["implicitDecisions"]:
+                    dec_id = dec.get('id') or f"dec_{uuid.uuid4().hex[:8]}"
+                    dec["status"] = "ACTIVE"
+                    dec["created_at"] = firestore.SERVER_TIMESTAMP
+                    dec_ref.document(dec_id).set(dec)
+        except Exception as ee:
+            logger.error(f"Error extracting epistemic candidates in on_entry_created: {ee}")
     except Exception as e:
         logger.error(f"Error auto-extracting tags/mood for entry {entry_id}: {e}")
 
@@ -2117,7 +2242,7 @@ def backfill_entries_tags(req: https_fn.CallableRequest) -> dict:
             
         try:
             prompt = f"Journal Entry Content:\n{text}\n\nOutput JSON:"
-            response = run_agent("EntityExtractor", system_prompt, prompt)
+            response = run_agent("EntityExtractor", system_prompt, prompt, model="gemini-3.5-flash-lite")
             clean_json = response.strip().strip('`').replace('json\n', '')
             extracted = json.loads(clean_json)
             
@@ -2142,3 +2267,814 @@ def backfill_entries_tags(req: https_fn.CallableRequest) -> dict:
         "total_entries": total_count,
         "updated_entries": updated_count
     }
+
+
+# =====================================================================
+# Epistemic Decisions & Ontology Governance Cloud Functions
+# =====================================================================
+
+@https_fn.on_call(timeout_sec=300, memory=1024)
+def consult_decision_mirror(req: https_fn.CallableRequest) -> dict:
+    """
+    Epistemic Decision Mirror:
+    Consults the 3-Voice Council (Historian, Value Compass, Scientist Pre-Mortem)
+    grounded in user's journal entries, knowledge graph, past decisions, and 72h biometric/emotional vulnerability.
+    """
+    uid = extract_authenticated_uid(req)
+    dilemma = req.data.get('dilemma')
+    if not dilemma or not str(dilemma).strip():
+        return {"status": "error", "message": "Missing required 'dilemma' text."}
+
+    dilemma = str(dilemma).strip()
+    options = req.data.get('options', [])
+    if isinstance(options, str):
+        options = [o.strip() for o in options.split('\n') if o.strip()]
+    elif not isinstance(options, list):
+        options = []
+
+    predicted_outcome = req.data.get('predictedOutcome')
+    confidence = req.data.get('confidence', 70)
+    save_decision = req.data.get('saveDecision', False) or bool(predicted_outcome)
+
+    db = get_db()
+    logger.info(f"Decision Mirror consultation requested for uid {uid}. Dilemma: {dilemma[:60]}")
+
+    # 1. Fetch recent entries & filter using Semantic / Keyword relevance
+    entries_ref = db.collection('users').document(uid).collection('entries')
+    entries_snap = list(entries_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(40).stream())
+    raw_entries = []
+    for doc in entries_snap:
+        d = doc.to_dict()
+        d['id'] = doc.id
+        raw_entries.append(d)
+
+    relevant_entries = get_top_relevant_entries(raw_entries, dilemma, top_k=15)
+    entries_snippets = []
+    for e in relevant_entries:
+        date_str = e.get('date') or e.get('frontmatter', {}).get('date') or str(e.get('timestamp', ''))[:10]
+        content = e.get('content') or e.get('transcript') or ''
+        topics = ", ".join(e.get('topics', []))
+        entries_snippets.append(f"[{date_str}] (נושאים: {topics}):\n{content[:500]}")
+    entries_context = "\n\n".join(entries_snippets) if entries_snippets else "אין רשומות יומן רלוונטיות שנמצאו."
+
+    # 2. Fetch Knowledge Graph nodes (Values, Goals, Fears, Rules, Patterns, Projects, Persons)
+    graph_ref = db.collection('users').document(uid).collection('knowledge_graph_nodes')
+    graph_snap = graph_ref.stream()
+    core_types = {"Value", "Goal", "Fear", "Rule", "Pattern", "Project", "Person", "Domain"}
+    relevant_nodes = []
+    health_nodes_72h = []
+
+    for doc in graph_snap:
+        nd = doc.to_dict()
+        nd['id'] = nd.get('id') or doc.id
+        ntype = nd.get('type')
+        if ntype in core_types:
+            relevant_nodes.append(nd)
+        elif ntype == "HealthMetric":
+            health_nodes_72h.append(nd)
+
+    graph_snippets = []
+    for n in relevant_nodes[:25]:
+        lbl = n.get('label') or n.get('id')
+        ntype = n.get('type', 'Concept')
+        desc = n.get('content', '')[:200]
+        graph_snippets.append(f"- [{ntype}] {lbl}: {desc}")
+    graph_context = "\n".join(graph_snippets) if graph_snippets else "אין צמתי ערכים/כללים בגרף הידע."
+
+    # 3. Retrieve past decisions and precedents via DecisionMirrorEngine
+    decisions_ref = db.collection('users').document(uid).collection('decisions')
+    past_decisions_snap = decisions_ref.order_by('created_at', direction=firestore.Query.DESCENDING).limit(30).stream()
+    past_decisions = [d.to_dict() for d in past_decisions_snap]
+    precedents = DecisionMirrorEngine.retrieve_precedents(dilemma, past_decisions, top_k=5)
+    precedents_context = json.dumps(precedents, ensure_ascii=False, indent=2) if precedents else "אין תקדימי החלטה קודמים מתועדים במערכת."
+
+    # 4. Biometric & Emotional Vulnerability Check (72 hours)
+    user_doc = db.collection('users').document(uid).get()
+    user_data = user_doc.to_dict() if user_doc.exists else {}
+    life_tracker = user_data.get('lifeTrackerData', {})
+    daily_metrics = life_tracker.get('daily_metrics', {})
+
+    recent_hrvs = []
+    recent_rhrs = []
+    recent_sleeps = []
+
+    if isinstance(daily_metrics, dict):
+        sorted_dates = sorted(daily_metrics.keys(), reverse=True)
+        for dt_key in sorted_dates[:4]:
+            day_data = daily_metrics[dt_key]
+            if isinstance(day_data, dict):
+                if day_data.get('hrv'): recent_hrvs.append(float(day_data['hrv']))
+                if day_data.get('resting_heart_rate'): recent_rhrs.append(float(day_data['resting_heart_rate']))
+                if day_data.get('sleep_score'): recent_sleeps.append(float(day_data['sleep_score']))
+                elif day_data.get('sleep_minutes'): recent_sleeps.append(float(day_data['sleep_minutes']) / 8.0)
+
+    for hn in health_nodes_72h[-5:]:
+        content_text = hn.get('content', '')
+        hrv_match = re.search(r'HRV[:\s]*(\d+)', content_text, re.IGNORECASE)
+        if hrv_match: recent_hrvs.append(float(hrv_match.group(1)))
+        rhr_match = re.search(r'(?:RHR|דופק מנוחה)[:\s]*(\d+)', content_text)
+        if rhr_match: recent_rhrs.append(float(rhr_match.group(1)))
+        sleep_match = re.search(r'(?:שינה|sleep)[:\s]*(\d+)', content_text, re.IGNORECASE)
+        if sleep_match: recent_sleeps.append(float(sleep_match.group(1)))
+
+    cur_hrv = round(sum(recent_hrvs) / len(recent_hrvs), 1) if recent_hrvs else None
+    cur_rhr = round(sum(recent_rhrs) / len(recent_rhrs), 1) if recent_rhrs else None
+    cur_sleep = round(sum(recent_sleeps) / len(recent_sleeps), 1) if recent_sleeps else None
+
+    recent_moods = []
+    for e in raw_entries[:5]:
+        m = str(e.get('mood') or e.get('sentiment') or '')
+        if m: recent_moods.append(m)
+
+    vulnerable_triggers = ["חרדה", "לחץ", "תסכול", "עייפות", "משבר", "עומס", "stress", "anxious", "depressed", "exhausted"]
+    has_negative_mood = any(any(trig in rm.lower() for trig in vulnerable_triggers) for rm in recent_moods)
+
+    is_vulnerable = False
+    severity = "low"
+    vulnerability_reasons = []
+
+    if cur_sleep and cur_sleep < 65:
+        is_vulnerable = True
+        severity = "medium"
+        vulnerability_reasons.append(f"מדד שינה נמוך ({cur_sleep}/100)")
+    if cur_hrv and cur_hrv < 40:
+        is_vulnerable = True
+        severity = "high" if severity == "medium" else "medium"
+        vulnerability_reasons.append(f"שונות דופק (HRV) נמוכה משמעותית ({cur_hrv}ms)")
+    if cur_rhr and cur_rhr > 75:
+        is_vulnerable = True
+        vulnerability_reasons.append(f"דופק מנוחה מוגבר ({cur_rhr} bpm)")
+    if has_negative_mood:
+        is_vulnerable = True
+        vulnerability_reasons.append("רשומות יומן אחרונות מצביעות על מצב רוח טעון או עומס רגשי")
+
+    if not is_vulnerable:
+        summary_he = "מדדים פיזיולוגיים ורגשיים תקינים ומאוזנים ב-72 השעות האחרונות."
+    else:
+        summary_he = "התראה פיזיולוגית ורגשית: " + ", ".join(vulnerability_reasons) + ". מומלץ לקבל החלטות מתוך שקילה זהירה ולא תחת סערת רגשות או עייפות מצטברת."
+
+    vulnerability_check = {
+        "isVulnerable": is_vulnerable,
+        "severity": severity,
+        "summaryHe": summary_he,
+        "metricsSnapshot": {
+            "hrv": cur_hrv,
+            "restingHr": cur_rhr,
+            "sleepScore": cur_sleep,
+            "baselineHrv": 55.0
+        }
+    }
+
+    # 5. Build prompt and invoke Gemini 3.8 Flash for Decision Mirror Council
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        raise ValueError("Missing Gemini API Key")
+    client = genai.Client(api_key=api_key)
+
+    options_text = "\n".join([f"- {opt}" for opt in options]) if options else "לא צוינו אפשרויות חלופיות מפורטות."
+    prediction_text = f"תחזית המשוערת של המשתמש: {predicted_outcome} (ביטחון: {confidence}%)" if predicted_outcome else "אין תחזית ראשונית."
+
+    system_instruction = """אתה מועצת מראת ההחלטות (Decision Mirror Council) - מערכת קבלת החלטות אפיסטמית מתקדמת.
+תפקידך לסייע למשתמש לקבל החלטה מושכלת ומבוססת מציאות לגבי דילמה אישית או מקצועית.
+עליך לפעול כשלושה קולות בלתי מתפשרים, ולסיים בפסק דין וסינתזה מנהיגותית ברורה בעברית:
+
+1. קול ההיסטוריון (historianVoice):
+   - מנתח דפוסי התנהגות מיומני העבר והחלטות קודמות.
+   - מזהה תקדימים דומים, מה קרה בהם, ומה הלקח שהופק (כולל ציטוטים מדויקים מיומן העבר).
+   - מתריע מפני אשליות עצמיות ונקודות עיוורות שחזרו על עצמן בעבר.
+
+2. מצפן הערכים (valueCompassVoice):
+   - בוחן את ההתאמה בין ההחלטה המוצעת לערכי הליבה, העקרונות והיעדים של המשתמש (0-100).
+   - מציג ערכים מתיישבים מול ערכים שנמצאים בקונפליקט או מוקרבים.
+   - מנתח את הפער בין 'שאיפה' (איך המשתמש רוצה לראות את עצמו) לבין 'פעולה בפועל'.
+
+3. מדען הפרה-מורטם (scientistPreMortemVoice):
+   - חושף הנחות סמויות בלתי בדוקות של המשתמש.
+   - מתאר תרחיש פרה-מורטם קונקרטי: נניח שבעוד 6 חודשים ההחלטה נכשלה לחלוטין – מה קרה?
+   - מגדיר סימן אזהרה מוקדם בתוך 30 יום (Early Warning Signal) שיעיד שההחלטה יורדת מהפסים.
+   - מציע ניסוי אמפירי קטן, זול ובטוח (Safe-to-Fail Experiment) לבדיקת ההנחה לפני מחויבות מלאה.
+   - מעריך הסתברות הצלחה מכוילת ואובייקטיבית (0-100).
+
+4. פסק דין וסינתזה (synthesisVerdict):
+   - סיכום אופרטיבי, חומל אך חד, בהיר וישיר עבור המשתמש."""
+
+    prompt_content = f"""דילמת המשתמש:
+{dilemma}
+
+אפשרויות שנשקלות:
+{options_text}
+
+{prediction_text}
+
+בדיקת פגיעות ביומטרית ורגשית (72 שעות אחרונות):
+- מצב פגיעות: {vulnerability_check['severity']} (פגיע: {vulnerability_check['isVulnerable']})
+- סיכום מצב: {vulnerability_check['summaryHe']}
+
+תקדימי עבר ומערכת החלטות קודמת:
+{precedents_context}
+
+ערכים, יעדים וכללים מגרף הידע:
+{graph_context}
+
+רשומות יומן רלוונטיות מהעבר:
+{entries_context}
+"""
+
+    try:
+        config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.2,
+            max_output_tokens=8192,
+            response_mime_type="application/json",
+            response_schema=DecisionMirrorOutput,
+            thinking_config=types.ThinkingConfig(thinking_budget=0)
+        )
+        response = client.models.generate_content(
+            model="gemini-3.8-flash",
+            contents=prompt_content,
+            config=config
+        )
+        log_token_usage(uid, "consult_decision_mirror", response)
+        mirror_output = DecisionMirrorOutput.model_validate_json(response.text)
+    except Exception as e:
+        logger.error(f"Error in Decision Mirror generation: {e}")
+        mirror_output = DecisionMirrorOutput(
+            historianVoice=HistorianVoiceOutput(
+                title="קול ההיסטוריון (שחזור בסיסי)",
+                patternSummary="לא אותרו מספיק נתוני עבר או שהתרחשה שגיאה בעיבוד העמוק.",
+                pastPrecedents=[],
+                blindSpotWarning="שים לב לנטייה לפעול מתוך תחושת דחיפות."
+            ),
+            valueCompassVoice=ValueCompassVoiceOutput(
+                alignmentScore=65,
+                alignedValues=["צמיחה אישית", "חופש בחירה"],
+                conflictedValues=["ביטחון וודאות"],
+                aspirationVsActionVerdict="קיים רצון עז בשינוי מול חשש מאי-וודאות.",
+                recommendation="בחן את ההחלטה מול ערכי הליבה שלך."
+            ),
+            scientistPreMortemVoice=ScientistPreMortemVoiceOutput(
+                hiddenAssumptions=["ההנחה שהפתרון יביא לשינוי מיידי"],
+                preMortemScenario="חוסר תיאום ציפיות או שחיקה מוקדמת.",
+                earlyWarningSignal30d="תחושת תסכול או חרטה בשבועות הראשונים.",
+                suggestedExperiment="בדוק את הבחירה בצעד קטן ללא התחייבות ארוכת טווח.",
+                calibratedProbability=60
+            ),
+            synthesisVerdict=f"בחינת הדילמה מעלה כי יש להתקדם בזהירות: {summary_he}"
+        )
+
+    saved_decision_id = None
+    if save_decision:
+        try:
+            saved_decision_id = f"dec_{uuid.uuid4().hex[:8]}"
+            now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            
+            chosen_opt = options[0] if options else "נבחרה לבחינה"
+            decision_doc = {
+                "id": saved_decision_id,
+                "title": dilemma[:80],
+                "dilemma": dilemma,
+                "chosenOption": chosen_opt,
+                "options": options,
+                "rationale": mirror_output.synthesisVerdict[:600],
+                "assumptions": mirror_output.scientistPreMortemVoice.hiddenAssumptions,
+                "confidenceAtTime": float(confidence) / 100.0 if confidence else 0.7,
+                "epistemicStrength": "MEDIUM",
+                "decisionDate": datetime.date.today().isoformat(),
+                "status": "ACTIVE",
+                "vulnerabilityCheck": vulnerability_check,
+                "preMortemScenario": mirror_output.scientistPreMortemVoice.preMortemScenario,
+                "earlyWarningSignal": mirror_output.scientistPreMortemVoice.earlyWarningSignal30d,
+                "suggestedExperiment": mirror_output.scientistPreMortemVoice.suggestedExperiment,
+                "calibratedProbability": mirror_output.scientistPreMortemVoice.calibratedProbability,
+                "created_at": firestore.SERVER_TIMESTAMP,
+                "outcomes": []
+            }
+            db.collection("users").document(uid).collection("decisions").document(saved_decision_id).set(decision_doc)
+
+            if predicted_outcome:
+                pred_id = f"pred_{uuid.uuid4().hex[:8]}"
+                pred_doc = {
+                    "id": pred_id,
+                    "decisionId": saved_decision_id,
+                    "predictionText": str(predicted_outcome).strip(),
+                    "expectedDirection": "POSITIVE",
+                    "probability": float(confidence) / 100.0 if confidence else 0.7,
+                    "timeHorizon": "30-90 ימים",
+                    "successCriteria": predicted_outcome,
+                    "failureCriteria": mirror_output.scientistPreMortemVoice.earlyWarningSignal30d,
+                    "empiricalStatus": "UNTESTED",
+                    "recordedAt": now_iso,
+                    "created_at": firestore.SERVER_TIMESTAMP
+                }
+                db.collection("users").document(uid).collection("predictions").document(pred_id).set(pred_doc)
+
+            logger.info(f"Saved decision {saved_decision_id} for user {uid}")
+        except Exception as se:
+            logger.error(f"Failed to save decision record: {se}")
+
+    return {
+        "status": "success",
+        "historianVoice": mirror_output.historianVoice.model_dump(),
+        "valueCompassVoice": mirror_output.valueCompassVoice.model_dump(),
+        "scientistPreMortemVoice": mirror_output.scientistPreMortemVoice.model_dump(),
+        "synthesisVerdict": mirror_output.synthesisVerdict,
+        "vulnerabilityCheck": vulnerability_check,
+        "savedDecisionId": saved_decision_id
+    }
+
+
+@https_fn.on_call(timeout_sec=300, memory=1024)
+def scan_diary_for_epistemic_events(req: https_fn.CallableRequest) -> dict:
+    """
+    Scans the user's recent diary entries (up to 50) using gemini-3.5-flash-lite + PassiveOutcomeMatcher
+    to discover implicit decisions, predictions, ontology candidates, and match open predictions to outcomes.
+    """
+    uid = extract_authenticated_uid(req)
+    limit = min(int(req.data.get('limit', 30)), 50)
+    db = get_db()
+
+    logger.info(f"Scanning diary for epistemic events for uid {uid} (limit: {limit})")
+
+    # 1. Fetch recent entries
+    entries_ref = db.collection('users').document(uid).collection('entries')
+    entries_snap = list(entries_ref.order_by('timestamp', direction=firestore.Query.DESCENDING).limit(limit).stream())
+    entries = []
+    for doc in entries_snap:
+        d = doc.to_dict()
+        d['id'] = doc.id
+        entries.append(d)
+
+    if not entries:
+        return {"success": True, "decisionsFound": [], "outcomesMatched": [], "ontologyCandidates": []}
+
+    entries.reverse()
+
+    # 2. Fetch existing decisions and predictions
+    decisions_ref = db.collection('users').document(uid).collection('decisions')
+    existing_decisions = [d.to_dict() for d in decisions_ref.stream()]
+    existing_decisions_map = {d.get('id'): d for d in existing_decisions if d.get('id')}
+
+    preds_ref = db.collection('users').document(uid).collection('predictions')
+    existing_predictions = [p.to_dict() for p in preds_ref.stream()]
+
+    # 3. Initialize CandidateExtractor with gemini-3.5-flash-lite
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    client = genai.Client(api_key=api_key) if api_key else None
+    extractor = CandidateExtractor(model_client=client)
+
+    batch_extracted = extractor.extract_from_entries_batch(entries, client=client, model="gemini-3.5-flash-lite")
+
+    # 4. Save newly discovered decisions (avoiding duplicates)
+    decisions_found = []
+    existing_decision_titles = {d.get('title', '').strip().lower() for d in existing_decisions}
+    
+    for dec in batch_extracted.get("implicitDecisions", []):
+        dec_title = dec.get('title', '').strip()
+        if not dec_title or dec_title.lower() in existing_decision_titles:
+            continue
+        dec_id = dec.get('id') or f"dec_{uuid.uuid4().hex[:8]}"
+        dec_payload = {
+            "id": dec_id,
+            "title": dec_title,
+            "chosenOption": dec.get("chosenOption", ""),
+            "rationale": dec.get("rationale", ""),
+            "quote": dec.get("quote", ""),
+            "confidenceAtTime": float(dec.get("confidence", 0.7)),
+            "decisionDate": dec.get("entryDate") or datetime.date.today().isoformat(),
+            "sourceEntryId": dec.get("entryId", ""),
+            "status": "ACTIVE",
+            "epistemicStrength": "MEDIUM",
+            "created_at": firestore.SERVER_TIMESTAMP
+        }
+        decisions_ref.document(dec_id).set(dec_payload)
+        existing_decision_titles.add(dec_title.lower())
+        existing_decisions_map[dec_id] = dec_payload
+        decisions_found.append(dec_payload)
+
+    # 5. Save newly discovered predictions
+    for pred in batch_extracted.get("predictions", []):
+        pred_text = pred.get("predictionText", "").strip()
+        if not pred_text:
+            continue
+        pred_id = pred.get("id") or f"pred_{uuid.uuid4().hex[:8]}"
+        pred_payload = {
+            "id": pred_id,
+            "decisionId": pred.get("decisionId", ""),
+            "predictionText": pred_text,
+            "expectedDirection": pred.get("expectedDirection", "POSITIVE"),
+            "probability": float(pred.get("probability", 0.6)),
+            "timeHorizon": pred.get("timeHorizon"),
+            "quote": pred.get("quote", ""),
+            "successCriteria": pred.get("successCriteria", ""),
+            "failureCriteria": pred.get("failureCriteria", ""),
+            "empiricalStatus": "UNTESTED",
+            "recordedAt": pred.get("entryDate") or datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "sourceEntryId": pred.get("entryId", ""),
+            "created_at": firestore.SERVER_TIMESTAMP
+        }
+        preds_ref.document(pred_id).set(pred_payload)
+        existing_predictions.append(pred_payload)
+
+    # 6. Save newly discovered ontology candidates
+    ontology_candidates_found = []
+    candidates_ref = db.collection('users').document(uid).collection('epistemic_candidates')
+    for ont in batch_extracted.get("ontologyCandidates", []):
+        ont_name = ont.get("name", "").strip()
+        if not ont_name:
+            continue
+        ont_id = ont.get("id") or f"ont_{uuid.uuid4().hex[:8]}"
+        ont_payload = {
+            "id": ont_id,
+            "name": ont_name,
+            "typeHint": ont.get("typeHint", "Concept"),
+            "definition": ont.get("definition", ""),
+            "suggestedRelation": ont.get("suggestedRelation", "קשור_ל"),
+            "relatedTo": ont.get("relatedTo"),
+            "quote": ont.get("quote", ""),
+            "sourceEntryId": ont.get("entryId", ""),
+            "status": "PENDING_REVIEW",
+            "candidateType": "ONTOLOGY",
+            "created_at": firestore.SERVER_TIMESTAMP
+        }
+        candidates_ref.document(ont_id).set(ont_payload)
+        ontology_candidates_found.append(ont_payload)
+
+    # 7. Run PassiveOutcomeMatcher to match open predictions against later entries
+    matcher = PassiveOutcomeMatcher(min_confidence_threshold=0.45)
+    matched_outcomes = matcher.find_pending_outcome_candidates_with_ai(
+        open_predictions=existing_predictions,
+        decisions_map=existing_decisions_map,
+        entries=entries,
+        client=client,
+        model="gemini-3.5-flash-lite"
+    )
+
+    outcomes_result = []
+    for match in matched_outcomes:
+        match_dict = match.to_dict()
+        outcomes_result.append(match_dict)
+        pred_id = match.prediction_id
+        if pred_id:
+            try:
+                preds_ref.document(pred_id).set({
+                    "empiricalStatus": match.proposed_match_status,
+                    "outcomeEntryId": match.entry_id,
+                    "outcomeDate": match.entry_date,
+                    "matchedSnippet": match.matched_text_snippet,
+                    "outcomeReasoning": match.reasoning,
+                    "updated_at": firestore.SERVER_TIMESTAMP
+                }, merge=True)
+            except Exception as pe:
+                logger.warning(f"Failed to update prediction status {pred_id}: {pe}")
+
+        dec_id = match.decision_id
+        if dec_id and dec_id in existing_decisions_map:
+            try:
+                outcome_obj = {
+                    "id": f"out_{uuid.uuid4().hex[:8]}",
+                    "actualOutcome": match.matched_text_snippet,
+                    "observedAt": match.entry_date,
+                    "matchedExpectation": match.proposed_match_status,
+                    "sourceEntryId": match.entry_id,
+                    "reasoning": match.reasoning
+                }
+                decisions_ref.document(dec_id).update({
+                    "outcomes": firestore.ArrayUnion([outcome_obj]),
+                    "status": "REVIEWED"
+                })
+            except Exception as de:
+                logger.warning(f"Failed to add outcome to decision {dec_id}: {de}")
+
+    return {
+        "success": True,
+        "decisionsFound": decisions_found,
+        "outcomesMatched": outcomes_result,
+        "ontologyCandidates": ontology_candidates_found
+    }
+
+
+@https_fn.on_call(timeout_sec=120)
+def process_entry_with_ai(req: https_fn.CallableRequest) -> dict:
+    """
+    On-call processor for a single journal entry:
+    Extracts tags, sentiment/mood, theoretical concepts, and runs candidate epistemic extraction.
+    """
+    uid = extract_authenticated_uid(req)
+    entry_id = req.data.get('entryId')
+    if not entry_id:
+        return {"status": "error", "message": "Missing 'entryId'"}
+
+    db = get_db()
+    entry_ref = db.collection('users').document(uid).collection('entries').document(entry_id)
+    entry_snap = entry_ref.get()
+    if not entry_snap.exists:
+        return {"status": "error", "message": f"Entry {entry_id} not found."}
+
+    data = entry_snap.to_dict() or {}
+    text = data.get("transcript") or data.get("content") or ""
+    date_str = data.get("date") or data.get("frontmatter", {}).get("date") or ""
+
+    if not text:
+        return {"status": "success", "message": "Empty entry content, skipped."}
+
+    # Extract tags and mood using gemini-3.5-flash-lite
+    tkb_concepts_text = format_tkb_concepts_for_prompt(db)
+    system_prompt = (
+        "You are an expert NLP Entity and Sentiment Extractor. Analyze the Hebrew journal entry.\n"
+        "Extract:\n"
+        "1. 'topics': 3-8 concise Hebrew tags/concepts (strings) describing key subjects, themes, activities, and entities.\n"
+        "2. 'mood': A short Hebrew phrase (2-6 words) describing the emotional state, feelings, and tone.\n"
+        "3. 'tkb_reference': The ID of the single most relevant theoretical concept from the TKB list below. If none are a good fit, return null.\n\n"
+        f"TKB Concepts:\n{tkb_concepts_text}\n\n"
+        "Output strictly valid JSON object with keys 'topics' (list of strings), 'mood' (string), and 'tkb_reference' (string or null)."
+    )
+    prompt = f"Journal Entry Content:\n{text}\n\nOutput JSON:"
+    response = run_agent("EntityExtractor", system_prompt, prompt, model="gemini-3.5-flash-lite", uid=uid)
+
+    update_payload = {}
+    try:
+        clean_json = response.strip().strip('`').replace('json\n', '')
+        extracted = json.loads(clean_json)
+        if "topics" in extracted and isinstance(extracted["topics"], list):
+            update_payload["topics"] = [str(t).strip() for t in extracted["topics"] if str(t).strip()]
+        if "mood" in extracted and extracted["mood"]:
+            update_payload["mood"] = str(extracted["mood"]).strip()
+            update_payload["sentiment"] = str(extracted["mood"]).strip()
+        if "tkb_reference" in extracted and extracted["tkb_reference"] and extracted["tkb_reference"] not in ["null", "None"]:
+            update_payload["tkb_reference"] = str(extracted["tkb_reference"]).strip()
+    except Exception as e:
+        logger.error(f"Error parsing tags/mood in process_entry_with_ai: {e}")
+
+    # Epistemic Candidate Extraction
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    client = genai.Client(api_key=api_key) if api_key else None
+    extractor = CandidateExtractor(model_client=client)
+    epistemic_data = extractor.extract(text, entry_date=date_str, entry_id=entry_id, client=client, model="gemini-3.5-flash-lite")
+
+    # Persist extracted items
+    candidates_count = 0
+    if epistemic_data.get("ontologyCandidates"):
+        cand_ref = db.collection('users').document(uid).collection('epistemic_candidates')
+        for cand in epistemic_data["ontologyCandidates"]:
+            cand_id = cand.get('id') or f"ont_{uuid.uuid4().hex[:8]}"
+            cand["status"] = "PENDING_REVIEW"
+            cand["candidateType"] = "ONTOLOGY"
+            cand["created_at"] = firestore.SERVER_TIMESTAMP
+            cand_ref.document(cand_id).set(cand)
+            candidates_count += 1
+
+    decisions_count = 0
+    if epistemic_data.get("implicitDecisions"):
+        dec_ref = db.collection('users').document(uid).collection('decisions')
+        for dec in epistemic_data["implicitDecisions"]:
+            dec_id = dec.get('id') or f"dec_{uuid.uuid4().hex[:8]}"
+            dec["status"] = "ACTIVE"
+            dec["created_at"] = firestore.SERVER_TIMESTAMP
+            dec_ref.document(dec_id).set(dec)
+            decisions_count += 1
+
+    if update_payload:
+        entry_ref.update(update_payload)
+
+    return {
+        "status": "success",
+        "entryId": entry_id,
+        "topicsExtracted": update_payload.get("topics", []),
+        "moodExtracted": update_payload.get("mood", ""),
+        "ontologyCandidatesAdded": candidates_count,
+        "decisionsAdded": decisions_count
+    }
+
+
+@https_fn.on_call(timeout_sec=60)
+def update_ontology_candidate_status(req: https_fn.CallableRequest) -> dict:
+    """
+    Approves, rejects, or defers an epistemic candidate (concept, rule, pattern).
+    When APPROVED, writes the approved rule/entity to ontology_rules or knowledge_graph_nodes.
+    """
+    uid = extract_authenticated_uid(req)
+    candidate_id = req.data.get('candidateId')
+    status = req.data.get('status')
+    candidate_data = req.data.get('candidateData', {})
+
+    if not candidate_id:
+        return {"status": "error", "message": "Missing 'candidateId'"}
+    if status not in ["APPROVED", "REJECTED", "DEFERRED"]:
+        return {"status": "error", "message": f"Invalid status '{status}'. Must be APPROVED, REJECTED, or DEFERRED."}
+
+    db = get_db()
+    cand_ref = db.collection('users').document(uid).collection('epistemic_candidates').document(candidate_id)
+    cand_snap = cand_ref.get()
+    existing_data = cand_snap.to_dict() if cand_snap.exists else {}
+
+    merged_data = {**existing_data, **candidate_data}
+
+    cand_ref.set({
+        "status": status,
+        "reviewedAt": firestore.SERVER_TIMESTAMP,
+        "updatedAt": firestore.SERVER_TIMESTAMP
+    }, merge=True)
+
+    if status == "APPROVED":
+        name = merged_data.get("name") or merged_data.get("title") or candidate_id
+        type_hint = merged_data.get("typeHint", "Concept")
+        definition = merged_data.get("definition") or merged_data.get("content") or ""
+        relation = merged_data.get("suggestedRelation") or "קשור_ל"
+        related_to = merged_data.get("relatedTo")
+
+        # 1. Save rule to ontology_rules collection
+        rule_doc = {
+            "id": candidate_id,
+            "name": name,
+            "ruleText": definition,
+            "typeHint": type_hint,
+            "suggestedRelation": relation,
+            "relatedTo": related_to,
+            "quote": merged_data.get("quote", ""),
+            "approvedAt": firestore.SERVER_TIMESTAMP,
+            "status": "APPROVED"
+        }
+        db.collection('users').document(uid).collection('ontology_rules').document(candidate_id).set(rule_doc)
+
+        # 2. Promote or create node in knowledge_graph_nodes
+        clean_id = name.strip().replace(" ", "_")
+        node_ref = db.collection('users').document(uid).collection('knowledge_graph_nodes').document(clean_id)
+        
+        related_edges = []
+        if related_to:
+            related_edges.append({
+                "source": clean_id,
+                "target": str(related_to).strip().replace(" ", "_"),
+                "relation": relation,
+                "sentimentScore": 0,
+                "sourceQuotes": [merged_data.get("quote", "")] if merged_data.get("quote") else []
+            })
+
+        node_payload = {
+            "id": clean_id,
+            "label": name,
+            "type": type_hint,
+            "val": 3,
+            "content": definition,
+            "state": "active",
+            "last_active": firestore.SERVER_TIMESTAMP
+        }
+        if related_edges:
+            node_payload["relatedEdges"] = firestore.ArrayUnion(related_edges)
+        
+        node_ref.set(node_payload, merge=True)
+        logger.info(f"Approved candidate {candidate_id} and promoted node {clean_id} for user {uid}")
+
+    return {
+        "status": "success",
+        "candidateId": candidate_id,
+        "newStatus": status
+    }
+
+
+@https_fn.on_call(timeout_sec=120)
+def reconcile_graph_entities(req: https_fn.CallableRequest) -> dict:
+    """
+    Reconciles duplicate entities in the knowledge graph:
+    Merges aliases, relatedEdges, sourceQuotes, and stances into canonicalId,
+    redirects inbound edges across the entire graph, and deletes merged nodes.
+    """
+    uid = extract_authenticated_uid(req)
+    canonical_id = req.data.get('canonicalId')
+    canonical_name = req.data.get('canonicalName')
+    merged_ids = req.data.get('mergedIds', [])
+    action = req.data.get('action', 'MERGE')
+
+    if not canonical_id:
+        return {"status": "error", "message": "Missing 'canonicalId'"}
+    if not isinstance(merged_ids, list):
+        merged_ids = [merged_ids]
+
+    clean_canonical_id = canonical_id.strip().replace(" ", "_")
+    clean_merged_ids = [m.strip().replace(" ", "_") for m in merged_ids if m and str(m).strip()]
+
+    db = get_db()
+    reconciliations_ref = db.collection('users').document(uid).collection('entity_reconciliations')
+
+    if action == "KEEP_SEPARATE":
+        reconciliations_ref.add({
+            "canonicalId": clean_canonical_id,
+            "canonicalName": canonical_name or clean_canonical_id,
+            "keptSeparateIds": clean_merged_ids,
+            "action": "KEEP_SEPARATE",
+            "timestamp": firestore.SERVER_TIMESTAMP
+        })
+        return {
+            "status": "success",
+            "action": "KEEP_SEPARATE",
+            "canonicalId": clean_canonical_id,
+            "message": "Recorded decision to keep entities separate."
+        }
+
+    # Perform MERGE
+    nodes_ref = db.collection('users').document(uid).collection('knowledge_graph_nodes')
+    canonical_doc = nodes_ref.document(clean_canonical_id).get()
+    canonical_data = canonical_doc.to_dict() if canonical_doc.exists else {
+        "id": clean_canonical_id,
+        "label": canonical_name or clean_canonical_id,
+        "type": "Concept",
+        "val": 2,
+        "content": "",
+        "relatedEdges": [],
+        "aliases": [],
+        "stances": []
+    }
+
+    aliases = set(canonical_data.get("aliases", []))
+    if canonical_name:
+        aliases.add(canonical_name)
+
+    content_pieces = [canonical_data.get("content", "")]
+    all_edges = list(canonical_data.get("relatedEdges", []))
+    all_stances = list(canonical_data.get("stances", []))
+
+    for mid in clean_merged_ids:
+        if mid == clean_canonical_id:
+            continue
+        mdoc = nodes_ref.document(mid).get()
+        if mdoc.exists:
+            mdata = mdoc.to_dict() or {}
+            mlabel = mdata.get("label") or mid
+            aliases.add(mlabel)
+            for a in mdata.get("aliases", []):
+                aliases.add(a)
+            if mdata.get("content"):
+                content_pieces.append(mdata.get("content"))
+            for edge in mdata.get("relatedEdges", []):
+                all_edges.append(edge)
+            for stance in mdata.get("stances", []):
+                all_stances.append(stance)
+
+    clean_edges = []
+    seen_edge_keys = set()
+    for edge in all_edges:
+        src = edge.get("source", "").strip().replace(" ", "_")
+        tgt = edge.get("target", "").strip().replace(" ", "_")
+        
+        if src in clean_merged_ids: src = clean_canonical_id
+        if tgt in clean_merged_ids: tgt = clean_canonical_id
+        
+        if not src or not tgt or src == tgt:
+            continue
+        
+        edge_key = f"{src}-{tgt}-{edge.get('relation')}"
+        if edge_key not in seen_edge_keys:
+            edge["source"] = src
+            edge["target"] = tgt
+            clean_edges.append(edge)
+            seen_edge_keys.add(edge_key)
+
+    unique_content = "\n\n".join(list(dict.fromkeys([c.strip() for c in content_pieces if c and c.strip()])))
+    canonical_data["aliases"] = list(aliases)
+    canonical_data["content"] = unique_content
+    canonical_data["relatedEdges"] = clean_edges
+    canonical_data["stances"] = all_stances
+    canonical_data["embedding"] = get_embedding(f"{canonical_data.get('label', clean_canonical_id)} {unique_content}")
+    canonical_data["last_active"] = firestore.SERVER_TIMESTAMP
+
+    nodes_ref.document(clean_canonical_id).set(canonical_data, merge=True)
+
+    for mid in clean_merged_ids:
+        if mid != clean_canonical_id:
+            nodes_ref.document(mid).delete()
+
+    reconciliations_ref.add({
+        "canonicalId": clean_canonical_id,
+        "canonicalName": canonical_name or clean_canonical_id,
+        "mergedIds": clean_merged_ids,
+        "action": "MERGE",
+        "timestamp": firestore.SERVER_TIMESTAMP
+    })
+
+    logger.info(f"Merged entities {clean_merged_ids} into {clean_canonical_id} for user {uid}")
+
+    return {
+        "status": "success",
+        "action": "MERGE",
+        "canonicalId": clean_canonical_id,
+        "mergedCount": len(clean_merged_ids)
+    }
+
+
+# =====================================================================
+# External AI REST API Gateway (OpenAPI / Custom GPTs / Claude / LangChain)
+# =====================================================================
+from firebase_functions import options
+from api import api_app
+
+@https_fn.on_request(
+    cors=options.CorsOptions(cors_origins=["*"], cors_methods=["get", "post", "options", "head"]),
+    timeout_sec=120,
+    memory=512
+)
+def api(req: https_fn.Request) -> https_fn.Response:
+    """
+    Standard HTTP REST API gateway for external AI systems.
+    Accepts requests at /api/v1/... with Bearer or X-API-Key authentication.
+    """
+    return https_fn.Response.from_app(api_app, req.environ)

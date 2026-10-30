@@ -31,13 +31,107 @@ export function DiaryDataProvider({ children, uid }) {
       let graphData = { nodes: [], links: [] };
       let entriesData = [];
 
-      // Always fetch live normalized graph from Firebase Firestore
+      // Always fetch live normalized graph and entries from Firebase Firestore
       const [liveGraph, liveEntries] = await Promise.all([
         fetchFirebaseGraph(uid),
         fetchFirebaseEntries(uid)
       ]);
-      graphData = liveGraph;
       entriesData = liveEntries;
+
+      if (ontologyVersion === 'v2') {
+        let v2Json = null;
+        try {
+          const v2Resp = await fetch('/knowledge_v2.json');
+          if (v2Resp.ok) {
+            v2Json = await v2Resp.json();
+            setV2RawData(v2Json);
+          }
+        } catch (fetchErr) {
+          console.warn("Could not fetch /knowledge_v2.json, using live graph fallback:", fetchErr);
+        }
+
+        if (v2Json) {
+          const projected = projectV2ToGraph(v2Json);
+
+          // Merge canonical projected graph with live Firestore graph
+          const nodeMap = new Map();
+          projected.nodes.forEach(node => {
+            nodeMap.set(node.id.toLowerCase(), { ...node });
+          });
+
+          // Merge live Firestore nodes
+          liveGraph.nodes.forEach(fNode => {
+            const lowerId = fNode.id.toLowerCase();
+            if (nodeMap.has(lowerId)) {
+              const existing = nodeMap.get(lowerId);
+              // Preserve stances from Firestore if missing or combine
+              if (fNode.stances && fNode.stances.length > 0) {
+                const existingStances = existing.stances || [];
+                existing.stances = Array.from(new Set([...existingStances, ...fNode.stances]));
+              }
+              if (fNode.sourceQuotes && fNode.sourceQuotes.length > 0) {
+                const existingQuotes = existing.sourceQuotes || [];
+                existing.sourceQuotes = Array.from(new Set([...existingQuotes, ...fNode.sourceQuotes]));
+              }
+              if (fNode.content && !existing.content) {
+                existing.content = fNode.content;
+              }
+              if (fNode.metrics && !existing.metrics) {
+                existing.metrics = fNode.metrics;
+              }
+              if (fNode.date && !existing.date) {
+                existing.date = fNode.date;
+              }
+              if (fNode.fx !== null && fNode.fx !== undefined) existing.fx = fNode.fx;
+              if (fNode.fy !== null && fNode.fy !== undefined) existing.fy = fNode.fy;
+            } else {
+              // New node added in Firestore (e.g. newly mined insight or concept)
+              nodeMap.set(lowerId, {
+                ...fNode,
+                stances: fNode.stances || [],
+                sourceQuotes: fNode.sourceQuotes || [],
+                epistemicConfidence: fNode.epistemicConfidence || 1,
+                provenanceType: fNode.provenanceType || 'EXTRACTED'
+              });
+            }
+          });
+
+          // Merge links
+          const linkSet = new Set();
+          const mergedLinks = [...projected.links];
+          mergedLinks.forEach(l => {
+            const s = (typeof l.source === 'object' ? l.source.id : l.source).toLowerCase();
+            const t = (typeof l.target === 'object' ? l.target.id : l.target).toLowerCase();
+            const rel = (l.relation || l.label || '').toLowerCase();
+            linkSet.add(`${s}->${rel}->${t}`);
+            linkSet.add(`${s}-${t}`);
+          });
+
+          liveGraph.links.forEach(fLink => {
+            const s = (typeof fLink.source === 'object' ? fLink.source.id : fLink.source).toLowerCase();
+            const t = (typeof fLink.target === 'object' ? fLink.target.id : fLink.target).toLowerCase();
+            const rel = (fLink.relation || fLink.label || '').toLowerCase();
+            const key1 = `${s}->${rel}->${t}`;
+            const key2 = `${s}-${t}`;
+            if (!linkSet.has(key1) && !linkSet.has(key2)) {
+              linkSet.add(key1);
+              linkSet.add(key2);
+              mergedLinks.push(fLink);
+            }
+          });
+
+          graphData = {
+            nodes: Array.from(nodeMap.values()),
+            links: mergedLinks
+          };
+        } else {
+          graphData = liveGraph;
+        }
+      } else {
+        // ontologyVersion === 'legacy'
+        setV2RawData(null);
+        graphData = liveGraph;
+      }
 
       const theoreticalData = await fetchTheoreticalConcepts();
 
@@ -286,8 +380,6 @@ export function DiaryDataProvider({ children, uid }) {
       const metadata = conceptMetadataMap[nodeIdLower] || { topics: new Set(), moods: new Set(), entries: [] };
 
       if (node.weight < minWeight) return false;
-
-      // minDegree filtering is now done iteratively after limitEntities
 
       if (allDatesSorted.length > 0 && maxDateStr && selectedDateIndex < allDatesSorted.length - 1) {
         const nodeEntries = metadata.entries || [];

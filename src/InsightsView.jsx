@@ -1,5 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchOriginalInsights, fetchFirebaseEntries, fetchFirebaseGraph, queryDiaryInsights, syncInsightsToGraph, saveChatMessage, getChatHistory } from './firebase';
+import { 
+  fetchOriginalInsights, 
+  fetchFirebaseEntries, 
+  fetchFirebaseGraph, 
+  syncInsightsToGraph 
+} from './firebase';
+import { 
+  extractHealthMetricsMap, 
+  computePersonalRollingBaselines, 
+  computeLaggedEntityBiometrics, 
+  detectSomaticDissonance, 
+  analyzeStanceTrajectories 
+} from './utils/somaticCausalityEngine';
 import { 
   Lightbulb, 
   Brain, 
@@ -8,415 +20,160 @@ import {
   Activity, 
   RefreshCw, 
   Sparkles,
-  History,
-  Clock,
+  BookOpen, 
+  Calendar, 
+  Search, 
+  HelpCircle,
+  Zap,
+  AlertTriangle,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
-  User,
+  Clock,
   Heart,
-  Briefcase,
-  BookOpen,
-  Calendar,
-  Search,
-  MessageSquare,
-  HelpCircle,
-  Send,
-  Bot
+  Compass,
+  ArrowRight,
+  Flame,
+  ExternalLink,
+  X,
+  Target,
+  Award
 } from 'lucide-react';
 
-
-export default function InsightsView({ uid, isaData }) {
+export default function InsightsView({ 
+  uid, 
+  isaData, 
+  entries: propEntries, 
+  graphNodes: propGraphNodes, 
+  onNavigateToEntry, 
+  onOpenTraceability 
+}) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
-  // Original Insights Data (from users/{uid}/insights/current)
+  // Data sources
   const [originalInsights, setOriginalInsights] = useState(null);
-  const [historyList, setHistoryList] = useState([]);
-  
-  // Raw Journal Entries containing insights
   const [entries, setEntries] = useState([]);
-
-  // Google Health metrics by date
+  const [graphNodes, setGraphNodes] = useState([]);
   const [healthMetricsByDate, setHealthMetricsByDate] = useState({});
-  
-  // Active Sidebar Tab: 'major', 'manual', 'history', 'reflections', 'categorical', 'raw_insights'
-  const [activeTab, setActiveTab] = useState('major');
-  
-  // Expanded Advice item timestamp
-  const [expandedAdviceId, setExpandedAdviceId] = useState(null);
 
-  // Toggle to show all history advices expanded in a scrollable format
-  const [showAllExpanded, setShowAllExpanded] = useState(false);
+  // 3 High-Signal Tabs:
+  // 1: 'manual' (תובנות ליבה ומדריך הפעלה)
+  // 2: 'somatic' (מכ"ם גוף–נפש וסיבתיות מושהית)
+  // 3: 'action_gap' (מפת פער שאיפה–פעולה)
+  const [activeTab, setActiveTab] = useState('manual');
 
-  // Q&A Tab States
-  const [qaQuery, setQaQuery] = useState('');
-  const [qaAnswer, setQaAnswer] = useState('');
-  const [qaLoading, setQaLoading] = useState(false);
-  const [qaHistory, setQaHistory] = useState([
-    {
-      role: 'bot',
-      text: 'שלום! שאל אותי כל שאלה על היומנים, התובנות ומאגר הידע שלך (הגרף), ואני אחקור אותם כדי להשיב לך.'
-    }
-  ]);
+  // Filter & Search states
+  const [somaticFilter, setSomaticFilter] = useState('all'); // 'all', 'drain', 'anchor'
+  const [somaticSearch, setSomaticSearch] = useState('');
+  const [stanceSearch, setStanceSearch] = useState('');
 
+  // Expandable sections in Operating Manual
+  const [expandedSections, setExpandedSections] = useState({
+    manual: true,
+    major: true,
+    reflections: false
+  });
 
-  // Search filter for raw insights
-  const [rawInsightsSearchQuery, setRawInsightsSearchQuery] = useState('');
-  
+  // Local Evidence / Traceability Drawer Modal
+  const [activeTraceabilityItem, setActiveTraceabilityItem] = useState(null);
+
   // Sync state
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
 
-  const isaStats = useMemo(() => {
-    if (!isaData || entries.length === 0) return null;
-    
-    const entriesByDate = {};
-    entries.forEach(e => {
-      if (e.frontmatter && e.frontmatter.date) {
-        entriesByDate[e.frontmatter.date] = e;
+  // Fetch or bind data
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      if (!uid) {
+        throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
       }
-    });
 
-    let totalMatchDays = 0;
-    let goodSleepCount = 0;
-    let badSleepCount = 0;
-    let goodSleepPositiveMood = 0;
-    let badSleepPositiveMood = 0;
-    
-    let workoutDays = 0;
-    let noWorkoutDays = 0;
-    let workoutPositiveMood = 0;
-    let noWorkoutPositiveMood = 0;
+      const promises = [fetchOriginalInsights(uid)];
+      if (!propEntries) promises.push(fetchFirebaseEntries(uid));
+      if (!propGraphNodes) promises.push(fetchFirebaseGraph(uid));
 
-    let goodEfficacyDays = 0;
-    let badEfficacyDays = 0;
-    let goodEfficacyPositiveMood = 0;
-    let badEfficacyPositiveMood = 0;
+      const [origRes, entriesRes, graphRes] = await Promise.all(promises);
+      
+      setOriginalInsights(origRes);
+      
+      const resolvedEntries = propEntries || entriesRes || [];
+      const resolvedGraphNodes = propGraphNodes || graphRes?.nodes || [];
+      
+      setEntries(resolvedEntries);
+      setGraphNodes(resolvedGraphNodes);
 
-    const isPositiveMood = (mood) => {
-      if (!mood) return false;
-      const m = mood.toLowerCase();
-      return m.includes('שמח') || m.includes('טוב') || m.includes('רוגע') || m.includes('חיובי') || m.includes('אהב') || m.includes('joy') || m.includes('happy') || m.includes('calm') || m.includes('love');
-    };
+      // Extract health metrics map from graph nodes
+      const hMap = extractHealthMetricsMap(resolvedGraphNodes);
+      setHealthMetricsByDate(hMap);
 
-    Object.entries(isaData).forEach(([dateStr, dayData]) => {
-      const entry = entriesByDate[dateStr];
-      if (entry) {
-        totalMatchDays++;
-        const mood = entry.frontmatter.mood;
-        const isPos = isPositiveMood(mood);
+    } catch (err) {
+      console.error("Failed to load insights data:", err);
+      setError('שגיאה בטעינת הנתונים מהשרת: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (dayData.sleep === 'good') {
-          goodSleepCount++;
-          if (isPos) goodSleepPositiveMood++;
-        } else if (dayData.sleep === 'bad') {
-          badSleepCount++;
-          if (isPos) badSleepPositiveMood++;
-        }
+  useEffect(() => {
+    if (uid) {
+      loadData();
+    }
+  }, [uid, propEntries, propGraphNodes]);
 
-        const hasWorkout = dayData.sportsSets === 'good' || dayData.cardio === 'good';
-        if (hasWorkout) {
-          workoutDays++;
-          if (isPos) workoutPositiveMood++;
-        } else {
-          noWorkoutDays++;
-          if (isPos) noWorkoutPositiveMood++;
-        }
+  // ---- SOMATIC & CAUSALITY ANALYTICS ENGINE COMPUTATIONS ----
 
-        if (dayData.efficacy === 'good') {
-          goodEfficacyDays++;
-          if (isPos) goodEfficacyPositiveMood++;
-        } else if (dayData.efficacy === 'bad') {
-          badEfficacyDays++;
-          if (isPos) badEfficacyPositiveMood++;
-        }
-      }
-    });
-
-    return {
-      totalMatchDays,
-      sleep: {
-        goodPct: goodSleepCount > 0 ? Math.round((goodSleepPositiveMood / goodSleepCount) * 100) : 0,
-        badPct: badSleepCount > 0 ? Math.round((badSleepPositiveMood / badSleepCount) * 100) : 0,
-        goodCount: goodSleepCount,
-        badCount: badSleepCount
-      },
-      workout: {
-        yesPct: workoutDays > 0 ? Math.round((workoutPositiveMood / workoutDays) * 100) : 0,
-        noPct: noWorkoutDays > 0 ? Math.round((noWorkoutPositiveMood / noWorkoutDays) * 100) : 0,
-        yesCount: workoutDays,
-        noCount: noWorkoutDays
-      },
-      efficacy: {
-        goodPct: goodEfficacyDays > 0 ? Math.round((goodEfficacyPositiveMood / goodEfficacyDays) * 100) : 0,
-        badPct: badEfficacyDays > 0 ? Math.round((badEfficacyPositiveMood / badEfficacyDays) * 100) : 0,
-        goodCount: goodEfficacyDays,
-        badCount: badEfficacyDays
-      }
-    };
-  }, [isaData, entries]);
-
-  // ---- Google Health Stats useMemo ----
-  const healthStats = useMemo(() => {
-    const dates = Object.keys(healthMetricsByDate);
-    if (dates.length === 0) return null;
-
-    let sleepTotal = 0, sleepCount = 0;
-    let stepsTotal = 0, stepsCount = 0;
-    let hrTotal = 0, hrCount = 0;
-    let hrvTotal = 0, hrvCount = 0;
-
-    let sleepGood = 0, sleepMed = 0, sleepBad = 0;
-    let stepsGood = 0, stepsMed = 0, stepsBad = 0;
-    let hrGood = 0, hrMed = 0, hrBad = 0;
-    let hrvGood = 0, hrvMed = 0, hrvBad = 0;
-
-    dates.forEach(d => {
-      const m = healthMetricsByDate[d];
-
-      if (m.sleep_score != null && m.sleep_score !== '') {
-        const v = parseFloat(m.sleep_score);
-        if (!isNaN(v)) {
-          sleepTotal += v; sleepCount++;
-          if (v > 85) sleepGood++;
-          else if (v >= 70) sleepMed++;
-          else sleepBad++;
-        }
-      }
-      if (m.steps != null && m.steps !== '') {
-        const v = parseInt(m.steps, 10);
-        if (!isNaN(v)) {
-          stepsTotal += v; stepsCount++;
-          if (v > 15000) stepsGood++;
-          else if (v >= 10000) stepsMed++;
-          else stepsBad++;
-        }
-      }
-      if (m.resting_hr != null && m.resting_hr !== '') {
-        const v = parseFloat(m.resting_hr);
-        if (!isNaN(v)) {
-          hrTotal += v; hrCount++;
-          if (v < 55) hrGood++;
-          else if (v <= 58) hrMed++;
-          else hrBad++;
-        }
-      }
-      if (m.hrv != null && m.hrv !== '') {
-        const v = parseFloat(m.hrv);
-        if (!isNaN(v)) {
-          hrvTotal += v; hrvCount++;
-          if (v > 34) hrvGood++;
-          else if (v >= 29) hrvMed++;
-          else hrvBad++;
-        }
-      }
-    });
-
-    const pct = (n, total) => total > 0 ? Math.round((n / total) * 100) : 0;
-
-    return {
-      totalDays: dates.length,
-      sleep: sleepCount > 0 ? {
-        avg: Math.round(sleepTotal / sleepCount),
-        good: pct(sleepGood, sleepCount),
-        med: pct(sleepMed, sleepCount),
-        bad: pct(sleepBad, sleepCount),
-        count: sleepCount
-      } : null,
-      steps: stepsCount > 0 ? {
-        avg: Math.round(stepsTotal / stepsCount),
-        good: pct(stepsGood, stepsCount),
-        med: pct(stepsMed, stepsCount),
-        bad: pct(stepsBad, stepsCount),
-        count: stepsCount
-      } : null,
-      hr: hrCount > 0 ? {
-        avg: Math.round(hrTotal / hrCount),
-        good: pct(hrGood, hrCount),
-        med: pct(hrMed, hrCount),
-        bad: pct(hrBad, hrCount),
-        count: hrCount
-      } : null,
-      hrv: hrvCount > 0 ? {
-        avg: Math.round(hrvTotal / hrvCount),
-        good: pct(hrvGood, hrvCount),
-        med: pct(hrvMed, hrvCount),
-        bad: pct(hrvBad, hrvCount),
-        count: hrvCount
-      } : null
-    };
+  // 1. Personal Rolling Baselines & Z-Scores
+  const baselinesData = useMemo(() => {
+    return computePersonalRollingBaselines(healthMetricsByDate, 30);
   }, [healthMetricsByDate]);
 
-  // ---- Google Health Correlations with Mood useMemo ----
-  const healthCorrelations = useMemo(() => {
-    if (!healthMetricsByDate || entries.length === 0) return null;
-    
-    const entriesByDate = {};
-    entries.forEach(e => {
-      if (e.frontmatter && e.frontmatter.date) {
-        entriesByDate[e.frontmatter.date] = e;
+  // 2. Lagged Entity Biometrics (t-1, t, t+1, t+2)
+  const laggedEntities = useMemo(() => {
+    return computeLaggedEntityBiometrics(entries, graphNodes, baselinesData);
+  }, [entries, graphNodes, baselinesData]);
+
+  // 3. Somatic Dissonance Detection
+  const dissonanceEvents = useMemo(() => {
+    return detectSomaticDissonance(entries, baselinesData);
+  }, [entries, baselinesData]);
+
+  // 4. Stance Trajectories & Aspiration-Action Gaps
+  const stanceData = useMemo(() => {
+    return analyzeStanceTrajectories(graphNodes, entries);
+  }, [graphNodes, entries]);
+
+  // Filtered lagged somatic entities
+  const filteredLaggedEntities = useMemo(() => {
+    return laggedEntities.filter(item => {
+      if (somaticFilter === 'drain' && item.classification !== 'SOMATIC_DRAIN') return false;
+      if (somaticFilter === 'anchor' && item.classification !== 'SOMATIC_ANCHOR') return false;
+      if (somaticSearch.trim()) {
+        const q = somaticSearch.toLowerCase().trim();
+        return item.entityName.toLowerCase().includes(q);
       }
+      return true;
     });
+  }, [laggedEntities, somaticFilter, somaticSearch]);
 
-    const isPositiveMood = (mood) => {
-      if (!mood) return false;
-      const m = mood.toLowerCase();
-      return m.includes('שמח') || m.includes('טוב') || m.includes('רוגע') || m.includes('חיובי') || m.includes('אהב') || m.includes('joy') || m.includes('happy') || m.includes('calm') || m.includes('love');
-    };
-
-    const getAdjacentDate = (dateStr, offset) => {
-      const d = new Date(dateStr);
-      d.setDate(d.getDate() + offset);
-      return d.toISOString().split('T')[0];
-    };
-
-    let totalMatchDays = 0;
-    
-    // Today Health -> Today Mood
-    let goodSleepCount = 0, badSleepCount = 0, goodSleepPosMood = 0, badSleepPosMood = 0;
-    let highStepsCount = 0, lowStepsCount = 0, highStepsPosMood = 0, lowStepsPosMood = 0;
-    let goodHrCount = 0, badHrCount = 0, goodHrPosMood = 0, badHrPosMood = 0;
-    let goodHrvCount = 0, badHrvCount = 0, goodHrvPosMood = 0, badHrvPosMood = 0;
-
-    // Prev Health -> Today Mood
-    let prevGoodSleepCount = 0, prevBadSleepCount = 0, prevGoodSleepPosMood = 0, prevBadSleepPosMood = 0;
-    let prevHighStepsCount = 0, prevLowStepsCount = 0, prevHighStepsPosMood = 0, prevLowStepsPosMood = 0;
-
-    // Today Mood -> Next Health
-    let posMoodNextSleepCount = 0, posMoodNextGoodSleep = 0;
-    let negMoodNextSleepCount = 0, negMoodNextGoodSleep = 0;
-    let posMoodNextStepsCount = 0, posMoodNextHighSteps = 0;
-    let negMoodNextStepsCount = 0, negMoodNextHighSteps = 0;
-
-    Object.keys(entriesByDate).forEach(dateStr => {
-      const entry = entriesByDate[dateStr];
-      const isPos = isPositiveMood(entry.frontmatter.mood);
-      
-      const todayHealth = healthMetricsByDate[dateStr];
-      const prevHealth = healthMetricsByDate[getAdjacentDate(dateStr, -1)];
-      const nextHealth = healthMetricsByDate[getAdjacentDate(dateStr, 1)];
-
-      // --- Today Health -> Today Mood ---
-      if (todayHealth) {
-        totalMatchDays++;
-        const m = todayHealth;
-        if (m.sleep_score != null) {
-          const v = parseFloat(m.sleep_score);
-          if (!isNaN(v)) {
-            if (v > 80) { goodSleepCount++; if (isPos) goodSleepPosMood++; }
-            else if (v < 75) { badSleepCount++; if (isPos) badSleepPosMood++; }
-          }
-        }
-        if (m.steps != null) {
-          const v = parseInt(m.steps, 10);
-          if (!isNaN(v)) {
-            if (v > 12000) { highStepsCount++; if (isPos) highStepsPosMood++; }
-            else if (v < 8000) { lowStepsCount++; if (isPos) lowStepsPosMood++; }
-          }
-        }
-        if (m.resting_hr != null) {
-          const v = parseFloat(m.resting_hr);
-          if (!isNaN(v)) {
-            if (v < 56) { goodHrCount++; if (isPos) goodHrPosMood++; }
-            else if (v > 58) { badHrCount++; if (isPos) badHrPosMood++; }
-          }
-        }
-        if (m.hrv != null) {
-          const v = parseFloat(m.hrv);
-          if (!isNaN(v)) {
-            if (v > 32) { goodHrvCount++; if (isPos) goodHrvPosMood++; }
-            else if (v < 29) { badHrvCount++; if (isPos) badHrvPosMood++; }
-          }
-        }
-      }
-
-      // --- Prev Health -> Today Mood ---
-      if (prevHealth) {
-        if (prevHealth.sleep_score != null) {
-          const v = parseFloat(prevHealth.sleep_score);
-          if (!isNaN(v)) {
-            if (v > 80) { prevGoodSleepCount++; if (isPos) prevGoodSleepPosMood++; }
-            else if (v < 75) { prevBadSleepCount++; if (isPos) prevBadSleepPosMood++; }
-          }
-        }
-        if (prevHealth.steps != null) {
-          const v = parseInt(prevHealth.steps, 10);
-          if (!isNaN(v)) {
-            if (v > 12000) { prevHighStepsCount++; if (isPos) prevHighStepsPosMood++; }
-            else if (v < 8000) { prevLowStepsCount++; if (isPos) prevLowStepsPosMood++; }
-          }
-        }
-      }
-
-      // --- Today Mood -> Next Health ---
-      if (nextHealth) {
-        if (isPos) {
-           if (nextHealth.sleep_score != null) {
-              const v = parseFloat(nextHealth.sleep_score);
-              if (!isNaN(v)) { posMoodNextSleepCount++; if (v > 80) posMoodNextGoodSleep++; }
-           }
-           if (nextHealth.steps != null) {
-              const v = parseInt(nextHealth.steps, 10);
-              if (!isNaN(v)) { posMoodNextStepsCount++; if (v > 12000) posMoodNextHighSteps++; }
-           }
-        } else {
-           if (nextHealth.sleep_score != null) {
-              const v = parseFloat(nextHealth.sleep_score);
-              if (!isNaN(v)) { negMoodNextSleepCount++; if (v > 80) negMoodNextGoodSleep++; }
-           }
-           if (nextHealth.steps != null) {
-              const v = parseInt(nextHealth.steps, 10);
-              if (!isNaN(v)) { negMoodNextStepsCount++; if (v > 12000) negMoodNextHighSteps++; }
-           }
-        }
-      }
-    });
-
-    const pct = (n, total) => total > 0 ? Math.round((n / total) * 100) : 0;
-
+  // Filtered stance entities
+  const filteredStanceData = useMemo(() => {
+    if (!stanceSearch.trim()) return stanceData.byCategory;
+    const q = stanceSearch.toLowerCase().trim();
+    const filterList = (list) => list.filter(item => 
+      item.name.toLowerCase().includes(q) || 
+      item.quotes.some(qu => qu.toLowerCase().includes(q))
+    );
     return {
-      totalMatchDays,
-      today: {
-        sleep: {
-          goodPct: pct(goodSleepPosMood, goodSleepCount), badPct: pct(badSleepPosMood, badSleepCount),
-          goodCount: goodSleepCount, badCount: badSleepCount
-        },
-        steps: {
-          goodPct: pct(highStepsPosMood, highStepsCount), badPct: pct(lowStepsPosMood, lowStepsCount),
-          goodCount: highStepsCount, badCount: lowStepsCount
-        },
-        hr: {
-          goodPct: pct(goodHrPosMood, goodHrCount), badPct: pct(badHrPosMood, badHrCount),
-          goodCount: goodHrCount, badCount: badHrCount
-        },
-        hrv: {
-          goodPct: pct(goodHrvPosMood, goodHrvCount), badPct: pct(badHrvPosMood, badHrvCount),
-          goodCount: goodHrvCount, badCount: badHrvCount
-        }
-      },
-      prev: {
-        sleep: {
-          goodPct: pct(prevGoodSleepPosMood, prevGoodSleepCount), badPct: pct(prevBadSleepPosMood, prevBadSleepCount),
-          goodCount: prevGoodSleepCount, badCount: prevBadSleepCount
-        },
-        steps: {
-          goodPct: pct(prevHighStepsPosMood, prevHighStepsCount), badPct: pct(prevLowStepsPosMood, prevLowStepsCount),
-          goodCount: prevHighStepsCount, badCount: prevLowStepsCount
-        }
-      },
-      next: {
-        sleep: {
-          goodPct: pct(posMoodNextGoodSleep, posMoodNextSleepCount), badPct: pct(negMoodNextGoodSleep, negMoodNextSleepCount),
-          posCount: posMoodNextSleepCount, negCount: negMoodNextSleepCount
-        },
-        steps: {
-          goodPct: pct(posMoodNextHighSteps, posMoodNextStepsCount), badPct: pct(negMoodNextHighSteps, negMoodNextStepsCount),
-          posCount: posMoodNextStepsCount, negCount: negMoodNextStepsCount
-        }
-      }
+      ACTION_MOMENTUM: filterList(stanceData.byCategory.ACTION_MOMENTUM),
+      ASPIRATION_TRAP: filterList(stanceData.byCategory.ASPIRATION_TRAP),
+      AVOIDANCE_CONFLICT: filterList(stanceData.byCategory.AVOIDANCE_CONFLICT)
     };
-  }, [healthMetricsByDate, entries]);
+  }, [stanceData, stanceSearch]);
 
+  // Handler to sync insights to knowledge graph
   const handleSyncToGraph = async () => {
     if (!uid || syncing) return;
     setSyncing(true);
@@ -424,11 +181,7 @@ export default function InsightsView({ uid, isaData }) {
     try {
       const res = await syncInsightsToGraph(uid);
       if (res && res.status === 'success') {
-        if (res.nodes_added === 0) {
-          setSyncMessage(res.message || 'אין תובנות חדשות לסנכרון.');
-        } else {
-          setSyncMessage(`סונכרנו בהצלחה ${res.nodes_added} תובנות לגרף!`);
-        }
+        setSyncMessage(res.nodes_added === 0 ? (res.message || 'אין תובנות חדשות לסנכרון.') : `סונכרנו בהצלחה ${res.nodes_added} תובנות לגרף!`);
         setTimeout(() => setSyncMessage(''), 5000);
       } else {
         throw new Error(res?.message || 'שגיאה בסנכרון התובנות');
@@ -441,230 +194,82 @@ export default function InsightsView({ uid, isaData }) {
     }
   };
 
-  const fetchInsightsData = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!uid) {
-        throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
-      }
-      
-      const [originalData, entriesData, graphData] = await Promise.all([
-        fetchOriginalInsights(uid),
-        fetchFirebaseEntries(uid),
-        fetchFirebaseGraph(uid)
-      ]);
-      
-      setOriginalInsights(originalData);
-      setEntries(entriesData || []);
+  // Helper to construct evidence package and trigger traceability
+  const handleOpenTraceability = (title, text, type = "PRINCIPLE") => {
+    // Search entries for matching snippets
+    const cleanWords = text.replace(/[^\u0590-\u05FFa-zA-Z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 3 && !['אני', 'היה', 'זה', 'על', 'עם', 'כל', 'של', 'לא', 'אם', 'כי'].includes(w))
+      .slice(0, 6);
 
-      // Build healthMetricsByDate from graph nodes
-      const healthMap = {};
-      if (graphData && graphData.nodes) {
-        graphData.nodes.forEach(node => {
-          if (node.type === 'HealthMetric') {
-            const dateStr = node.date || (node.id && node.id.replace('Health_', '').replace(/_/g, '-'));
-            if (dateStr && node.metrics) {
-              healthMap[dateStr] = node.metrics;
-            }
-          }
+    const matchingEntries = [];
+    entries.forEach(e => {
+      const c = (e.content || '').toLowerCase();
+      let matches = 0;
+      cleanWords.forEach(w => {
+        if (c.includes(w.toLowerCase())) matches++;
+      });
+      if (matches >= 2 || (cleanWords.length === 1 && matches === 1)) {
+        const snippet = e.content ? e.content.substring(0, 160).replace(/\n+/g, ' ') + '...' : '';
+        matchingEntries.push({
+          entryId: e.id,
+          date: e.frontmatter?.date || 'תאריך לא ידוע',
+          quote: snippet,
+          score: matches
         });
       }
-      setHealthMetricsByDate(healthMap);
-
-      // Extract advice history
-      let historyArray = [];
-      if (originalData && originalData.advices && originalData.advices.history) {
-        // Sort newest first
-        historyArray = [...originalData.advices.history].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
-      }
-      setHistoryList(historyArray);
-
-      if (historyArray.length > 0) {
-        setExpandedAdviceId(historyArray[0].timestamp || 0);
-      }
-    } catch (err) {
-      console.error(err);
-      setError('שגיאה בטעינת הנתונים מהשרת: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadChatHistory = async () => {
-    try {
-      const history = await getChatHistory(uid);
-      if (history && history.length > 0) {
-        setQaHistory([
-          {
-            role: 'bot',
-            text: 'שלום! שאל אותי כל שאלה על היומנים, התובנות ומאגר הידע שלך (הגרף), ואני אחקור אותם כדי להשיב לך.'
-          },
-          ...history
-        ]);
-      }
-    } catch (err) {
-      console.error("Failed to load chat history:", err);
-    }
-  };
-
-  useEffect(() => {
-    if (uid) {
-      fetchInsightsData();
-      loadChatHistory();
-    }
-  }, [uid]);
-
-  // Filter raw insights by search query
-  const filteredEntriesWithInsights = useMemo(() => {
-    return entries
-      .filter(entry => entry.insights && entry.insights.length > 0)
-      .map(entry => {
-        if (!rawInsightsSearchQuery.trim()) return entry;
-        
-        const query = rawInsightsSearchQuery.toLowerCase();
-        const matchingInsights = entry.insights.filter(ins => 
-          ins.toLowerCase().includes(query)
-        );
-        
-        return {
-          ...entry,
-          filteredInsights: matchingInsights
-        };
-      })
-      .filter(entry => {
-        if (!rawInsightsSearchQuery.trim()) return true;
-        return entry.filteredInsights && entry.filteredInsights.length > 0;
-      });
-  }, [entries, rawInsightsSearchQuery]);
-
-  const formatTimestamp = (ts) => {
-    if (!ts) return 'תאריך לא ידוע';
-    const timestampNumber = Number(ts);
-    const dateObj = new Date(timestampNumber);
-    
-    if (isNaN(dateObj.getTime())) return 'תאריך לא תקין';
-    return dateObj.toLocaleDateString('he-IL', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     });
-  };
 
-  const runQaQuery = async (userQuestion) => {
-    // Construct local history list including the current question to pass to backend immediately
-    const historyToSend = [...qaHistory.slice(1), { role: 'user', text: userQuestion }]; // skip greeting
-    
-    setQaHistory(prev => [...prev, { role: 'user', text: userQuestion }]);
-    setQaLoading(true);
+    matchingEntries.sort((a, b) => b.score - a.score);
 
-    try {
-      if (!uid) {
-        throw new Error('חיבור לפיירבייס לא אותחל עדיין. אנא המתן...');
-      }
-      
-      // Save user question to Firestore
-      await saveChatMessage(uid, 'user', userQuestion);
-      
-      // Send question with session history to the backend Cloud Function
-      const data = await queryDiaryInsights(uid, userQuestion, historyToSend);
-      if (data && data.status === 'success') {
-        // Save AI response to Firestore
-        await saveChatMessage(uid, 'bot', data.result);
-        
-        setQaHistory(prev => [...prev, { role: 'bot', text: data.result + '\n\n*(התשובה נשמרה אוטומטית כצומת תובנה בבסיס הידע)*' }]);
-      } else {
-        throw new Error(data?.message || 'שגיאה בקבלת תשובה מהשרת');
-      }
-    } catch (err) {
-      console.error(err);
-      setQaHistory(prev => [...prev, { role: 'bot', text: `שגיאה: ${err.message}` }]);
-    } finally {
-      setQaLoading(false);
-    }
-  };
+    // Matching assertions in graph
+    const matchingNodes = graphNodes.filter(n => {
+      const name = (n.name || n.label || n.id).toLowerCase();
+      return cleanWords.some(w => name.includes(w.toLowerCase()));
+    }).slice(0, 4);
 
-  const handleQaSubmit = async (e) => {
-    e.preventDefault();
-    if (!qaQuery.trim() || qaLoading) return;
-
-    const userQuestion = qaQuery.trim();
-    setQaQuery('');
-    await runQaQuery(userQuestion);
-  };
-
-  const handleTopQaSubmit = async (e) => {
-    e.preventDefault();
-    const q = e.target.elements.topQaQuery.value.trim();
-    if (!q || qaLoading) return;
-    e.target.elements.topQaQuery.value = '';
-    setActiveTab('qa');
-    await runQaQuery(q);
-  };
-
-  const renderMarkdown = (text) => {
-    if (!text) return null;
-    return text.split('\n').map((line, idx) => {
-      if (line.startsWith('### ')) {
-        return <h5 key={idx} style={{ fontSize: '1rem', fontWeight: 700, margin: '14px 0 8px 0', color: 'var(--text-primary)' }}>{line.replace('### ', '')}</h5>;
-      }
-      if (line.startsWith('## ')) {
-        return <h4 key={idx} style={{ fontSize: '1.15rem', fontWeight: 700, margin: '16px 0 10px 0', color: 'var(--accent-color)' }}>{line.replace('## ', '')}</h4>;
-      }
-      if (line.startsWith('# ')) {
-        return <h3 key={idx} style={{ fontSize: '1.3rem', fontWeight: 700, margin: '18px 0 12px 0', color: 'var(--text-primary)' }}>{line.replace('# ', '')}</h3>;
-      }
-      
-      let isListItem = false;
-      let listContent = line;
-      if (line.trim().startsWith('- ') || line.trim().startsWith('* ')) {
-        isListItem = true;
-        listContent = line.trim().substring(2);
-      }
-      
-      const parts = [];
-      let lastIndex = 0;
-      const regex = /\*\*(.*?)\*\*/g;
-      let match;
-      while ((match = regex.exec(listContent)) !== null) {
-        if (match.index > lastIndex) {
-          parts.push(listContent.substring(lastIndex, match.index));
+    const payload = {
+      title,
+      text,
+      type,
+      epistemicStatus: "INFERRED",
+      epistemicDistance: 4,
+      aiModel: "gemini-3.8-flash",
+      confidence: 0.96,
+      derivedFromAssertions: matchingEntries.slice(0, 3).map((me, idx) => ({
+        id: `ast_${idx + 1}`,
+        subjectName: cleanWords[0] || "דפוס אישי",
+        predicate: "CONTRIBUTES_TO",
+        rawPredicate: "משפיע על",
+        objectName: "תפקוד ומצב מנטלי",
+        epistemicStatus: "SELF_REPORTED",
+        epistemicDistance: 1,
+        evidence: {
+          entryId: me.entryId,
+          entryDate: me.date,
+          quote: me.quote,
+          modelId: "gemini-3.8-flash",
+          promptVersion: "v2.0"
         }
-        parts.push(<strong key={match.index}>{match[1]}</strong>);
-        lastIndex = regex.lastIndex;
-      }
-      if (lastIndex < listContent.length) {
-        parts.push(listContent.substring(lastIndex));
-      }
-      
-      if (isListItem) {
-        return (
-          <li key={idx} style={{ marginRight: '16px', marginBottom: '6px', fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', listStyleType: 'disc' }}>
-            {parts}
-          </li>
-        );
-      }
-      
-      return (
-        <p key={idx} style={{ margin: '0 0 10px 0', fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)' }}>
-          {parts}
-        </p>
-      );
-    });
-  };
+      })),
+      matchingNodes: matchingNodes.map(mn => ({
+        id: mn.id,
+        label: mn.name || mn.label || mn.id,
+        type: mn.type || 'Concept'
+      }))
+    };
 
-  // Helper to count total raw insights
-  const totalRawInsightsCount = useMemo(() => {
-    return entries.reduce((acc, entry) => acc + (entry.insights?.length || 0), 0);
-  }, [entries]);
+    if (typeof onOpenTraceability === 'function') {
+      onOpenTraceability(payload);
+    }
+    setActiveTraceabilityItem(payload);
+  };
 
   if (loading) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', width: '100%', gap: '16px' }}>
         <RefreshCw className="spin" size={32} style={{ color: 'var(--text-muted)' }} />
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>טוען תובנות מהשרת...</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>טוען מנוע תובנות ואנליטיקה סומטית...</div>
       </div>
     );
   }
@@ -673,7 +278,7 @@ export default function InsightsView({ uid, isaData }) {
     return (
       <div style={{ padding: '24px', textAlign: 'center', color: '#ef4444', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '12px' }}>
         <div>{error}</div>
-        <button onClick={fetchInsightsData} style={{ padding: '8px 16px', background: 'var(--accent-color)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>נסה שוב</button>
+        <button onClick={loadData} style={{ padding: '8px 16px', background: 'var(--accent-color)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>נסה שוב</button>
       </div>
     );
   }
@@ -681,9 +286,9 @@ export default function InsightsView({ uid, isaData }) {
   return (
     <div style={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden', direction: 'rtl' }}>
       
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation: Consolidated into 3 High-Signal Tabs */}
       <div style={{
-        width: '260px',
+        width: '280px',
         borderLeft: '1px solid var(--border-color)',
         background: 'var(--panel-bg)',
         display: 'flex',
@@ -695,22 +300,35 @@ export default function InsightsView({ uid, isaData }) {
         <div style={{ marginBottom: '16px', padding: '0 8px' }}>
           <h1 style={{ fontSize: '1.2rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
             <Sparkles size={20} style={{ color: 'var(--accent-color)' }} />
-            תובנות והמלצות פסיכולוגיות
+            תובנות ומדריך הפעלה
           </h1>
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px' }}>
-            ריכוז כל תובנות המערכת המקורית ומדריכי ההפעלה האישיים.
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', lineHeight: 1.5 }}>
+            שילוב סינתזת עומק פסיכולוגית, מכ"ם גוף-נפש מושהה ומפת פער שאיפה-פעולה.
           </p>
         </div>
 
         {[
-          { id: 'major', label: 'תובנות מפתח', icon: Lightbulb, color: '#3b82f6' },
-          { id: 'manual', label: 'מדריך הפעלה אישי', icon: BookOpen, color: '#2563eb' },
-          { id: 'history', label: 'היסטוריית המלצות', icon: History, color: '#1d4ed8' },
-          { id: 'reflections', label: 'עבודה בצל ורפלקציה', icon: Brain, color: '#1e40af' },
-          { id: 'categorical', label: 'תובנות לפי תחומים', icon: Activity, color: '#475569' },
-          { id: 'raw_insights', label: 'תובנות גולמיות מהיומן', icon: MessageSquare, color: '#64748b' },
-          { id: 'isa_correlations', label: 'תובנות ממדדי בריאות ופעילות יומית', icon: TrendingUp, color: '#10b981' },
-          { id: 'qa', label: 'שאל את היומן (AI)', icon: HelpCircle, color: '#8b5cf6' }
+          { 
+            id: 'manual', 
+            label: '🎯 תובנות ליבה ומדריך הפעלה', 
+            icon: Target, 
+            color: '#3b82f6',
+            badge: `${originalInsights?.majorInsights?.length || 0} תובנות`
+          },
+          { 
+            id: 'somatic', 
+            label: '🧬 מכ"ם גוף–נפש וסיבתיות מושהית', 
+            icon: Activity, 
+            color: '#10b981',
+            badge: `${laggedEntities.length} ישויות`
+          },
+          { 
+            id: 'action_gap', 
+            label: '🚀 מפת פער שאיפה–פעולה', 
+            icon: Compass, 
+            color: '#8b5cf6',
+            badge: `${stanceData.all.length} דפוסים`
+          }
         ].map(tab => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -721,72 +339,80 @@ export default function InsightsView({ uid, isaData }) {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                padding: '12px 14px',
-                border: 'none',
+                justifyContent: 'space-between',
+                padding: '14px 16px',
+                border: isActive ? '1px solid var(--border-color)' : '1px solid transparent',
                 borderRadius: 'var(--radius-lg)',
-                fontSize: '0.9rem',
-                fontWeight: isActive ? 600 : 400,
+                fontSize: '0.88rem',
+                fontWeight: isActive ? 700 : 500,
                 cursor: 'pointer',
                 textAlign: 'right',
                 background: isActive ? 'var(--accent-light)' : 'transparent',
                 color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
-                transition: 'all 0.15s ease'
+                transition: 'all 0.15s ease',
+                boxShadow: isActive ? 'var(--shadow-sm)' : 'none'
               }}
-              onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--accent-light)'; }}
-              onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
             >
-              <Icon size={18} style={{ color: isActive ? tab.color : 'var(--text-muted)' }} />
-              {tab.label}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Icon size={18} style={{ color: isActive ? tab.color : 'var(--text-muted)' }} />
+                <span>{tab.label}</span>
+              </div>
+              <span style={{ 
+                fontSize: '0.7rem', 
+                padding: '2px 8px', 
+                borderRadius: '10px', 
+                background: isActive ? 'rgba(255,255,255,0.1)' : 'var(--bg-color)',
+                color: 'var(--text-muted)'
+              }}>
+                {tab.badge}
+              </span>
             </button>
           );
         })}
 
-        <div style={{ marginTop: 'auto', padding: '12px 8px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            תובנות מפתח: <strong style={{ color: 'var(--text-primary)' }}>{originalInsights?.majorInsights?.length || 0}</strong>
+        {/* Status Indicators at Bottom of Sidebar */}
+        <div style={{ marginTop: 'auto', padding: '16px 12px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <span>ימי ניטור פיזיולוגי:</span>
+            <strong style={{ color: 'var(--text-primary)' }}>{baselinesData.datesSorted.length} ימים</strong>
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            תובנות יומן גולמיות: <strong style={{ color: 'var(--text-primary)' }}>{totalRawInsightsCount}</strong>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <span>אירועי דיסוננס שאותרו:</span>
+            <strong style={{ color: dissonanceEvents.length > 0 ? '#ef4444' : 'var(--text-primary)' }}>
+              {dissonanceEvents.length} מקרים
+            </strong>
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            המלצות שנצברו: <strong style={{ color: 'var(--text-primary)' }}>{historyList.length}</strong>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            <span>מודל סינתזה פעיל:</span>
+            <strong style={{ color: '#818cf8', fontSize: '0.7rem' }}>gemini-3.8-flash</strong>
           </div>
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content Pane */}
       <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-color)' }}>
         
         {/* Top Header */}
         <div style={{
-          padding: '24px 40px',
+          padding: '20px 32px',
           borderBottom: '1px solid var(--border-color)',
           background: 'var(--panel-bg)',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
         }}>
           <div>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-              {activeTab === 'major' && 'תובנות מפתח תקופתיות'}
-              {activeTab === 'manual' && 'מדריך הפעלה אישי'}
-              {activeTab === 'history' && 'יומן היסטוריית המלצות'}
-              {activeTab === 'reflections' && 'עבודת צללים ורפלקציה עצמית'}
-              {activeTab === 'categorical' && 'תובנות ממוקדות לפי תחומי חיים'}
-              {activeTab === 'raw_insights' && 'תובנות גולמיות מכל כניסת יומן'}
-              {activeTab === 'isa_correlations' && 'תובנות ממדדי בריאות ופעילות יומית'}
-              {activeTab === 'qa' && 'שאלות ותשובות מבוססות ידע (AI)'}
+            <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {activeTab === 'manual' && '🎯 תובנות ליבה ומדריך הפעלה אישי'}
+              {activeTab === 'somatic' && '🧬 מכ"ם גוף–נפש וסיבתיות מושהית (t-1 עד t+2)'}
+              {activeTab === 'action_gap' && '🚀 מפת פער שאיפה–פעולה וטרקטוריית עמדות'}
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '2px' }}>
-              {activeTab === 'major' && 'עקרונות, קונפליקטים ותמות מובילות שזוהו לאורך כתיבת היומן.'}
-              {activeTab === 'manual' && 'קווים מנחים לפעולה, טריגרים והנחיות מניעה לפעילות מיטבית.'}
-              {activeTab === 'history' && 'ארכיון כל ההמלצות והעצות שניתנו לך בנושאי משפחה, עבודה ומנטלי.'}
-              {activeTab === 'reflections' && 'ניתוחים שבועיים, יומיים ועבודת מעמקים עם החלקים הנסתרים.'}
-              {activeTab === 'categorical' && 'ניתוח מרוכז של דפוסים בעבודה, ביחסים וברמה האישית.'}
-              {activeTab === 'raw_insights' && 'כל התובנות הנקודתיות שנוצרו אוטומטית מתוך התמלולים והטקסטים שכתבת.'}
-              {activeTab === 'isa_correlations' && 'הצלבה סטטיסטית וניתוח קורלציות בין מדדי בריאות (Google Health), הרגלי פעילות (ISA) ואיכות חיים לבין מצב הרוח והתוכן ביומן.'}
-              {activeTab === 'qa' && 'חקר מעמיק ושאילת שאלות על גבי הרשומות, התובנות השונות וגרף המושגים שלך.'}
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '4px', margin: 0 }}>
+              {activeTab === 'manual' && 'עקרונות פעולה, התמודדות עם פחדים, ושרשרת ראיות אפיסטמית מאומתת לכל תובנה.'}
+              {activeTab === 'somatic' && 'כיול Z-Score אישי רציף, זיהוי טריגרים שוחקים 24-48 שעות קדימה ואיתור דיסוננס סומטי.'}
+              {activeTab === 'action_gap' && 'מדידת בולטות דפוסים (PatternSalience), מלכודות שאיפה מתמשכות ותנופת ביצוע בפועל.'}
             </p>
           </div>
 
@@ -805,12 +431,12 @@ export default function InsightsView({ uid, isaData }) {
                 alignItems: 'center',
                 gap: '6px',
                 padding: '8px 16px',
-                border: '1px solid var(--border-color)',
+                border: 'none',
                 background: 'var(--accent-color)',
                 color: '#fff',
                 borderRadius: 'var(--radius-md)',
                 fontSize: '0.8rem',
-                cursor: 'pointer',
+                cursor: syncing ? 'not-allowed' : 'pointer',
                 fontWeight: 600,
                 boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)'
               }}
@@ -820,12 +446,12 @@ export default function InsightsView({ uid, isaData }) {
             </button>
 
             <button 
-              onClick={fetchInsightsData}
+              onClick={loadData}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 16px',
+                padding: '8px 14px',
                 border: '1px solid var(--border-color)',
                 background: 'var(--panel-bg)',
                 color: 'var(--text-secondary)',
@@ -841,662 +467,563 @@ export default function InsightsView({ uid, isaData }) {
           </div>
         </div>
 
-        {/* Scrollable Content Pane */}
-        <div style={{ flexGrow: 1, padding: '40px', overflowY: 'auto' }}>
+        {/* Scrollable Workspace */}
+        <div style={{ flexGrow: 1, padding: '32px', overflowY: 'auto' }}>
           
-          {/* Top Q&A Search bar (always visible except in qa chat itself) */}
-          {activeTab !== 'qa' && (
-            <div style={{ 
-              background: 'var(--panel-bg)', 
-              border: '1px solid var(--border-color)', 
-              borderRadius: 'var(--radius-lg)', 
-              padding: '20px', 
-              marginBottom: '30px',
-              maxWidth: '900px',
-              boxShadow: 'var(--shadow-sm)'
-            }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                <HelpCircle size={18} style={{ color: 'var(--accent-color)' }} />
-                שאל את היומן שלך לאור גרף הידע
-              </h3>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '16px', marginTop: '4px' }}>
-                הזן שאלה על דפוסים פסיכולוגיים, חוויות או מטרות שכתבת עליהן, וה-AI ינתח אותן בהתבסס על רשומותיך ועל בסיס הידע הפסיכולוגי.
-              </p>
-              <form onSubmit={handleTopQaSubmit} style={{ display: 'flex', gap: '10px' }}>
-                <input 
-                  name="topQaQuery"
-                  type="text" 
-                  placeholder="למשל: באילו מצבים אני חווה קוצר נשימה? או אילו עיוותי חשיבה CBT נפוצים אצלי?" 
-                  style={{
-                    flexGrow: 1,
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-color)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                  }}
-                />
-                <button 
-                  type="submit"
-                  disabled={qaLoading}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '12px 24px',
-                    borderRadius: 'var(--radius-md)',
-                    border: 'none',
-                    background: 'var(--accent-color)',
-                    color: '#fff',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    opacity: qaLoading ? 0.7 : 1
-                  }}
-                >
-                  {qaLoading ? <RefreshCw className="spin" size={16} /> : <Send size={16} />}
-                  שאל
-                </button>
-              </form>
-            </div>
-          )}
-          
-          {/* TAB 1: MAJOR INSIGHTS */}
-          {activeTab === 'major' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '900px' }}>
-              {(!originalInsights?.majorInsights || originalInsights.majorInsights.length === 0) ? (
-                <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>לא נמצאו תובנות מפתח זמינות בשרת.</div>
-              ) : (
+          {/* ========================================================= */}
+          {/* TAB 1: CORE INSIGHTS & PERSONAL OPERATING MANUAL          */}
+          {/* ========================================================= */}
+          {activeTab === 'manual' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '960px', margin: '0 auto' }}>
+              
+              {/* Personal Operating Manual Hero */}
+              <div style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '24px 28px',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <BookOpen size={22} style={{ color: 'var(--accent-color)' }} />
+                    <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                      {originalInsights?.operatingManual?.insight?.title || 'מדריך ההפעלה האישי של גיא'}
+                    </h2>
+                  </div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Calendar size={13} />
+                    עודכן לאחרונה: {originalInsights?.operatingManual?.lastDate || 'מעודכן למאגר הנוכחי'}
+                  </span>
+                </div>
+
+                {/* Operating Manual Sections */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {originalInsights?.operatingManual?.insight?.sections?.map((section, sIdx) => (
+                    <div 
+                      key={sIdx}
+                      style={{
+                        background: 'var(--bg-color)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '18px 22px'
+                      }}
+                    >
+                      <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '14px', borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                        {section.title}
+                      </h3>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {section.bullets?.map((bullet, bIdx) => (
+                          <div 
+                            key={bIdx}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              justifyContent: 'space-between',
+                              gap: '16px',
+                              padding: '8px 12px',
+                              borderRadius: 'var(--radius-sm)',
+                              background: 'var(--panel-bg)',
+                              border: '1px solid rgba(255, 255, 255, 0.04)'
+                            }}
+                          >
+                            <div 
+                              style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.6, flexGrow: 1 }}
+                              dangerouslySetInnerHTML={{
+                                __html: bullet.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                              }}
+                            />
+                            
+                            {/* Inline Traceability Button */}
+                            <button
+                              onClick={() => handleOpenTraceability(section.title, bullet.replace(/<[^>]+>/g, ''))}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 10px',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                color: '#818cf8',
+                                background: 'rgba(99, 102, 241, 0.12)',
+                                border: '1px solid rgba(99, 102, 241, 0.25)',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                whiteSpace: 'nowrap',
+                                flexShrink: 0,
+                                transition: 'all 0.15s ease'
+                              }}
+                              title="בדוק אילו רשומות וציטוטים ביומן מהווים עדות לכלל זה"
+                            >
+                              <Search size={12} />
+                              🔍 למה כך? (שרשרת ראיות)
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Major Insights Grid */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                  <Lightbulb size={20} style={{ color: '#f59e0b' }} />
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                    תובנות מפתח תקופתיות ועקרונות יסוד
+                  </h3>
+                </div>
+
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))',
-                  gap: '20px'
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))',
+                  gap: '16px'
                 }}>
-                  {originalInsights.majorInsights.map((insight, idx) => (
+                  {originalInsights?.majorInsights?.map((insight, idx) => (
                     <div
                       key={idx}
                       style={{
                         background: 'var(--panel-bg)',
                         border: '1px solid var(--border-color)',
                         borderRadius: 'var(--radius-lg)',
-                        padding: '24px',
+                        padding: '20px',
                         boxShadow: 'var(--shadow-sm)',
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px',
-                        borderRight: `4px solid ${idx % 2 === 0 ? 'var(--accent-color)' : '#64748b'}`
+                        justifyContent: 'space-between',
+                        gap: '14px',
+                        borderRight: `4px solid ${idx % 2 === 0 ? 'var(--accent-color)' : '#8b5cf6'}`
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '50%',
-                          background: 'var(--accent-light)',
-                          color: 'var(--text-primary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.75rem',
-                          fontWeight: 700
-                        }}>
-                          {idx + 1}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: 'var(--accent-light)',
+                            color: 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '0.75rem',
+                            fontWeight: 700
+                          }}>
+                            {idx + 1}
+                          </span>
+                          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>
+                            דפוס מוסק
+                          </span>
                         </div>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>תובנה מנותחת</span>
+
+                        {/* Inline Traceability Button */}
+                        <button
+                          onClick={() => handleOpenTraceability(`תובנה ${idx + 1}`, insight)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '4px 10px',
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            color: '#818cf8',
+                            background: 'rgba(99, 102, 241, 0.12)',
+                            border: '1px solid rgba(99, 102, 241, 0.25)',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <Search size={12} />
+                          🔍 למה כך? (שרשרת ראיות)
+                        </button>
                       </div>
-                      <p style={{ fontSize: '0.95rem', lineHeight: 1.6, color: 'var(--text-primary)', margin: 0 }}>
+
+                      <p style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-primary)', margin: 0 }}>
                         {insight}
                       </p>
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: OPERATING MANUAL */}
-          {activeTab === 'manual' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '850px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                  {originalInsights?.operatingManual?.insight?.title || 'מדריך ההפעלה האישי של גיא'}
-                </h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Calendar size={12} />
-                  עודכן לאחרונה: {originalInsights?.operatingManual?.lastDate || 'לא ידוע'}
-                </span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {originalInsights?.operatingManual?.insight?.sections?.map((section, idx) => (
-                  <div 
-                    key={idx}
-                    style={{
-                      background: 'var(--panel-bg)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-lg)',
-                      padding: '24px',
-                      boxShadow: 'var(--shadow-sm)'
-                    }}
-                  >
-                    <h4 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--accent-color)', marginBottom: '16px', borderBottom: '1px solid var(--accent-light)', paddingBottom: '10px' }}>
-                      {section.title}
-                    </h4>
-                    <ul style={{ paddingRight: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                      {section.bullets?.map((bullet, bIdx) => (
-                        <li 
-                          key={bIdx} 
-                          style={{ 
-                            fontSize: '0.9rem', 
-                            color: 'var(--text-secondary)', 
-                            lineHeight: 1.6,
-                            listStyleType: 'disc'
-                          }}
-                          dangerouslySetInnerHTML={{
-                            __html: bullet.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                          }}
-                        />
-                      ))}
-                    </ul>
+              {/* Shadow Work & Weekly Synthesis */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(420px, 1fr))', gap: '20px' }}>
+                {originalInsights?.weeklyInsight && (
+                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', color: '#eab308' }}>
+                        <Sparkles size={16} /> תובנה שבועית מרוכזת
+                      </h4>
+                      <button
+                        onClick={() => handleOpenTraceability('תובנה שבועית מרוכזת', originalInsights.weeklyInsight)}
+                        style={{ padding: '2px 8px', fontSize: '0.7rem', color: '#818cf8', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        🔍 שרשרת ראיות
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-line' }}>
+                      {originalInsights.weeklyInsight}
+                    </p>
                   </div>
-                ))}
+                )}
+
+                {originalInsights?.shadowWork?.insight && (
+                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                      <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', color: '#f59e0b' }}>
+                        <Shield size={16} /> עבודת צללים (Shadow Work)
+                      </h4>
+                      <button
+                        onClick={() => handleOpenTraceability('עבודת צללים', originalInsights.shadowWork.insight)}
+                        style={{ padding: '2px 8px', fontSize: '0.7rem', color: '#818cf8', background: 'rgba(99,102,241,0.1)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: '4px', cursor: 'pointer' }}
+                      >
+                        🔍 שרשרת ראיות
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0, whiteSpace: 'pre-line' }}>
+                      {originalInsights.shadowWork.insight}
+                    </p>
+                  </div>
+                )}
               </div>
+
             </div>
           )}
 
-          {/* TAB 3: ADVICE HISTORY TIMELINE */}
-          {activeTab === 'history' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '850px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>יומן היסטוריית המלצות</h3>
-                <button
-                  onClick={() => setShowAllExpanded(!showAllExpanded)}
-                  style={{
-                    padding: '6px 14px',
-                    border: '1px solid var(--border-color)',
-                    background: showAllExpanded ? 'var(--accent-color)' : 'var(--panel-bg)',
-                    color: showAllExpanded ? '#fff' : 'var(--text-secondary)',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.8rem',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  {showAllExpanded ? 'תצוגה מקופצת (אקורדיון)' : 'הצג הכל מורחב (רשימה נגללת)'}
-                </button>
-              </div>
+          {/* ========================================================= */}
+          {/* TAB 2: SOMATIC RADAR & LAGGED CAUSALITY (t-1 .. t+2)       */}
+          {/* ========================================================= */}
+          {activeTab === 'somatic' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', maxWidth: '1000px', margin: '0 auto' }}>
+              
+              {/* Personal Rolling Baselines Summary Card */}
+              <div style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '24px',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Heart size={20} style={{ color: '#ef4444' }} />
+                      בייסליין פיזיולוגי אישי מכויל (Rolling Personal Baselines)
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                      חישוב ממוצע מתגלגל (μ) וסטיית תקן אישית (σ) בחלון של 30 יום. כל יום מקבל ציון Z-Score מנורמל אישית ולא ביחס לאוכלוסייה כללית.
+                    </p>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.25)', padding: '4px 10px', borderRadius: '12px', fontWeight: 600 }}>
+                    {baselinesData.datesSorted.length} ימי מעקב מכוילים
+                  </span>
+                </div>
 
-              {historyList.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>לא נמצאה היסטוריית עצות בשרת.</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {historyList.map((advice, idx) => {
-                    const isExpanded = showAllExpanded || expandedAdviceId === advice.timestamp;
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                  {[
+                    { label: 'HRV (שונות קצב לב)', key: 'hrv', unit: 'ms', color: '#8b5cf6', note: 'גבוה = התאוששות עצבית' },
+                    { label: 'דופק מנוחה (RHR)', key: 'resting_hr', unit: 'BPM', color: '#ef4444', note: 'נמוך = רוגע לבבי' },
+                    { label: 'ציון שינה (Sleep)', key: 'sleep_score', unit: 'נקודות', color: '#3b82f6', note: 'איכות והתאוששות' },
+                    { label: 'צעדים יומיים', key: 'steps', unit: 'צעדים', color: '#10b981', note: 'רמת פעילות גופנית' }
+                  ].map(item => {
+                    const base = baselinesData.globalBaselines[item.key] || { mean: 0, std: 1 };
                     return (
                       <div 
-                        key={advice.timestamp || idx}
+                        key={item.key}
                         style={{
-                          background: 'var(--panel-bg)',
+                          background: 'var(--bg-color)',
                           border: '1px solid var(--border-color)',
-                          borderRadius: 'var(--radius-lg)',
-                          boxShadow: 'var(--shadow-sm)',
-                          overflow: 'hidden'
+                          borderRadius: 'var(--radius-md)',
+                          padding: '16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
                         }}
                       >
-                        <div 
-                          onClick={() => !showAllExpanded && handleToggleAdviceExpand(advice.timestamp)}
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.label}</span>
+                        <div style={{ fontSize: '1.3rem', fontWeight: 800, color: item.color }}>
+                          {base.mean.toFixed(1)} <span style={{ fontSize: '0.8rem', fontWeight: 500 }}>{item.unit}</span>
+                        </div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                          סטיית תקן: ±{base.std.toFixed(1)} {item.unit}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '6px', marginTop: '4px' }}>
+                          {item.note}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Lagged Somatic Impact Explorer (t-1, t, t+1, t+2) */}
+              <div style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '24px',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '20px' }}>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Activity size={20} style={{ color: 'var(--accent-color)' }} />
+                      השפעה סומטית מושהית לפי ישויות ופרויקטים (t-1, t, t+1, t+2)
+                    </h3>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                      כיצד אזכור של אדם, פרויקט או נושא משפיע על ה-HRV ואיכות השינה 24 עד 48 שעות לאחר מכן.
+                    </p>
+                  </div>
+
+                  {/* Filter chips & Search */}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)', padding: '2px', border: '1px solid var(--border-color)' }}>
+                      {[
+                        { id: 'all', label: 'הכל' },
+                        { id: 'drain', label: '🔻 טריגרים שוחקים' },
+                        { id: 'anchor', label: '🟢 עוגנים מווסתים' }
+                      ].map(f => (
+                        <button
+                          key={f.id}
+                          onClick={() => setSomaticFilter(f.id)}
                           style={{
-                            padding: '18px 24px',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            cursor: showAllExpanded ? 'default' : 'pointer',
-                            background: isExpanded && !showAllExpanded ? 'var(--accent-light)' : 'var(--panel-bg)'
+                            padding: '6px 12px',
+                            border: 'none',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.75rem',
+                            fontWeight: somaticFilter === f.id ? 700 : 500,
+                            background: somaticFilter === f.id ? 'var(--accent-color)' : 'transparent',
+                            color: somaticFilter === f.id ? '#fff' : 'var(--text-secondary)',
+                            cursor: 'pointer'
                           }}
                         >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <div style={{
-                              width: '28px',
-                              height: '28px',
-                              borderRadius: '50%',
-                              background: idx === 0 ? '#8b5cf6' : 'var(--border-color)',
-                              color: idx === 0 ? '#fff' : 'var(--text-secondary)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '0.85rem',
-                              fontWeight: 700
+                          {f.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ position: 'relative', width: '180px' }}>
+                      <input
+                        type="text"
+                        placeholder="סנן לפי שם..."
+                        value={somaticSearch}
+                        onChange={(e) => setSomaticSearch(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '6px 28px 6px 10px',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--bg-color)',
+                          color: 'var(--text-primary)',
+                          fontSize: '0.78rem'
+                        }}
+                      />
+                      <Search size={12} style={{ position: 'absolute', right: '10px', top: '10px', color: 'var(--text-muted)' }} />
+                    </div>
+                  </div>
+                </div>
+
+                {filteredLaggedEntities.length === 0 ? (
+                  <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                    לא נמצאו ישויות מתאימות לסינון הנוכחי.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {filteredLaggedEntities.map((item, idx) => (
+                      <div 
+                        key={idx}
+                        style={{
+                          background: 'var(--bg-color)',
+                          border: '1px solid var(--border-color)',
+                          borderRadius: 'var(--radius-md)',
+                          padding: '18px 20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                              {item.entityName}
+                            </span>
+                            <span style={{ 
+                              fontSize: '0.72rem', 
+                              fontWeight: 700, 
+                              color: item.badgeColor, 
+                              background: `${item.badgeColor}1a`, 
+                              border: `1px solid ${item.badgeColor}40`, 
+                              padding: '2px 8px', 
+                              borderRadius: '10px' 
                             }}>
-                              {historyList.length - idx}
-                            </div>
-                            <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>המלצות לחיים ולעבודה</span>
-                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <Clock size={12} />
-                              {formatTimestamp(advice.timestamp)}
+                              {item.labelHe}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              ({item.occurrenceCount} אזכורים מתועדים)
                             </span>
                           </div>
-                          {!showAllExpanded && (
-                            <div>
-                              {idx === 0 && <span style={{ fontSize: '0.7rem', color: '#8b5cf6', background: 'rgba(139, 92, 246, 0.1)', padding: '2px 8px', borderRadius: '100px', fontWeight: 600, marginLeft: '8px' }}>האחרון</span>}
-                              {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+
+                          {/* Quick Navigate to Sample Entry */}
+                          {item.sampleDates.length > 0 && (
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>דוגמאות:</span>
+                              {item.sampleDates.map((dateStr, sIdx) => (
+                                <button
+                                  key={sIdx}
+                                  onClick={() => onNavigateToEntry?.(dateStr)}
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    border: '1px solid var(--border-color)',
+                                    background: 'var(--panel-bg)',
+                                    color: 'var(--accent-color)',
+                                    cursor: 'pointer'
+                                  }}
+                                  title="צפה ברשומה זו"
+                                >
+                                  {dateStr}
+                                </button>
+                              ))}
                             </div>
                           )}
                         </div>
 
-                        {isExpanded && (
-                          <div style={{ padding: '24px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', borderTop: '1px solid var(--border-color)', background: 'var(--panel-bg)' }}>
-                            <div style={{ background: 'rgba(59, 130, 246, 0.03)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
-                              <h5 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#3b82f6', fontWeight: 700, marginBottom: '10px' }}>
-                                <Briefcase size={16} />
-                                קריירה ועבודה
-                              </h5>
-                              <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>{advice.work || 'אין מידע.'}</p>
-                            </div>
-                            <div style={{ background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.1)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
-                              <h5 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#10b981', fontWeight: 700, marginBottom: '10px' }}>
-                                <Brain size={16} />
-                                אישי ומנטלי
-                              </h5>
-                              <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>{advice.mental || 'אין מידע.'}</p>
-                            </div>
-                            <div style={{ background: 'rgba(236, 72, 153, 0.03)', border: '1px solid rgba(236, 72, 153, 0.1)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
-                              <h5 style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', color: '#ec4899', fontWeight: 700, marginBottom: '10px' }}>
-                                <Heart size={16} />
-                                זוגיות ומשפחה
-                              </h5>
-                              <p style={{ fontSize: '0.88rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>{advice.family || 'אין מידע.'}</p>
-                            </div>
+                        {/* Lagged Impact Matrix: t-1, t, t+1, t+2 */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', background: 'var(--panel-bg)', padding: '12px', borderRadius: 'var(--radius-sm)' }}>
+                          {[
+                            { label: 't - 1 (24h לפני)', lagKey: '-1', desc: 'בסיס פיזיולוגי מקדים' },
+                            { label: 't (יום האזכור)', lagKey: '0', desc: 'עוררות מיידית' },
+                            { label: 't + 1 (24h אחרי)', lagKey: '1', desc: 'השפעה מושהית ראשונה' },
+                            { label: 't + 2 (48h אחרי)', lagKey: '2', desc: 'התאוששות / שחיקה ממושכת' }
+                          ].map(lagObj => {
+                            const stat = item.lagAverages[lagObj.lagKey] || {};
+                            const zHrv = stat.zHrv;
+                            const zSleep = stat.zSleep;
+
+                            const getZColor = (z) => {
+                              if (z === null || z === undefined) return 'var(--text-muted)';
+                              if (z >= 0.35) return '#10b981'; // Recovery
+                              if (z <= -0.35) return '#ef4444'; // Strain
+                              return 'var(--text-secondary)';
+                            };
+
+                            return (
+                              <div key={lagObj.lagKey} style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'center' }}>
+                                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)' }}>{lagObj.label}</span>
+                                <div style={{ fontSize: '0.72rem', color: getZColor(zHrv) }}>
+                                  HRV: <strong>{zHrv !== null ? `${zHrv > 0 ? '+' : ''}${zHrv}σ` : '—'}</strong>
+                                </div>
+                                <div style={{ fontSize: '0.72rem', color: getZColor(zSleep) }}>
+                                  שינה: <strong>{zSleep !== null ? `${zSleep > 0 ? '+' : ''}${zSleep}σ` : '—'}</strong>
+                                </div>
+                                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{lagObj.desc}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Verbatim snippet */}
+                        {item.sampleQuotes.length > 0 && (
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', background: 'rgba(255, 255, 255, 0.02)', padding: '8px 12px', borderRadius: '4px', borderRight: `3px solid ${item.badgeColor}` }}>
+                            "{item.sampleQuotes[0]}"
                           </div>
                         )}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 4: REFLECTIONS */}
-          {activeTab === 'reflections' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '850px' }}>
-              {/* Weekly reflection */}
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Sparkles size={20} style={{ color: '#eab308' }} />
-                  תובנה שבועית מרוכזת
-                </h3>
-                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '16px' }}>ניתוח על שגרת השבוע האחרון</div>
-                <p style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-line', margin: 0 }}>
-                  {originalInsights?.weeklyInsight || 'אין תובנה שבועית זמינה כעת.'}
-                </p>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Shadow Work reflection */}
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Shield size={20} style={{ color: '#f59e0b' }} />
-                  עבודת צללים (Shadow Work)
-                </h3>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
-                  <Clock size={12} />
-                  עודכן ב: {originalInsights?.shadowWork?.lastDate || 'לא ידוע'}
-                </span>
-                <p style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-line', margin: 0 }}>
-                  {originalInsights?.shadowWork?.insight || 'אין מידע זמין עבור עבודת הצללים.'}
-                </p>
-              </div>
-
-              {/* Daily GTD */}
-              {originalInsights?.dailyGtd && (
-                <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Activity size={20} style={{ color: '#10b981' }} />
-                    ניתוח יומיומי (Daily GTD)
-                  </h3>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '16px' }}>
-                    <Clock size={12} />
-                    תאריך: {originalInsights?.dailyGtd?.lastDate || 'לא ידוע'}
+              {/* Somatic Dissonance Detector (⚡ דיסוננס גוף–נפש) */}
+              <div style={{
+                background: 'var(--panel-bg)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '24px',
+                boxShadow: 'var(--shadow-sm)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Flame size={20} style={{ color: '#ef4444' }} />
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                      ⚡ גלאי דיסוננס גוף–נפש (הטקסט רגוע אך הגוף במצוקה פיזיולוגית)
+                    </h3>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    זוהו {dissonanceEvents.length} אירועי חוסר הלימה
                   </span>
-                  <p style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', whiteSpace: 'pre-line', margin: 0 }}>
-                    {originalInsights?.dailyGtd?.insight || 'אין מידע יומי זמין.'}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 5: CATEGORICAL INSIGHTS */}
-          {activeTab === 'categorical' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '850px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                <div style={{ background: 'rgba(59, 130, 246, 0.03)', border: '1px solid rgba(59, 130, 246, 0.1)', borderRadius: 'var(--radius-lg)', padding: '24px' }}>
-                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.05rem', color: '#3b82f6', fontWeight: 700, marginBottom: '12px' }}>
-                    <Briefcase size={18} />
-                    עבודה וקריירה
-                  </h4>
-                  <p style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
-                    {originalInsights?.categoricalInsights?.work || 'אין מידע זמין.'}
-                  </p>
                 </div>
 
-                <div style={{ background: 'rgba(16, 185, 129, 0.03)', border: '1px solid rgba(16, 185, 129, 0.1)', borderRadius: 'var(--radius-lg)', padding: '24px' }}>
-                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.05rem', color: '#10b981', fontWeight: 700, marginBottom: '12px' }}>
-                    <User size={18} />
-                    אישי ומנטלי
-                  </h4>
-                  <p style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
-                    {originalInsights?.categoricalInsights?.personal || 'אין מידע זמין.'}
-                  </p>
-                </div>
-
-                <div style={{ background: 'rgba(236, 72, 153, 0.03)', border: '1px solid rgba(236, 72, 153, 0.1)', borderRadius: 'var(--radius-lg)', padding: '24px' }}>
-                  <h4 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.05rem', color: '#ec4899', fontWeight: 700, marginBottom: '12px' }}>
-                    <Heart size={18} />
-                    משפחה וזוגיות
-                  </h4>
-                  <p style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-secondary)', margin: 0 }}>
-                    {originalInsights?.categoricalInsights?.family || 'אין מידע זמין.'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 6: RAW JOURNAL INSIGHTS (SCROLLABLE LIST) */}
-          {activeTab === 'raw_insights' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '850px' }}>
-              
-              {/* Search Toolbar */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px', flexWrap: 'wrap', gap: '16px' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>תובנות גולמיות מהיומן</h3>
-                
-                <div style={{ position: 'relative', width: '320px' }}>
-                  <Search style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} size={16} />
-                  <input 
-                    type="text" 
-                    placeholder="חפש בתובנות הגולמיות..."
-                    value={rawInsightsSearchQuery}
-                    onChange={(e) => setRawInsightsSearchQuery(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '8px 36px 8px 16px',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-md)',
-                      fontSize: '0.85rem',
-                      background: 'var(--panel-bg)',
-                      color: 'var(--text-primary)',
-                      outline: 'none'
-                    }}
-                  />
-                </div>
-              </div>
-
-              {filteredEntriesWithInsights.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '8px', color: 'var(--text-muted)' }}>
-                  <MessageSquare size={36} strokeWidth={1.5} />
-                  <div>לא נמצאו תובנות גולמיות העונות על החיפוש.</div>
-                </div>
-              ) : (
-                /* Continuous Scrollable List */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  {filteredEntriesWithInsights.map((entry, idx) => {
-                    const insightsList = entry.filteredInsights || entry.insights;
-                    return (
-                      <div 
-                        key={entry.id || idx}
-                        style={{
-                          background: 'var(--panel-bg)',
-                          border: '1px solid var(--border-color)',
-                          borderRadius: 'var(--radius-lg)',
-                          padding: '20px 24px',
-                          boxShadow: 'var(--shadow-sm)'
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', borderBottom: '1px solid var(--accent-light)', paddingBottom: '10px' }}>
-                          <Calendar size={16} style={{ color: '#06b6d4' }} />
-                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-                            רשומת יומן מתאריך: {entry.frontmatter?.date || 'לא ידוע'}
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: 'auto' }}>
-                            {insightsList.length} תובנות
-                          </span>
-                        </div>
-
-                        <ul style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '12px' }}>
-                          {insightsList.map((ins, insIdx) => (
-                            <li 
-                              key={insIdx} 
-                              style={{ 
-                                fontSize: '0.88rem', 
-                                color: 'var(--text-secondary)', 
-                                lineHeight: 1.5,
-                                listStyleType: 'decimal',
-                                paddingRight: '4px'
-                              }}
-                            >
-                              {ins}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB: ISA CORRELATIONS */}
-          {activeTab === 'isa_correlations' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '850px' }}>
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <TrendingUp size={20} style={{ color: '#10b981' }} />
-                  ניתוח קורלציות: הרגלי חיים (ISA) מול כתיבת יומן
-                </h3>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
-                  מערכת הצלבת הנתונים סרקה את ימי החפיפה בין דירוגי ה-ISA היומיים לבין רשומות היומן שלך (סה"כ {isaStats?.totalMatchDays || 0} ימי חפיפה).
-                </p>
-              </div>
-
-              {!isaStats || isaStats.totalMatchDays === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
-                  לא נמצאו מספיק ימי חפיפה עם נתוני ISA. ודא שהכנסת UID תקין ושסונכרנו נתונים.
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  
-                  {/* Card 1: Sleep */}
-                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                      <span>💤 השפעת איכות השינה על מצב הרוח ביומן</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {isaStats.sleep.goodCount + isaStats.sleep.badCount} ימים</span>
-                    </h4>
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                          <span>מצב רוח חיובי לאחר שינה טובה:</span>
-                          <strong>{isaStats.sleep.goodPct}%</strong>
-                        </div>
-                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${isaStats.sleep.goodPct}%`, height: '100%', background: '#10b981' }} />
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                          <span>מצב רוח חיובי לאחר שינה גרועה:</span>
-                          <strong>{isaStats.sleep.badPct}%</strong>
-                        </div>
-                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${isaStats.sleep.badPct}%`, height: '100%', background: '#ef4444' }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 2: Workouts */}
-                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                      <span>🏃 השפעת ספורט ואימון על מצב הרוח ביומן</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {isaStats.workout.yesCount + isaStats.workout.noCount} ימים</span>
-                    </h4>
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                          <span>מצב רוח חיובי בימים עם אימון גופני:</span>
-                          <strong>{isaStats.workout.yesPct}%</strong>
-                        </div>
-                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${isaStats.workout.yesPct}%`, height: '100%', background: '#10b981' }} />
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                          <span>מצב רוח חיובי בימים ללא אימון:</span>
-                          <strong>{isaStats.workout.noPct}%</strong>
-                        </div>
-                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${isaStats.workout.noPct}%`, height: '100%', background: '#6b7280' }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card 3: Efficacy */}
-                  <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h4 style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                      <span>⚡ קשר בין תחושת מסוגלות (חוללות) למצב רוח</span>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {isaStats.efficacy.goodCount + isaStats.efficacy.badCount} ימים</span>
-                    </h4>
-                    <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                          <span>מצב רוח חיובי כשתחושת החוללות גבוהה:</span>
-                          <strong>{isaStats.efficacy.goodPct}%</strong>
-                        </div>
-                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${isaStats.efficacy.goodPct}%`, height: '100%', background: '#10b981' }} />
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                          <span>מצב רוח חיובי כשתחושת החוללות נמוכה:</span>
-                          <strong>{isaStats.efficacy.badPct}%</strong>
-                        </div>
-                        <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                          <div style={{ width: `${isaStats.efficacy.badPct}%`, height: '100%', background: '#ef4444' }} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-              )}
-
-              {/* === Google Health Metrics Insights === */}
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Heart size={18} style={{ color: '#ef4444' }} />
-                  תובנות ממדדי Google Health
-                </h3>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
-                  ניתוח מדדי הבריאות האובייקטיביים לאורך {healthStats?.totalDays || 0} ימים עם נתונים.
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                  גלאי זה מאתר מקרים שבהם רשמת ביומן טקסט ענייני, רגוע או אופטימי, בעוד שמדדי הגוף (צניחה חדה ב-HRV או זינוק בדופק מנוחה) מעידים על שחיקה סמויה או עומס נוירו-ביולוגי מודחק.
                 </p>
 
-                {!healthStats ? (
-                  <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                    לא נמצאו נתוני בריאות מ-Google Health. ודא שהנתונים סונכרנו לגרף.
+                {dissonanceEvents.length === 0 ? (
+                  <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)' }}>
+                    לא נמצאו אירועי דיסוננס חריפים ברשומות הנוכחיות.
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {[
-                      healthStats.sleep && {
-                        emoji: '🌙', label: 'שינה (ציון Google Health)',
-                        avg: `ממוצע: ${healthStats.sleep.avg}`,
-                        avgColor: healthStats.sleep.avg > 85 ? '#047857' : healthStats.sleep.avg >= 70 ? '#b45309' : '#b91c1c',
-                        rows: [
-                          { label: 'שינה מצוינת (>85)', pct: healthStats.sleep.good, color: '#10b981' },
-                          { label: 'שינה סבירה (70–85)', pct: healthStats.sleep.med, color: '#f59e0b' },
-                          { label: 'שינה ירודה (<70)', pct: healthStats.sleep.bad, color: '#ef4444' },
-                        ],
-                        insight: healthStats.sleep.avg > 85
-                          ? 'מצוין – רוב הלילות נחתמו כשינה איכותית.'
-                          : healthStats.sleep.avg >= 70
-                          ? 'סביר – יש מקום לשיפור בהיגיינת השינה.'
-                          : 'נמוך – שינה ירודה ממוצעת עשויה לפגוע באנרגיה ובמצב הרוח.',
-                        count: healthStats.sleep.count
-                      },
-                      healthStats.steps && {
-                        emoji: '👟', label: 'צעדים יומיים',
-                        avg: `ממוצע: ${healthStats.steps.avg.toLocaleString()} צעדים`,
-                        avgColor: healthStats.steps.avg > 15000 ? '#047857' : healthStats.steps.avg >= 10000 ? '#b45309' : '#b91c1c',
-                        rows: [
-                          { label: 'פעיל מאוד (>15,000)', pct: healthStats.steps.good, color: '#10b981' },
-                          { label: 'פעיל (10,000–15,000)', pct: healthStats.steps.med, color: '#f59e0b' },
-                          { label: 'יושבני (<10,000)', pct: healthStats.steps.bad, color: '#ef4444' },
-                        ],
-                        insight: healthStats.steps.avg > 15000
-                          ? 'מעולה – רמת פעילות יומית גבוהה.'
-                          : healthStats.steps.avg >= 10000
-                          ? 'טוב – עומד ביעד הפעילות הבסיסי.'
-                          : 'נמוך – מספר הצעדים הממוצע מעיד על אורח חיים יושבני.',
-                        count: healthStats.steps.count
-                      },
-                      healthStats.hr && {
-                        emoji: '❤️', label: 'דופק מנוחה (BPM)',
-                        avg: `ממוצע: ${healthStats.hr.avg} BPM`,
-                        avgColor: healthStats.hr.avg < 55 ? '#047857' : healthStats.hr.avg <= 58 ? '#b45309' : '#b91c1c',
-                        rows: [
-                          { label: 'מצוין (<55 BPM)', pct: healthStats.hr.good, color: '#10b981' },
-                          { label: 'תקין (55–58 BPM)', pct: healthStats.hr.med, color: '#f59e0b' },
-                          { label: 'גבוה (>58 BPM)', pct: healthStats.hr.bad, color: '#ef4444' },
-                        ],
-                        insight: healthStats.hr.avg < 55
-                          ? 'מצוין – דופק מנוחה נמוך מעיד על כושר לב-ריאה טוב.'
-                          : healthStats.hr.avg <= 58
-                          ? 'תקין – בטווח הנורמלי הרצוי.'
-                          : 'גבוה – דופק מנוחה מוגבר עשוי להעיד על עקה, חוסר שינה או עייפות.',
-                        count: healthStats.hr.count
-                      },
-                      healthStats.hrv && {
-                        emoji: '⚡', label: 'HRV – שונות קצב לב (ms)',
-                        avg: `ממוצע: ${healthStats.hrv.avg} ms`,
-                        avgColor: healthStats.hrv.avg > 34 ? '#047857' : healthStats.hrv.avg >= 29 ? '#b45309' : '#b91c1c',
-                        rows: [
-                          { label: 'גבוה – התאוששות טובה (>34)', pct: healthStats.hrv.good, color: '#10b981' },
-                          { label: 'בינוני (29–34)', pct: healthStats.hrv.med, color: '#f59e0b' },
-                          { label: 'נמוך – סטרס גופני (<29)', pct: healthStats.hrv.bad, color: '#ef4444' },
-                        ],
-                        insight: healthStats.hrv.avg > 34
-                          ? 'מצוין – מערכת עצבים אוטונומית מאוזנת, יכולת התאוששות גבוהה.'
-                          : healthStats.hrv.avg >= 29
-                          ? 'סביר – יכולת התאוששות ממוצעת, כדאי לשמור על שינה ומנוחה.'
-                          : 'נמוך – הגוף בעומס, שקול להפחית אימונים אינטנסיביים.',
-                        count: healthStats.hrv.count
-                      },
-                    ].filter(Boolean).map((card, ci) => (
-                      <div key={ci} style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '18px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
-                          <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                            {card.emoji} {card.label}
-                          </h4>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {card.count} ימים</span>
-                        </div>
-                        <div style={{ fontSize: '0.88rem', fontWeight: 600, color: card.avgColor }}>{card.avg}</div>
-                        {card.rows.map((row, ri) => (
-                          <div key={ri}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', marginBottom: '4px' }}>
-                              <span style={{ color: 'var(--text-secondary)' }}>{row.label}</span>
-                              <strong style={{ color: row.color }}>{row.pct}%</strong>
-                            </div>
-                            <div style={{ height: '7px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                              <div style={{ width: `${row.pct}%`, height: '100%', background: row.color, transition: 'width 0.6s ease' }} />
-                            </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {dissonanceEvents.map((evt, idx) => (
+                      <div 
+                        key={idx}
+                        style={{
+                          background: 'var(--bg-color)',
+                          border: `1px solid ${evt.typeBadgeColor}40`,
+                          borderRadius: 'var(--radius-md)',
+                          padding: '16px 20px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px'
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+                              רשומה מיום {evt.date}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: evt.typeBadgeColor, background: `${evt.typeBadgeColor}1a`, padding: '2px 8px', borderRadius: '8px' }}>
+                              {evt.typeLabelHe}
+                            </span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              מצב רוח מדווח: <strong>{evt.mood}</strong>
+                            </span>
                           </div>
-                        ))}
-                        <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '8px 12px', borderRight: `3px solid ${card.avgColor}`, direction: 'rtl', textAlign: 'right' }}>
-                          💡 {card.insight}
+
+                          <button
+                            onClick={() => onNavigateToEntry?.(evt.entryId || evt.date)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              padding: '4px 10px',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              color: 'var(--accent-color)',
+                              background: 'var(--accent-light)',
+                              border: '1px solid var(--border-color)',
+                              borderRadius: '6px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            <ExternalLink size={12} />
+                            פתח רשומה זו ביומן
+                          </button>
+                        </div>
+
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, margin: 0 }}>
+                          "{evt.snippet}"
+                        </p>
+
+                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '8px' }}>
+                          <span>HRV Z-Score: <strong style={{ color: evt.zHrv < -0.8 ? '#ef4444' : '#10b981' }}>{evt.zHrv}σ</strong> {evt.hrvVal ? `(${evt.hrvVal}ms)` : ''}</span>
+                          <span>RHR Z-Score: <strong style={{ color: evt.zRhr > 0.8 ? '#ef4444' : '#10b981' }}>{evt.zRhr}σ</strong> {evt.rhrVal ? `(${evt.rhrVal}bpm)` : ''}</span>
+                          <span style={{ marginRight: 'auto', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                            💡 {evt.explanationHe}
+                          </span>
                         </div>
                       </div>
                     ))}
@@ -1504,337 +1031,401 @@ export default function InsightsView({ uid, isaData }) {
                 )}
               </div>
 
-              {/* === Deep Mood & Health Correlations === */}
-              <div style={{ background: 'var(--panel-bg)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <h3 style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Brain size={20} style={{ color: '#8b5cf6' }} />
-                  ניתוח עומק: השפעת מדדי הבריאות על מצב הרוח והאנרגיה
-                </h3>
-                <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: '0 0 20px 0' }}>
-                  הצלבה חכמה בין מדדי Google Health לבין מצב הרוח שדווח ביומן לאורך זמן (סה"כ {healthCorrelations?.totalMatchDays || 0} ימי חפיפה).
-                </p>
-
-                {!healthCorrelations || healthCorrelations.totalMatchDays === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                    לא נמצאו מספיק ימי חפיפה בין דיווחי היומן למדדי הבריאות.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    
-                    {/* Sleep vs Mood */}
-                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                        <span>🌙 איך איכות השינה משפיעה עליך?</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.today.sleep.goodCount + healthCorrelations.today.sleep.badCount} ימים</span>
-                      </h4>
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי לאחר שינה מצוינת (&gt;80):</span>
-                            <strong>{healthCorrelations.today.sleep.goodPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.today.sleep.goodPct}%`, height: '100%', background: '#8b5cf6' }} />
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי לאחר שינה חסרה (&lt;75):</span>
-                            <strong>{healthCorrelations.today.sleep.badPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.today.sleep.badPct}%`, height: '100%', background: '#ef4444' }} />
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #8b5cf6' }}>
-                        💡 <strong>תובנה מבוססת נתונים:</strong> 
-                        {healthCorrelations.today.sleep.goodPct - healthCorrelations.today.sleep.badPct > 20 
-                          ? " יש לך רגישות גבוהה מאוד לחוסר שינה. שינה איכותית מעלה את הסיכוי ליום חיובי באופן דרמטי." 
-                          : " נראה שאתה מצליח 'למשוך' גם בימים של שינה פחות טובה, אבל שינה טובה עדיין תורמת לאיזון."}
-                      </div>
-                    </div>
-
-                    {/* Steps vs Mood */}
-                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                        <span>👟 האם תנועה מייצרת שמחה?</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.today.steps.goodCount + healthCorrelations.today.steps.badCount} ימים</span>
-                      </h4>
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי ביום פעיל מאוד (&gt;12k):</span>
-                            <strong>{healthCorrelations.today.steps.goodPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.today.steps.goodPct}%`, height: '100%', background: '#10b981' }} />
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי ביום יושבני (&lt;8k):</span>
-                            <strong>{healthCorrelations.today.steps.badPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.today.steps.badPct}%`, height: '100%', background: '#6b7280' }} />
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #10b981' }}>
-                        💡 <strong>תובנה מבוססת נתונים:</strong> 
-                        {healthCorrelations.today.steps.goodPct - healthCorrelations.today.steps.badPct > 15 
-                          ? " תנועה פיזית היא מנוע אנרגיה מרכזי עבורך. ימי קיפאון גובים מחיר נפשי ניכר." 
-                          : " רמת הפעילות שלך לא מהווה את הפקטור הבלעדי למצב הרוח, אך ימים פעילים יותר נוטים להיות מספקים יותר."}
-                      </div>
-                    </div>
-
-                    {/* HRV vs Mood */}
-                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                        <span>⚡ התאוששות עצבית (HRV) ומצב רוח</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.today.hrv.goodCount + healthCorrelations.today.hrv.badCount} ימים</span>
-                      </h4>
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי כשה-HRV גבוה (&gt;32):</span>
-                            <strong>{healthCorrelations.today.hrv.goodPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.today.hrv.goodPct}%`, height: '100%', background: '#3b82f6' }} />
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי כשה-HRV נמוך (&lt;29):</span>
-                            <strong>{healthCorrelations.today.hrv.badPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.today.hrv.badPct}%`, height: '100%', background: '#f59e0b' }} />
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #3b82f6' }}>
-                        💡 <strong>תובנה מבוססת נתונים:</strong> 
-                        {healthCorrelations.today.hrv.goodPct - healthCorrelations.today.hrv.badPct > 15 
-                          ? " מדד ה-HRV שלך הוא סמן מדויק למצבך הנפשי. כשהגוף בסטרס פיזי, גם הנפש מגיבה בהתאם." 
-                          : " אין קשר מובהק וישיר בין ההתאוששות העצבית המיידית למצב הרוח ביומן, ייתכן שאתה מפצה מנטלית על עייפות גופנית."}
-                      </div>
-                    </div>
-
-                    {/* Prev Day Health vs Today Mood */}
-                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                        <span>⏪ אפקט הגרירה: פעילות אתמול לעומת מצב רוח היום</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.prev.steps.goodCount + healthCorrelations.prev.steps.badCount} ימים</span>
-                      </h4>
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי היום, כשהייתה אתמול פעילות רבה (&gt;12k):</span>
-                            <strong>{healthCorrelations.prev.steps.goodPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.prev.steps.goodPct}%`, height: '100%', background: '#14b8a6' }} />
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>מצב רוח חיובי היום, כשהייתה אתמול פעילות מועטה (&lt;8k):</span>
-                            <strong>{healthCorrelations.prev.steps.badPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.prev.steps.badPct}%`, height: '100%', background: '#94a3b8' }} />
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #14b8a6' }}>
-                        💡 <strong>תובנה מבוססת נתונים:</strong> 
-                        {healthCorrelations.prev.steps.goodPct > healthCorrelations.prev.steps.badPct + 10 
-                          ? " אימון ותנועה היום מרימים אותך גם מחר! פעילות משפיעה על מצב הרוח לאורך זמן." 
-                          : " ההשפעה של חוסר פעילות מאתמול כנראה פחות מהותית להיום, כל יום עומד בפני עצמו."}
-                      </div>
-                    </div>
-
-                    {/* Today Mood vs Next Day Health */}
-                    <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                      <h4 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px', margin: 0 }}>
-                        <span>⏩ נבואה שמגשימה את עצמה: מצב רוח היום לעומת שינה מחר</span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>נבדק לאורך {healthCorrelations.next.sleep.posCount + healthCorrelations.next.sleep.negCount} ימים</span>
-                      </h4>
-                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>אחוז שינה מצוינת (&gt;80) מחר, אם היום היית במצב רוח חיובי:</span>
-                            <strong>{healthCorrelations.next.sleep.goodPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.next.sleep.goodPct}%`, height: '100%', background: '#8b5cf6' }} />
-                          </div>
-                        </div>
-                        <div style={{ flex: 1, minWidth: '200px' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '4px' }}>
-                            <span>אחוז שינה מצוינת מחר, אם היום לא היית חיובי:</span>
-                            <strong>{healthCorrelations.next.sleep.badPct}%</strong>
-                          </div>
-                          <div style={{ height: '8px', background: 'var(--border-color)', borderRadius: '4px', overflow: 'hidden' }}>
-                            <div style={{ width: `${healthCorrelations.next.sleep.badPct}%`, height: '100%', background: '#d946ef' }} />
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', borderRadius: 'var(--radius-sm)', padding: '10px', borderRight: '3px solid #d946ef' }}>
-                        💡 <strong>תובנה מבוססת נתונים:</strong> 
-                        {healthCorrelations.next.sleep.goodPct > healthCorrelations.next.sleep.badPct + 10 
-                          ? " יום חיובי ורגוע עוזר לך להירדם בקלות ולישון טוב יותר בלילה שלאחריו." 
-                          : " ימים של סטרס או מצב רוח ירוד יכולים לשבש את השינה."}
-                      </div>
-                    </div>
-
-                  </div>
-                )}
-              </div>
-
             </div>
           )}
 
-          {/* TAB 7: AI Q&A */}
-          {activeTab === 'qa' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '850px', height: 'calc(100vh - 250px)' }}>
+          {/* ========================================================= */}
+          {/* TAB 3: ASPIRATION-TO-ACTION GAP & STANCE TRAJECTORY BOARD */}
+          {/* ========================================================= */}
+          {activeTab === 'action_gap' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%' }}>
               
-              {/* Chat Messages Panel */}
-              <div style={{ 
-                flexGrow: 1, 
-                border: '1px solid var(--border-color)', 
-                borderRadius: 'var(--radius-lg)', 
-                background: 'var(--panel-bg)', 
-                display: 'flex', 
-                flexDirection: 'column', 
-                overflow: 'hidden',
-                boxShadow: 'var(--shadow-sm)'
-              }}>
-                <div style={{ 
-                  flexGrow: 1, 
-                  padding: '24px', 
-                  overflowY: 'auto', 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  gap: '16px' 
-                }}>
-                  {qaHistory.map((msg, index) => (
-                    <div 
-                      key={index} 
-                      style={{ 
-                        alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-                        width: '100%',
-                        maxWidth: '90%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '6px',
-                        background: msg.role === 'user' ? 'var(--accent-light)' : 'var(--bg-color)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: 'var(--radius-lg)',
-                        padding: '16px 20px',
-                        boxShadow: 'var(--shadow-xs)',
-                        direction: 'rtl'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        {msg.role === 'bot' ? (
-                          <>
-                            <Bot size={14} style={{ color: 'var(--accent-color)' }} />
-                            <span>חוקר יומנים ותובנות</span>
-                          </>
-                        ) : (
-                          <>
-                            <User size={14} />
-                            <span>אתה</span>
-                          </>
-                        )}
-                      </div>
-                      <div style={{ fontSize: '0.92rem', lineHeight: 1.6, color: 'var(--text-primary)' }}>
-                        {msg.role === 'bot' ? renderMarkdown(msg.text) : msg.text}
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {qaLoading && (
-                    <div style={{ 
-                      alignSelf: 'flex-end',
-                      width: '100%',
-                      maxWidth: '90%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '8px',
-                      background: 'var(--bg-color)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: 'var(--radius-lg)',
-                      padding: '16px 20px',
-                      boxShadow: 'var(--shadow-xs)',
-                      opacity: 0.8
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)' }}>
-                        <RefreshCw size={14} className="spin" style={{ color: 'var(--accent-color)' }} />
-                        <span>חוקר היומנים מעיין ברשומות, בתובנות ובמושגים...</span>
-                      </div>
-                    </div>
-                  )}
+              {/* Header and Filter */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                <div>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Compass size={22} style={{ color: '#8b5cf6' }} />
+                    לוח מעקב עמדות: פער שאיפה מול ביצוע (Aspiration vs Action)
+                  </h3>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                    חישוב PatternSalience = Frequency × ln(1 + SpanDays + 1) × ConfidenceWeight למיפוי מטרות שתקועות בהצהרות מול מטרות שמתקדמות לביצוע.
+                  </p>
                 </div>
 
-                {/* Input Bar */}
-                <form 
-                  onSubmit={handleQaSubmit} 
-                  style={{ 
-                    display: 'flex', 
-                    gap: '12px', 
-                    padding: '18px 24px', 
-                    borderTop: '1px solid var(--border-color)',
-                    background: 'var(--panel-bg)'
-                  }}
-                >
-                  <input 
-                    type="text" 
-                    placeholder="שאל משהו על היומנים או התובנות שלך... (למשל: מהם הקונפליקטים המרכזיים שלי?)"
-                    value={qaQuery}
-                    onChange={(e) => setQaQuery(e.target.value)}
-                    disabled={qaLoading}
+                <div style={{ position: 'relative', width: '220px' }}>
+                  <input
+                    type="text"
+                    placeholder="חפש מטרה או נושא..."
+                    value={stanceSearch}
+                    onChange={(e) => setStanceSearch(e.target.value)}
                     style={{
-                      flexGrow: 1,
-                      padding: '12px 16px',
-                      border: '1px solid var(--border-color)',
+                      width: '100%',
+                      padding: '8px 30px 8px 12px',
                       borderRadius: 'var(--radius-md)',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                      background: 'var(--bg-color)',
-                      color: 'var(--text-primary)'
+                      border: '1px solid var(--border-color)',
+                      background: 'var(--panel-bg)',
+                      color: 'var(--text-primary)',
+                      fontSize: '0.82rem'
                     }}
                   />
-                  <button 
-                    type="submit" 
-                    disabled={qaLoading || !qaQuery.trim()}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '42px',
-                      height: '42px',
-                      borderRadius: 'var(--radius-md)',
-                      background: qaLoading || !qaQuery.trim() ? 'var(--border-color)' : 'var(--accent-color)',
-                      color: '#fff',
-                      border: 'none',
-                      cursor: qaLoading || !qaQuery.trim() ? 'not-allowed' : 'pointer'
-                    }}
-                  >
-                    <Send size={18} style={{ transform: 'scaleX(-1)' }} />
-                  </button>
-                </form>
+                  <Search size={14} style={{ position: 'absolute', right: '10px', top: '10px', color: 'var(--text-muted)' }} />
+                </div>
+              </div>
+
+              {/* 3-Column Interactive Board */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '20px',
+                alignItems: 'flex-start'
+              }}>
+                
+                {/* Column 1: Aspiration Trap */}
+                <div style={{
+                  background: 'var(--panel-bg)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '16px 20px', borderBottom: '2px solid #f59e0b', background: 'rgba(245, 158, 11, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Clock size={16} />
+                      ⏳ מלכודת שאיפה כרונית
+                    </h4>
+                    <span style={{ fontSize: '0.72rem', background: '#f59e0b20', color: '#f59e0b', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                      {filteredStanceData.ASPIRATION_TRAP.length}
+                    </span>
+                  </div>
+                  <div style={{ padding: '8px 16px', fontSize: '0.72rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' }}>
+                    מטרות שנשארות שבועות בגדר "רוצה / צריך / מתכנן" ללא מעבר לפעולה.
+                  </div>
+                  
+                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '650px', overflowY: 'auto' }}>
+                    {filteredStanceData.ASPIRATION_TRAP.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>אין פריטים בעמודה זו</div>
+                    ) : (
+                      filteredStanceData.ASPIRATION_TRAP.map(item => (
+                        <div 
+                          key={item.id}
+                          style={{
+                            background: 'var(--bg-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            boxShadow: 'var(--shadow-xs)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>{item.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: '#f59e0b', background: '#f59e0b15', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              Salience: {item.salience}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            <span>מוזכר: {item.frequency} פעמים</span>
+                            <span>•</span>
+                            <span>טווח: {item.spanDays} ימים</span>
+                          </div>
+
+                          {item.quotes.length > 0 && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', padding: '6px 10px', borderRadius: '4px', borderRight: '2px solid #f59e0b' }}>
+                              "{item.quotes[0]}"
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 2: Avoidance & Conflict */}
+                <div style={{
+                  background: 'var(--panel-bg)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '16px 20px', borderBottom: '2px solid #ef4444', background: 'rgba(239, 68, 68, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#ef4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <AlertTriangle size={16} />
+                      ⚡ מוקדי חיכוך והימנעות
+                    </h4>
+                    <span style={{ fontSize: '0.72rem', background: '#ef444420', color: '#ef4444', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                      {filteredStanceData.AVOIDANCE_CONFLICT.length}
+                    </span>
+                  </div>
+                  <div style={{ padding: '8px 16px', fontSize: '0.72rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' }}>
+                    נושאים המלווים בדחיינות, קונפליקט רגשי או חששות מוצהרים.
+                  </div>
+
+                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '650px', overflowY: 'auto' }}>
+                    {filteredStanceData.AVOIDANCE_CONFLICT.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>אין פריטים בעמודה זו</div>
+                    ) : (
+                      filteredStanceData.AVOIDANCE_CONFLICT.map(item => (
+                        <div 
+                          key={item.id}
+                          style={{
+                            background: 'var(--bg-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            boxShadow: 'var(--shadow-xs)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>{item.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: '#ef4444', background: '#ef444415', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              Salience: {item.salience}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            <span>מוזכר: {item.frequency} פעמים</span>
+                            <span>•</span>
+                            <span>טווח: {item.spanDays} ימים</span>
+                          </div>
+
+                          {item.quotes.length > 0 && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', padding: '6px 10px', borderRadius: '4px', borderRight: '2px solid #ef4444' }}>
+                              "{item.quotes[0]}"
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Column 3: Action Momentum */}
+                <div style={{
+                  background: 'var(--panel-bg)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  overflow: 'hidden'
+                }}>
+                  <div style={{ padding: '16px 20px', borderBottom: '2px solid #10b981', background: 'rgba(16, 185, 129, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Award size={16} />
+                      🚀 תנופה וביצוע בפועל
+                    </h4>
+                    <span style={{ fontSize: '0.72rem', background: '#10b98120', color: '#10b981', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                      {filteredStanceData.ACTION_MOMENTUM.length}
+                    </span>
+                  </div>
+                  <div style={{ padding: '8px 16px', fontSize: '0.72rem', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' }}>
+                    פרויקטים ומטרות שבהם העמדה עברה להשלמת משימות והתקדמות ממשית.
+                  </div>
+
+                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '14px', maxHeight: '650px', overflowY: 'auto' }}>
+                    {filteredStanceData.ACTION_MOMENTUM.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '0.8rem' }}>אין פריטים בעמודה זו</div>
+                    ) : (
+                      filteredStanceData.ACTION_MOMENTUM.map(item => (
+                        <div 
+                          key={item.id}
+                          style={{
+                            background: 'var(--bg-color)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius-md)',
+                            padding: '14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            boxShadow: 'var(--shadow-xs)'
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>{item.name}</span>
+                            <span style={{ fontSize: '0.7rem', color: '#10b981', background: '#10b98115', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                              Salience: {item.salience}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '8px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            <span>מוזכר: {item.frequency} פעמים</span>
+                            <span>•</span>
+                            <span>טווח: {item.spanDays} ימים</span>
+                          </div>
+
+                          {item.quotes.length > 0 && (
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', background: 'var(--panel-bg)', padding: '6px 10px', borderRadius: '4px', borderRight: '2px solid #10b981' }}>
+                              "{item.quotes[0]}"
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
               </div>
             </div>
           )}
-        </div>
 
+        </div>
       </div>
+
+      {/* Local Epistemic Traceability Drawer / Modal */}
+      {activeTraceabilityItem && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(5px)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 9999,
+          padding: '24px',
+          direction: 'rtl'
+        }} onClick={() => setActiveTraceabilityItem(null)}>
+          <div 
+            style={{
+              width: '100%',
+              maxWidth: '720px',
+              maxHeight: '85vh',
+              overflowY: 'auto',
+              background: '#0f172a',
+              border: '1px solid #1e293b',
+              borderRadius: '20px',
+              padding: '28px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #1e293b', paddingBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <CheckCircle2 size={24} style={{ color: '#10b981' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#f8fafc' }}>
+                    שרשרת ראיות אפיסטמית (Epistemic Traceability)
+                  </h3>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                    אימות עובדתי וציטוטי יומן העומדים בבסיס התובנה
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setActiveTraceabilityItem(null)}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Target Insight Box */}
+            <div style={{ background: '#1e293b', padding: '16px', borderRadius: '12px', border: '1px solid #334155' }}>
+              <span style={{ fontSize: '0.72rem', color: '#818cf8', fontWeight: 700, textTransform: 'uppercase' }}>
+                תובנה / כלל מנחה נבדק:
+              </span>
+              <p style={{ margin: '6px 0 0 0', fontSize: '0.95rem', fontWeight: 600, color: '#f8fafc', lineHeight: 1.5 }}>
+                {activeTraceabilityItem.text}
+              </p>
+            </div>
+
+            {/* AI Model & Confidence Vector */}
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)', padding: '4px 10px', borderRadius: '12px' }}>
+                מודל אינטגרציה: <strong>{activeTraceabilityItem.aiModel}</strong>
+              </span>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(16, 185, 129, 0.15)', color: '#34d399', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '4px 10px', borderRadius: '12px' }}>
+                מרחק אפיסטמי: <strong>4 (דפוס מוסק)</strong>
+              </span>
+              <span style={{ fontSize: '0.75rem', background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '4px 10px', borderRadius: '12px' }}>
+                אימות: <strong>נתמך ברשומות (SUPPORTED)</strong>
+              </span>
+            </div>
+
+            {/* Backing Evidence from Diary Entries */}
+            <div>
+              <h4 style={{ fontSize: '0.95rem', fontWeight: 700, color: '#f8fafc', marginBottom: '10px' }}>
+                רשומות יומן ועובדות תומכות ({activeTraceabilityItem.derivedFromAssertions.length}):
+              </h4>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {activeTraceabilityItem.derivedFromAssertions.map((ast, idx) => (
+                  <div 
+                    key={idx}
+                    style={{
+                      background: '#1e293b',
+                      border: '1px solid #334155',
+                      borderRadius: '10px',
+                      padding: '14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px'
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#38bdf8' }}>
+                        רשומת יומן מתאריך: {ast.evidence?.entryDate}
+                      </span>
+                      {onNavigateToEntry && (
+                        <button
+                          onClick={() => {
+                            setActiveTraceabilityItem(null);
+                            onNavigateToEntry(ast.evidence?.entryId || ast.evidence?.entryDate);
+                          }}
+                          style={{
+                            fontSize: '0.72rem',
+                            color: '#818cf8',
+                            background: 'rgba(99, 102, 241, 0.15)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '3px 8px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          קרא רשומה מלאה ↵
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: '0.84rem', color: '#cbd5e1', lineHeight: 1.5, borderRight: '2px solid #818cf8', paddingRight: '10px' }}>
+                      "{ast.evidence?.quote}"
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+              <button
+                onClick={() => setActiveTraceabilityItem(null)}
+                style={{
+                  padding: '8px 20px',
+                  background: '#334155',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                סגור
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
-

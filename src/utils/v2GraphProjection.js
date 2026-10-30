@@ -31,7 +31,14 @@ export function projectV2ToGraph(v2Data) {
       weight: 1,
       isPersonal: true,
       isTheoretical: false,
-      epistemicOrigin: 'ONTOLOGY_V2_CORE'
+      epistemicOrigin: 'ONTOLOGY_V2_CORE',
+      stances: ent.properties?.stances || ent.stances || [],
+      sourceQuotes: ent.properties?.sourceQuotes || ent.sourceQuotes || [],
+      epistemicConfidence: ent.epistemicConfidence !== undefined 
+        ? ent.epistemicConfidence 
+        : (ent.properties?.epistemicConfidence !== undefined ? ent.properties.epistemicConfidence : 1),
+      provenanceType: ent.provenanceType || ent.properties?.provenanceType || 'EXTRACTED',
+      date: ent.date || ent.properties?.date || null
     };
     entityMap.set(ent.id, nodeObj);
     nodes.push(nodeObj);
@@ -62,7 +69,12 @@ export function projectV2ToGraph(v2Data) {
         weight: 1,
         isPersonal: true,
         isTheoretical: false,
-        epistemicOrigin: 'ONTOLOGY_V2_CORE'
+        epistemicOrigin: 'ONTOLOGY_V2_CORE',
+        stances: [],
+        sourceQuotes: [],
+        epistemicConfidence: 1,
+        provenanceType: 'INFERRED',
+        date: null
       };
       entityMap.set(sourceId, fallbackNode);
       nodes.push(fallbackNode);
@@ -78,7 +90,12 @@ export function projectV2ToGraph(v2Data) {
         weight: 1,
         isPersonal: true,
         isTheoretical: false,
-        epistemicOrigin: 'ONTOLOGY_V2_CORE'
+        epistemicOrigin: 'ONTOLOGY_V2_CORE',
+        stances: [],
+        sourceQuotes: [],
+        epistemicConfidence: 1,
+        provenanceType: 'INFERRED',
+        date: null
       };
       entityMap.set(targetId, fallbackNode);
       nodes.push(fallbackNode);
@@ -94,6 +111,16 @@ export function projectV2ToGraph(v2Data) {
       const linkKey = `${sourceId}->${ast.predicate}->${targetId}`;
       if (!linkKeySet.has(linkKey)) {
         linkKeySet.add(linkKey);
+
+        const quoteCandidates = [];
+        if (ast.properties?.sourceQuotes) {
+          quoteCandidates.push(...ast.properties.sourceQuotes);
+        } else if (ast.sourceQuotes) {
+          quoteCandidates.push(...ast.sourceQuotes);
+        } else if (ast.evidence?.quote) {
+          quoteCandidates.push(ast.evidence.quote);
+        }
+
         links.push({
           id: ast.id,
           source: sourceId,
@@ -105,7 +132,14 @@ export function projectV2ToGraph(v2Data) {
           evidence: ast.evidence || null,
           weight: 1,
           isPersonal: true,
-          isTheoretical: false
+          isTheoretical: false,
+          stances: ast.properties?.stances || ast.stances || [],
+          sourceQuotes: quoteCandidates,
+          epistemicConfidence: ast.epistemicConfidence !== undefined 
+            ? ast.epistemicConfidence 
+            : (ast.properties?.epistemicConfidence !== undefined ? ast.properties.epistemicConfidence : 1),
+          provenanceType: ast.provenanceType || ast.properties?.provenanceType || (ast.epistemicStatus ? ast.epistemicStatus : 'ASSERTED'),
+          date: ast.date || ast.properties?.date || ast.evidence?.entryDate || null
         });
       }
     }

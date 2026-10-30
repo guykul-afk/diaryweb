@@ -95,6 +95,9 @@ class Prediction:
         self.recordedAt = recordedAt or time.strftime("%Y-%m-%dT%H:%M:%SZ")
         self.claimIds = claimIds or []
 
+    def update_empirical_status(self, status: str):
+        self.empiricalStatus = status
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
@@ -290,6 +293,12 @@ class DecisionRecord:
         self.sourceAssertionIds = sourceAssertionIds or []
         self.sourceEntryIds = sourceEntryIds or []
         self.status = status
+
+    def add_prediction(self, prediction: Prediction):
+        self.predictions.append(prediction)
+
+    def add_outcome(self, outcome: OutcomeEvent):
+        self.outcomes.append(outcome)
 
     def to_dict(self) -> Dict[str, Any]:
         return {

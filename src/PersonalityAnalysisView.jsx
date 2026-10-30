@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { fetchPersonalityAnalysis, triggerPersonalityAnalysis, fetchFirebaseEntries } from './firebase';
+import RecommendedReadingsCard from './components/RecommendedReadingsCard';
 import { 
   Brain, 
   TrendingUp, 
@@ -11,12 +12,15 @@ import {
   Clock,
   Sparkles,
   ChevronLeft,
+  ChevronDown,
+  ChevronUp,
+  BookOpen,
   CheckCircle2,
   AlertCircle,
   X
 } from 'lucide-react';
 
-export default function PersonalityAnalysisView({ uid }) {
+export default function PersonalityAnalysisView({ uid, entries: propEntries = [], graphNodes = [], onNavigateToEntry }) {
   const [loading, setLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzingType, setAnalyzingType] = useState(null); // 'full' | 'delta' | null
@@ -26,6 +30,7 @@ export default function PersonalityAnalysisView({ uid }) {
   const [activeAgentTab, setActiveAgentTab] = useState('clinical');
   const [newEntriesCount, setNewEntriesCount] = useState(0);
   const [lastFullAnalysisDate, setLastFullAnalysisDate] = useState(null);
+  const [isReadingsOpen, setIsReadingsOpen] = useState(true);
 
   const getTimestampMs = (ts) => {
     if (!ts) return 0;
@@ -72,7 +77,7 @@ export default function PersonalityAnalysisView({ uid }) {
       }
 
       // Dynamically fetch entries and calculate new entries count since last FULL analysis
-      const entries = await fetchFirebaseEntries(uid);
+      const entries = propEntries && propEntries.length > 0 ? propEntries : await fetchFirebaseEntries(uid);
       const newEntries = entries.filter(entry => {
         const entryTime = getTimestampMs(entry.rawTimestamp || entry.timestamp);
         if (!entryTime) return false;
@@ -585,6 +590,50 @@ export default function PersonalityAnalysisView({ uid }) {
         </div>
 
       </div>
+
+      {/* Collapsible Recommended Readings & Conceptual Frameworks */}
+      <section className="analysis-card" style={{
+        backgroundColor: 'var(--panel-bg)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-lg)',
+        padding: '20px',
+        boxShadow: 'var(--shadow-sm)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '14px',
+        marginTop: '8px'
+      }}>
+        <div 
+          onClick={() => setIsReadingsOpen(!isReadingsOpen)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            cursor: 'pointer',
+            userSelect: 'none'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <BookOpen size={20} style={{ color: 'var(--accent-color)' }} />
+            <h2 style={{ fontSize: '1.05rem', fontWeight: 600, margin: 0, color: 'var(--text-primary)' }}>
+              📚 השראה, ספרות ומסגרות חשיבה מותאמות לדיוקן שלך
+            </h2>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            <span>{isReadingsOpen ? 'הסתר המלצות' : 'הצג המלצות'}</span>
+            {isReadingsOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </div>
+        </div>
+
+        {isReadingsOpen && (
+          <div style={{ marginTop: '6px' }}>
+            <RecommendedReadingsCard 
+              uid={uid} 
+              onNavigateToNewEntry={onNavigateToEntry} 
+            />
+          </div>
+        )}
+      </section>
 
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { 
   Compass, 
   Target, 
@@ -11,105 +11,93 @@ import {
   Search, 
   ArrowLeft, 
   ArrowRight, 
-  Filter, 
   Sparkles, 
   Layers, 
-  Share2,
-  ChevronRight,
-  TrendingUp,
-  Activity,
-  CheckCircle2,
-  AlertCircle
+  TrendingUp, 
+  ShieldCheck, 
+  ExternalLink, 
+  Network, 
+  BookOpen, 
+  ChevronRight, 
+  Filter, 
+  AlertCircle, 
+  CheckCircle2, 
+  Clock, 
+  BarChart2, 
+  X,
+  Briefcase,
+  DollarSign,
+  Activity
 } from 'lucide-react';
 
-const CATEGORY_META = {
-  Domain: {
-    label: 'תחומי חיים',
-    english: 'Domains',
-    icon: Globe,
-    color: '#8b5cf6',
+/**
+ * 5 Canonical Life Domains for OKF Macro Hub
+ */
+export const LIFE_DOMAINS = {
+  WORK: {
+    id: 'work',
+    label: 'עבודה וקריירה',
+    english: 'Work & Career',
+    icon: Briefcase,
+    color: '#0284c7', // Sky Blue
+    bg: '#f0f9ff',
+    border: '#bae6fd',
+    badgeBg: '#e0f2fe',
+    badgeText: '#0369a1',
+    description: 'פרויקטים, תכנון משימות, ממשקים עסקיים, ניהול צוותים ומטרות מקצועיות.',
+    matches: ['work', 'project', 'עבודה', 'קריירה', 'עסק', 'פרויקט', 'חברה', 'משימות', 'ניהול', 'תפקיד', 'שכר דירה ותשלומים', 'פרויקט קטרוני', 'בעיות חניון', 'התקדמות תוכניות']
+  },
+  FAMILY: {
+    id: 'family',
+    label: 'משפחה וזוגיות',
+    english: 'Family & Relationships',
+    icon: Users,
+    color: '#8b5cf6', // Violet
     bg: '#f5f3ff',
     border: '#ddd6fe',
     badgeBg: '#ede9fe',
     badgeText: '#6d28d9',
-    description: 'זירות הפעולה הרחבות (עבודה, בריאות, משפחה, התפתחות אישית).'
+    description: 'מערכות יחסים קרובות, זוגיות, הורות, עוגנים משפחתיים ודינמיקה בינאישית.',
+    matches: ['family', 'relationships', 'משפחה', 'זוגיות', 'טלי', 'ילדים', 'הורים', 'קשר', 'יחסים', 'רווחת ילדים', 'אנשים ועוגנים']
   },
-  Goal: {
-    label: 'מטרות ויעדים',
-    english: 'Goals',
-    icon: Target,
-    color: '#10b981',
+  HEALTH: {
+    id: 'health',
+    label: 'בריאות וגוף',
+    english: 'Health & Body',
+    icon: Activity,
+    color: '#10b981', // Emerald
     bg: '#ecfdf5',
     border: '#a7f3d0',
     badgeBg: '#d1fae5',
     badgeText: '#047857',
-    description: 'היעדים, השאיפות והתוצאות שאתה חותר אליהם במודע.'
+    description: 'כושר גופני, ריצה, שינה, מדדי HRV, לחץ דם, תזונה ורווחה גופנית.',
+    matches: ['health', 'בריאות', 'גוף', 'ספורט', 'ריצה', 'חצי מרתון', 'כושר', 'משקל', 'לחץ דם', 'בדיקות דם', 'דופק', 'שינה', 'hrv', 'אימונים', 'דחיקת חזה']
   },
-  Pattern: {
-    label: 'דפוסים והרגלים',
-    english: 'Patterns',
-    icon: Zap,
-    color: '#f59e0b',
+  FINANCE: {
+    id: 'finance',
+    label: 'כספים ונדל"ן',
+    english: 'Finance & Real Estate',
+    icon: DollarSign,
+    color: '#f59e0b', // Amber
     bg: '#fffbeb',
     border: '#fde68a',
     badgeBg: '#fef3c7',
     badgeText: '#b45309',
-    description: 'דפוסי חשיבה והתנהגות שחוזרים על עצמם (פרפקציוניזם, דחיינות וכו\').'
+    description: 'עסקאות נדל"ן, שווי חברה, השקעות, תזרים, תכנון פיננסי ופרויקטים עתידיים.',
+    matches: ['finance', 'כספים', 'נדלן', 'נדל"ן', 'דירות', 'שכר דירה', 'השקעות', 'רווח', 'שווי', 'תשלומים', 'הכנסה', 'שווי חברה']
   },
-  Emotion: {
-    label: 'רגשות ומצבי רוח',
-    english: 'Emotions',
-    icon: Heart,
-    color: '#ec4899',
+  GROWTH: {
+    id: 'growth',
+    label: 'התפתחות וערכים',
+    english: 'Growth & Values',
+    icon: Sparkles,
+    color: '#ec4899', // Pink / Rose
     bg: '#fdf2f8',
     border: '#fbcfe8',
     badgeBg: '#fce7f3',
     badgeText: '#be185d',
-    description: 'תחושות פנימיות, עומסים רגשיים ורווחה נפשית שתועדו ביומן.'
-  },
-  Strategy: {
-    label: 'אסטרטגיות וכלים',
-    english: 'Strategies',
-    icon: Brain,
-    color: '#06b6d4',
-    bg: '#ecfeff',
-    border: '#a5f3fc',
-    badgeBg: '#cffafe',
-    badgeText: '#0e7490',
-    description: 'טקטיקות, שיטות מעשיות והרגלים שאימצת להתמודדות ולהתקדמות.'
-  },
-  Person: {
-    label: 'אנשים ועוגנים',
-    english: 'People',
-    icon: Users,
-    color: '#3b82f6',
-    bg: '#eff6ff',
-    border: '#bfdbfe',
-    badgeBg: '#dbeafe',
-    badgeText: '#1d4ed8',
-    description: 'דמויות מפתח, בני משפחה ומערכות יחסים משמעותיות בחייך.'
-  },
-  Insight: {
-    label: 'תובנות והארות',
-    english: 'Insights',
-    icon: Sparkles,
-    color: '#6366f1',
-    bg: '#eef2ff',
-    border: '#c7d2fe',
-    badgeBg: '#e0e7ff',
-    badgeText: '#4338ca',
-    description: 'הבנות פסיכולוגיות עמוקות ושיעורים שהתגבשו מתוך ההתבוננות.'
-  },
-  Event: {
-    label: 'אירועים מכוננים',
-    english: 'Events',
-    icon: Calendar,
-    color: '#f97316',
-    bg: '#fff7ed',
-    border: '#fed7aa',
-    badgeBg: '#ffedd5',
-    badgeText: '#c2410c',
-    description: 'נקודות ציון בזמן, שיחות מכריעות, משברים או רגעי פריצה.'
+    description: 'דפוסי חשיבה, ביקורת עצמית, פרפקציוניזם, קבלת החלטות, ערכים ומשמעת פנימית.',
+    matches: ['personal', 'growth', 'התפתחות', 'ערכים', 'ביקורת עצמית', 'פרפקציוניזם', 'דחיינות', 'חרדה', 'תובנות', 'רגשות', 'משמעת עצמית', 'תעדוף משימות', 'התקדמות', 'דפוסים והרגלים']
   }
 };
 
@@ -128,81 +116,363 @@ const RELATION_HEBREW = {
   'קשור_ל': { label: 'קשור ל', color: '#94a3b8' }
 };
 
-export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
-  const { filteredNodes = [], filteredLinks = [] } = diaryData || {};
+/**
+ * Checks whether an entity name is an isolated noise mention (e.g. "2 קילוגרם", "4-5_פעמים_בשבוע")
+ */
+function isNoisyMention(name) {
+  if (!name || typeof name !== 'string') return true;
+  const trimmed = name.trim();
+  // Filter out standalone measurements like "2 קילוגרם", "4-5_פעמים_בשבוע", "10 קילו", "85 קילו יציבים"
+  if (/^\d+(\.\d+)?(-|\+)?\d*(_|\s)*(קילו|ק"ג|קילוגרם|פעמים|שבועות|דירות|דקות|ימים|שעות|גרם)/i.test(trimmed)) {
+    return true;
+  }
+  // Pure numbers or single characters
+  if (/^\d+$/.test(trimmed) || trimmed.length <= 1) return true;
+  // Specific noise patterns
+  if (['2 קילוגרם', '4-5_פעמים_בשבוע', '2-3 קילו', '10 דקות יומיות', '60+ דירות', '85 קילו יציבים', '90 קילו', '100 קילו'].includes(trimmed)) {
+    return true;
+  }
+  return false;
+}
 
-  const [activeCategory, setActiveCategory] = useState(null);
+/**
+ * Determine life domain for a node based on its properties, metadata, edges, and topics
+ */
+function classifyNodeDomain(node) {
+  const textToScan = [
+    node.id,
+    node.name,
+    node.label,
+    node.parent_category,
+    node.domain,
+    node.type,
+    node.content,
+    ...(Array.isArray(node.topics) ? node.topics : []),
+    ...(Array.isArray(node.relatedEdges) ? node.relatedEdges.map(e => `${e.domain || ''} ${e.relation || ''} ${e.target || ''}`) : [])
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  for (const [key, domain] of Object.entries(LIFE_DOMAINS)) {
+    for (const matchTerm of domain.matches) {
+      if (textToScan.includes(matchTerm.toLowerCase())) {
+        return domain.id;
+      }
+    }
+  }
+  return 'growth'; // Default fallback
+}
+
+/**
+ * Extract authentic verbatim quotes for a given node from its metadata, edges, or raw diary entries
+ */
+function extractQuotesForNode(node, entries = []) {
+  const quotes = [];
+  const seenTexts = new Set();
+
+  const addQuote = (text, date, entryId, sourceHint) => {
+    if (!text || typeof text !== 'string') return;
+    const clean = text.trim();
+    if (clean.length < 8 || seenTexts.has(clean)) return;
+    seenTexts.add(clean);
+    quotes.push({
+      text: clean,
+      date: date || null,
+      entryId: entryId || null,
+      sourceHint: sourceHint || 'יומן רשומות'
+    });
+  };
+
+  // 1. Direct quotes on node
+  if (Array.isArray(node.sourceQuotes)) {
+    node.sourceQuotes.forEach(q => {
+      if (typeof q === 'string') addQuote(q, node.date, node.entryId, 'ציטוט מקור מיומן');
+      else if (q && typeof q === 'object') addQuote(q.quote || q.text, q.date || node.date, q.entryId || node.entryId, 'ציטוט מקור מיומן');
+    });
+  }
+
+  // 2. Direct quotes on relatedEdges
+  if (Array.isArray(node.relatedEdges)) {
+    node.relatedEdges.forEach(edge => {
+      const edgeDate = edge.date || (edge.timestamp ? new Date(edge.timestamp).toISOString().split('T')[0] : null);
+      if (Array.isArray(edge.sourceQuotes)) {
+        edge.sourceQuotes.forEach(q => {
+          const t = typeof q === 'string' ? q : q?.quote || q?.text;
+          addQuote(t, edgeDate, edge.entryId, 'קשר סיבתי בגרף');
+        });
+      } else if (edge.evidence?.quote) {
+        addQuote(edge.evidence.quote, edge.evidence.entryDate || edgeDate, edge.evidence.entryId, 'טענה אונטולוגית');
+      }
+    });
+  }
+
+  // 3. Fallback: Search diary entries for verbatim occurrences
+  const nodeLabel = (node.label || node.name || node.id || '').trim();
+  if (nodeLabel && Array.isArray(entries) && entries.length > 0) {
+    const qLower = nodeLabel.toLowerCase();
+
+    for (const entry of entries) {
+      const content = entry.content || '';
+      if (!content) continue;
+
+      const entryDate = entry.date || entry.frontmatter?.date || (entry.rawTimestamp ? new Date(entry.rawTimestamp).toISOString().split('T')[0] : null);
+      const idx = content.toLowerCase().indexOf(qLower);
+
+      if (idx !== -1) {
+        // Find sentence boundaries around the mention
+        const start = Math.max(0, content.lastIndexOf('.', idx) + 1);
+        let end = content.indexOf('.', idx + qLower.length);
+        if (end === -1) end = Math.min(content.length, idx + 140);
+        else end = end + 1;
+
+        const sentence = content.substring(start, end).trim();
+        if (sentence.length >= 10) {
+          addQuote(sentence, entryDate, entry.id, 'רשומה מותאמת ביומן');
+        }
+      }
+      if (quotes.length >= 6) break;
+    }
+  }
+
+  return quotes;
+}
+
+/**
+ * Extract stances for a node
+ */
+function extractStancesForNode(node) {
+  const stances = [];
+  if (Array.isArray(node.stances) && node.stances.length > 0) {
+    node.stances.forEach(s => {
+      stances.push(typeof s === 'string' ? s : (s.stance || s.label || JSON.stringify(s)));
+    });
+  }
+
+  // Derive from edges if empty
+  if (stances.length === 0 && Array.isArray(node.relatedEdges)) {
+    const stanceSet = new Set();
+    node.relatedEdges.forEach(e => {
+      if (Array.isArray(e.stances)) {
+        e.stances.forEach(s => stanceSet.add(typeof s === 'string' ? s : s.stance));
+      }
+      if (e.relation === 'מתחייב_ל' || e.relation === 'COMMITTED_TO') stanceSet.add('מחויבות');
+      if (e.relation === 'חולם_על' || e.relation === 'שואף_ל') stanceSet.add('שאיפה');
+      if (e.relation === 'סותר' || e.relation === 'CONTRADICTS') stanceSet.add('סתירה פנימית');
+      if (e.relation === 'מחזק' || e.relation === 'MITIGATES') stanceSet.add('מחזק');
+      if (e.relation === 'מחליש' || e.sentiment === -1 || e.sentimentScore < -0.2) stanceSet.add('אתגר רגשי');
+    });
+    stanceSet.forEach(s => stances.push(s));
+  }
+
+  if (stances.length === 0) {
+    stances.push('דפוס ידע פעיל');
+  }
+  return stances;
+}
+
+export default function DomainInsightExplorer({ 
+  diaryData, 
+  graphNodes: propGraphNodes, 
+  entries: propEntries = [], 
+  onNavigateToEntry, 
+  onOpenTraceability, 
+  onSelectNodeInGraph, 
+  onSelectConcept 
+}) {
+  // Resolve nodes & links from either direct props or diaryData context
+  const nodes = useMemo(() => {
+    if (propGraphNodes && propGraphNodes.length > 0) return propGraphNodes;
+    if (diaryData?.filteredNodes && diaryData.filteredNodes.length > 0) return diaryData.filteredNodes;
+    if (diaryData?.rawGraphData?.nodes && diaryData.rawGraphData.nodes.length > 0) return diaryData.rawGraphData.nodes;
+    return [];
+  }, [propGraphNodes, diaryData]);
+
+  const links = useMemo(() => {
+    if (diaryData?.filteredLinks && diaryData.filteredLinks.length > 0) return diaryData.filteredLinks;
+    if (diaryData?.rawGraphData?.links && diaryData.rawGraphData.links.length > 0) return diaryData.rawGraphData.links;
+    return [];
+  }, [diaryData]);
+
+  const entries = useMemo(() => {
+    if (propEntries && propEntries.length > 0) return propEntries;
+    if (diaryData?.entries && diaryData.entries.length > 0) return diaryData.entries;
+    return [];
+  }, [propEntries, diaryData]);
+
+  const [activeDomainId, setActiveDomainId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedConcept, setSelectedConcept] = useState(null);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [showNoise, setShowNoise] = useState(false);
 
-  // Map nodes and calculate connectivity
-  const { nodesById, categoryBuckets, nodeDegrees } = useMemo(() => {
-    const byId = {};
-    const buckets = {
-      Domain: [],
-      Goal: [],
-      Pattern: [],
-      Emotion: [],
-      Strategy: [],
-      Person: [],
-      Insight: [],
-      Event: []
-    };
+  // Calculate Pattern Salience, Domain Buckets & Degrees
+  const { enrichedNodes, domainBuckets, noiseNodes, nodeDegrees } = useMemo(() => {
     const degrees = {};
-
-    filteredNodes.forEach(node => {
-      byId[node.id] = node;
-      const type = node.type && buckets[node.type] ? node.type : 'Insight';
-      buckets[type].push(node);
-      degrees[node.id] = 0;
+    links.forEach(l => {
+      const s = typeof l.source === 'object' ? l.source.id : l.source;
+      const t = typeof l.target === 'object' ? l.target.id : l.target;
+      degrees[s] = (degrees[s] || 0) + 1;
+      degrees[t] = (degrees[t] || 0) + 1;
     });
 
-    filteredLinks.forEach(link => {
-      const s = typeof link.source === 'object' ? link.source.id : link.source;
-      const t = typeof link.target === 'object' ? link.target.id : link.target;
-      if (degrees[s] !== undefined) degrees[s]++;
-      if (degrees[t] !== undefined) degrees[t]++;
+    const buckets = {
+      work: [],
+      family: [],
+      health: [],
+      finance: [],
+      growth: []
+    };
+    const noise = [];
+
+    const enriched = nodes.map(node => {
+      const nodeName = node.label || node.name || node.id || '';
+      const isNoise = isNoisyMention(nodeName);
+
+      // Frequency calculation
+      const edgeCount = Array.isArray(node.relatedEdges) ? node.relatedEdges.length : 0;
+      const deg = degrees[node.id] || 0;
+      const rawFreq = node.occurrencesCount || node.frequency || node.val || Math.max(edgeCount, deg, 1);
+      const frequency = typeof rawFreq === 'number' ? Math.max(1, Math.round(rawFreq)) : 1;
+
+      // SpanDays calculation
+      let spanDays = 0;
+      const dates = [];
+      if (node.date) dates.push(new Date(node.date).getTime());
+      if (node.firstSeen && node.lastSeen) {
+        dates.push(new Date(node.firstSeen).getTime());
+        dates.push(new Date(node.lastSeen).getTime());
+      }
+      if (Array.isArray(node.relatedEdges)) {
+        node.relatedEdges.forEach(e => {
+          if (e.timestamp) dates.push(e.timestamp);
+          if (e.date) dates.push(new Date(e.date).getTime());
+        });
+      }
+      if (dates.length >= 2) {
+        const minT = Math.min(...dates);
+        const maxT = Math.max(...dates);
+        spanDays = Math.max(0, Math.round((maxT - minT) / (1000 * 60 * 60 * 24)));
+      }
+
+      // Confidence weight calculation
+      let confidenceWeight = 0.85;
+      if (typeof node.epistemicConfidence === 'number') {
+        confidenceWeight = node.epistemicConfidence;
+      } else if (node.confidence === 'Fact') {
+        confidenceWeight = 1.0;
+      } else if (node.confidence === 'Inference') {
+        confidenceWeight = 0.8;
+      } else if (node.confidence === 'Opinion') {
+        confidenceWeight = 0.6;
+      }
+
+      // Pattern Salience Formula: Frequency * ln(1 + SpanDays + 1) * ConfidenceWeight
+      const patternSalience = Number(
+        (frequency * Math.log(1 + spanDays + 1) * confidenceWeight).toFixed(2)
+      );
+
+      const domain = classifyNodeDomain(node);
+
+      const enrichedItem = {
+        ...node,
+        frequency,
+        spanDays,
+        confidenceWeight,
+        patternSalience,
+        assignedDomain: domain,
+        degree: deg,
+        isNoise
+      };
+
+      if (isNoise) {
+        noise.push(enrichedItem);
+      } else {
+        if (buckets[domain]) {
+          buckets[domain].push(enrichedItem);
+        } else {
+          buckets.growth.push(enrichedItem);
+        }
+      }
+
+      return enrichedItem;
     });
 
-    // Sort nodes in each bucket by degree
-    Object.keys(buckets).forEach(cat => {
-      buckets[cat].sort((a, b) => (degrees[b.id] || 0) - (degrees[a.id] || 0));
+    // Sort every bucket by Pattern Salience descending
+    Object.keys(buckets).forEach(dKey => {
+      buckets[dKey].sort((a, b) => b.patternSalience - a.patternSalience);
     });
+    noise.sort((a, b) => b.patternSalience - a.patternSalience);
 
-    return { nodesById: byId, categoryBuckets: buckets, nodeDegrees: degrees };
-  }, [filteredNodes, filteredLinks]);
+    return {
+      enrichedNodes: enriched,
+      domainBuckets: buckets,
+      noiseNodes: noise,
+      nodeDegrees: degrees
+    };
+  }, [nodes, links]);
 
-  // Causal network for selected concept
-  const conceptNetwork = useMemo(() => {
-    if (!selectedConcept) return null;
-    const cid = selectedConcept.id;
+  // Handle concept selection
+  const handleSelectNode = useCallback((node) => {
+    setSelectedNode(node);
+    if (onSelectConcept) onSelectConcept(node);
+  }, [onSelectConcept]);
 
+  // Causal network for selected node
+  const selectedCausalNetwork = useMemo(() => {
+    if (!selectedNode) return null;
+    const cid = selectedNode.id;
     const incoming = [];
     const outgoing = [];
 
-    filteredLinks.forEach(link => {
+    // From global links
+    links.forEach(link => {
       const s = typeof link.source === 'object' ? link.source.id : link.source;
       const t = typeof link.target === 'object' ? link.target.id : link.target;
       const rel = link.relation || link.label || 'קשור_ל';
 
-      if (t === cid && nodesById[s]) {
-        incoming.push({ node: nodesById[s], relation: rel });
-      } else if (s === cid && nodesById[t]) {
-        outgoing.push({ node: nodesById[t], relation: rel });
+      if (t === cid) {
+        const found = enrichedNodes.find(n => n.id === s);
+        if (found) incoming.push({ node: found, relation: rel });
+      } else if (s === cid) {
+        const found = enrichedNodes.find(n => n.id === t);
+        if (found) outgoing.push({ node: found, relation: rel });
       }
     });
 
-    return { node: selectedConcept, incoming, outgoing };
-  }, [selectedConcept, filteredLinks, nodesById]);
+    // From node.relatedEdges if links was empty
+    if (incoming.length === 0 && outgoing.length === 0 && Array.isArray(selectedNode.relatedEdges)) {
+      selectedNode.relatedEdges.forEach(e => {
+        const rel = e.relation || 'קשור_ל';
+        if (e.target && e.target !== cid) {
+          const found = enrichedNodes.find(n => n.id === e.target) || { id: e.target, label: e.target };
+          outgoing.push({ node: found, relation: rel });
+        } else if (e.source && e.source !== cid) {
+          const found = enrichedNodes.find(n => n.id === e.source) || { id: e.source, label: e.source };
+          incoming.push({ node: found, relation: rel });
+        }
+      });
+    }
 
-  // Global search candidates
+    return { node: selectedNode, incoming, outgoing };
+  }, [selectedNode, links, enrichedNodes]);
+
+  // Quotes and stances for selected node
+  const selectedNodeQuotes = useMemo(() => {
+    if (!selectedNode) return [];
+    return extractQuotesForNode(selectedNode, entries);
+  }, [selectedNode, entries]);
+
+  const selectedNodeStances = useMemo(() => {
+    if (!selectedNode) return [];
+    return extractStancesForNode(selectedNode);
+  }, [selectedNode]);
+
+  // Search Results
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase().trim();
-    return filteredNodes
+    return enrichedNodes
       .filter(n => (n.label || n.name || n.id).toLowerCase().includes(q))
+      .sort((a, b) => b.patternSalience - a.patternSalience)
       .slice(0, 10);
-  }, [filteredNodes, searchQuery]);
+  }, [enrichedNodes, searchQuery]);
 
   return (
     <div style={{
@@ -210,61 +480,102 @@ export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
       flexDirection: 'column',
       height: '100%',
       width: '100%',
-      background: '#f8fafc',
-      color: '#0f172a',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
+      background: '#090d16',
+      color: '#f8fafc',
+      fontFamily: 'Inter, system-ui, sans-serif',
       direction: 'rtl',
       overflowY: 'auto'
     }}>
-      {/* Top Header & Search Bar */}
+      {/* Top Header & Search */}
       <div style={{
-        background: '#ffffff',
-        borderBottom: '1px solid #e2e8f0',
-        padding: '20px 28px',
+        background: 'rgba(15, 23, 42, 0.85)',
+        backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        padding: '16px 24px',
         position: 'sticky',
         top: 0,
-        zIndex: 20
+        zIndex: 30,
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '14px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '38px',
+            height: '38px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 14px rgba(99, 102, 241, 0.4)'
+          }}>
+            <Compass size={22} />
+          </div>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                background: '#e0e7ff',
-                color: '#4338ca',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}>
-                <Compass size={20} />
-              </div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0 }}>
-                מרכז תחומי החיים והאונטולוגיה (Macro Hub)
+              <h1 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#ffffff' }}>
+                סייר תחומי חיים ודפוסים
               </h1>
+              <span style={{
+                fontSize: '0.72rem',
+                padding: '2px 8px',
+                borderRadius: '12px',
+                background: 'rgba(56, 189, 248, 0.18)',
+                color: '#38bdf8',
+                border: '1px solid rgba(56, 189, 248, 0.3)'
+              }}>
+                Macro Hub & Salience
+              </span>
             </div>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#64748b' }}>
-              מבט-על נקי על 8 תחומי הידע של היומן, עם קשרים סיבתיים מדויקים וללא כדורי שיער.
+            <p style={{ margin: '3px 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+              מבט-על נקי על 5 תחומי החיים עם דירוג בולטות (Pattern Salience), ציטוטים אמיתיים ושרשרת ראיות.
             </p>
           </div>
+        </div>
 
-          {/* Quick Search */}
+        {/* Global Search & Noise Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button
+            onClick={() => setShowNoise(prev => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '6px 12px',
+              borderRadius: '9px',
+              background: showNoise ? 'rgba(245, 158, 11, 0.2)' : 'rgba(30, 41, 59, 0.6)',
+              border: `1px solid ${showNoise ? '#f59e0b' : 'rgba(255, 255, 255, 0.1)'}`,
+              color: showNoise ? '#fbbf24' : '#94a3b8',
+              fontSize: '0.78rem',
+              fontWeight: 600,
+              cursor: 'pointer'
+            }}
+            title="הצג מופעים נקודתיים/רעש שסוננו (כגון '2 קילוגרם', '4-5 פעמים בשבוע')"
+          >
+            <Filter size={14} />
+            <span>רעש שסונן ({noiseNodes.length})</span>
+          </button>
+
           <div style={{ position: 'relative', width: '280px' }}>
             <Search size={16} style={{ position: 'absolute', right: '12px', top: '10px', color: '#94a3b8' }} />
             <input
               type="text"
-              placeholder="חפש מושג, רגש, דפוס..."
+              placeholder="חפש דפוס, מושג או יעד..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
                 width: '100%',
                 padding: '8px 36px 8px 12px',
                 borderRadius: '10px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
                 fontSize: '0.85rem',
                 outline: 'none',
-                background: '#f8fafc',
+                background: 'rgba(30, 41, 59, 0.8)',
+                color: '#ffffff',
                 boxSizing: 'border-box'
               }}
             />
@@ -274,46 +585,52 @@ export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
                 top: '100%',
                 right: 0,
                 left: 0,
-                background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                background: '#1e293b',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
                 borderRadius: '10px',
-                boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+                boxShadow: '0 12px 30px rgba(0, 0, 0, 0.5)',
                 marginTop: '6px',
-                zIndex: 30,
-                maxHeight: '260px',
+                zIndex: 40,
+                maxHeight: '280px',
                 overflowY: 'auto'
               }}>
                 {searchResults.map(res => {
-                  const meta = CATEGORY_META[res.type] || CATEGORY_META.Insight;
+                  const domMeta = Object.values(LIFE_DOMAINS).find(d => d.id === res.assignedDomain) || LIFE_DOMAINS.GROWTH;
                   return (
                     <div
                       key={res.id}
                       onClick={() => {
-                        setSelectedConcept(res);
+                        handleSelectNode(res);
                         setSearchQuery('');
                       }}
                       style={{
                         padding: '10px 14px',
-                        borderBottom: '1px solid #f1f5f9',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        cursor: 'pointer',
-                        transition: 'background 0.1s'
+                        cursor: 'pointer'
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = '#ffffff'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                     >
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{res.label || res.name || res.id}</span>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: '0.88rem', color: '#ffffff' }}>
+                          {res.label || res.name || res.id}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                          ציון בולטות: <strong>{res.patternSalience}</strong> | {res.frequency} מופעים
+                        </div>
+                      </div>
                       <span style={{
-                        fontSize: '0.72rem',
+                        fontSize: '0.7rem',
                         padding: '2px 8px',
                         borderRadius: '12px',
-                        background: meta.badgeBg,
-                        color: meta.badgeText,
-                        fontWeight: 600
+                        background: domMeta.badgeBg,
+                        color: domMeta.badgeText,
+                        fontWeight: 700
                       }}>
-                        {meta.label}
+                        {domMeta.label}
                       </span>
                     </div>
                   );
@@ -324,208 +641,334 @@ export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
         </div>
       </div>
 
-      {/* Main Body */}
-      <div style={{ padding: '24px 28px', maxWidth: '1400px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+      {/* Main Content Area */}
+      <div style={{ padding: '24px 28px', maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
         
-        {/* Selected Concept Causal Chain Card (Micro Flow) */}
-        {conceptNetwork && (
+        {/* Selected Entity Detailed Evidence & Causal Drawer */}
+        {selectedNode && (
           <div style={{
-            background: '#ffffff',
-            borderRadius: '16px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.06)',
-            padding: '22px 26px',
-            marginBottom: '28px',
-            position: 'relative'
+            background: '#111827',
+            borderRadius: '18px',
+            border: '1px solid rgba(99, 102, 241, 0.35)',
+            boxShadow: '0 12px 40px rgba(0, 0, 0, 0.6)',
+            padding: '24px',
+            marginBottom: '32px',
+            position: 'relative',
+            animation: 'fadeIn 0.2s ease'
           }}>
+            {/* Close Button */}
             <button
-              onClick={() => setSelectedConcept(null)}
+              onClick={() => setSelectedNode(null)}
               style={{
                 position: 'absolute',
                 top: '18px',
                 left: '20px',
                 border: 'none',
-                background: '#f1f5f9',
+                background: 'rgba(255, 255, 255, 0.08)',
+                color: '#cbd5e1',
                 borderRadius: '8px',
-                padding: '4px 10px',
-                fontSize: '0.8rem',
+                padding: '6px 12px',
+                fontSize: '0.82rem',
                 cursor: 'pointer',
-                color: '#64748b'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              סגור מיקוד ✕
+              <X size={14} /> סגור פירוט
             </button>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-              <Sparkles size={18} style={{ color: '#6366f1' }} />
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
-                שרשרת סיבתית ותובנה ממוקדת:
-              </h2>
-              <span style={{
-                fontSize: '0.95rem',
+            {/* Top Concept Info Bar */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #6366f1, #38bdf8)',
+                padding: '6px 12px',
+                borderRadius: '10px',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '1.25rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}>
+                <Sparkles size={20} />
+                <span>{selectedNode.label || selectedNode.name || selectedNode.id}</span>
+              </div>
+
+              {/* Salience Badge */}
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.15)',
+                border: '1px solid rgba(245, 158, 11, 0.4)',
+                color: '#f59e0b',
+                padding: '4px 10px',
+                borderRadius: '8px',
+                fontSize: '0.8rem',
                 fontWeight: 700,
-                color: '#1e293b',
-                background: '#f1f5f9',
-                padding: '3px 12px',
-                borderRadius: '8px'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
               }}>
-                {conceptNetwork.node.label || conceptNetwork.node.id}
-              </span>
-              <span style={{
-                fontSize: '0.75rem',
-                padding: '2px 8px',
-                borderRadius: '12px',
-                background: (CATEGORY_META[conceptNetwork.node.type] || CATEGORY_META.Insight).badgeBg,
-                color: (CATEGORY_META[conceptNetwork.node.type] || CATEGORY_META.Insight).badgeText,
-                fontWeight: 600
-              }}>
-                {(CATEGORY_META[conceptNetwork.node.type] || CATEGORY_META.Insight).label}
-              </span>
+                <TrendingUp size={15} />
+                <span>ציון בולטות: {selectedNode.patternSalience || 0}</span>
+                <span style={{ fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 500 }}>
+                  ({selectedNode.frequency || 1} מופעים לאורך {selectedNode.spanDays || 0} ימים)
+                </span>
+              </div>
+
+              {/* Domain Badge */}
+              {(() => {
+                const dom = Object.values(LIFE_DOMAINS).find(d => d.id === selectedNode.assignedDomain) || LIFE_DOMAINS.GROWTH;
+                return (
+                  <span style={{
+                    fontSize: '0.78rem',
+                    padding: '4px 10px',
+                    borderRadius: '8px',
+                    background: dom.badgeBg,
+                    color: dom.badgeText,
+                    fontWeight: 700
+                  }}>
+                    {dom.label}
+                  </span>
+                );
+              })()}
+
+              {/* Stance Badges */}
+              {selectedNodeStances.map((stance, idx) => (
+                <span
+                  key={idx}
+                  style={{
+                    fontSize: '0.75rem',
+                    padding: '3px 9px',
+                    borderRadius: '12px',
+                    background: 'rgba(99, 102, 241, 0.2)',
+                    color: '#c7d2fe',
+                    border: '1px solid rgba(99, 102, 241, 0.35)',
+                    fontWeight: 600
+                  }}
+                >
+                   עמדה: {stance}
+                </span>
+              ))}
             </div>
 
-            {/* 3-Column Causal Flow */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr auto 1.2fr auto 1fr',
-              gap: '14px',
-              alignItems: 'center',
-              marginTop: '16px'
-            }}>
-              {/* Incoming: Factors & Causes */}
-              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '120px' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>
-                  ⬅️ מושגים שמשפיעים או מפעילים אותו ({conceptNetwork.incoming.length})
-                </div>
-                {conceptNetwork.incoming.length === 0 ? (
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>אין גורמים מתועדים</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {conceptNetwork.incoming.slice(0, 6).map((item, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => setSelectedConcept(item.node)}
-                        style={{
-                          background: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          padding: '6px 10px',
-                          borderRadius: '8px',
-                          fontSize: '0.82rem',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <span style={{ fontWeight: 600 }}>{item.node.label || item.node.id}</span>
-                        <span style={{
-                          fontSize: '0.68rem',
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          background: '#f1f5f9',
-                          color: (RELATION_HEBREW[item.relation] || {}).color || '#64748b'
-                        }}>
-                          {(RELATION_HEBREW[item.relation] || {}).label || item.relation}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            {/* Action Buttons: Network Switch + Traceability */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '20px' }}>
+              {onSelectNodeInGraph && (
+                <button
+                  onClick={() => onSelectNodeInGraph(selectedNode)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: '#38bdf8',
+                    color: '#090d16',
+                    border: 'none',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 10px rgba(56, 189, 248, 0.4)'
+                  }}
+                >
+                  <Network size={16} />
+                  <span>🕸️ הצג ברשת הסמנטית</span>
+                </button>
+              )}
 
-              {/* Arrow */}
-              <div style={{ color: '#cbd5e1' }}><ArrowLeft size={20} /></div>
+              {onOpenTraceability && (
+                <button
+                  onClick={() => onOpenTraceability(selectedNode)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    background: 'rgba(16, 185, 129, 0.2)',
+                    color: '#34d399',
+                    border: '1px solid rgba(16, 185, 129, 0.4)',
+                    fontWeight: 700,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <ShieldCheck size={16} />
+                  <span>🔍 שרשרת ראיות (Traceability)</span>
+                </button>
+              )}
+            </div>
 
-              {/* Center Core Concept */}
+            {/* 2-Column Grid: Left = Real Verbatim Quotes, Right = Direct Causal Connections */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
+              
+              {/* Authentic Quotes Column */}
               <div style={{
-                background: (CATEGORY_META[conceptNetwork.node.type] || CATEGORY_META.Insight).bg,
-                border: `2px solid ${(CATEGORY_META[conceptNetwork.node.type] || CATEGORY_META.Insight).color}`,
+                background: 'rgba(15, 23, 42, 0.7)',
                 borderRadius: '14px',
-                padding: '18px 20px',
-                textAlign: 'center',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.05)'
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '16px'
               }}>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: (CATEGORY_META[conceptNetwork.node.type] || CATEGORY_META.Insight).badgeText }}>
-                  המוקד המרכזי
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#38bdf8', fontSize: '0.9rem', fontWeight: 700 }}>
+                  <BookOpen size={18} />
+                  <span>ציטוטים אותנטיים מתוך יומן הרשומות ({selectedNodeQuotes.length})</span>
                 </div>
-                <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#0f172a', margin: '6px 0' }}>
-                  {conceptNetwork.node.label || conceptNetwork.node.id}
-                </div>
-                <div style={{ fontSize: '0.8rem', color: '#475569' }}>
-                  {nodeDegrees[conceptNetwork.node.id] || 0} קשרים ישירים בגרף
-                </div>
-                {conceptNetwork.node.description && (
-                  <p style={{ fontSize: '0.8rem', color: '#334155', marginTop: '8px', borderTop: '1px solid rgba(0,0,0,0.06)', paddingTop: '6px' }}>
-                    {conceptNetwork.node.description}
-                  </p>
-                )}
-              </div>
 
-              {/* Arrow */}
-              <div style={{ color: '#cbd5e1' }}><ArrowLeft size={20} /></div>
-
-              {/* Outgoing: Results & Goals */}
-              <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #e2e8f0', minHeight: '120px' }}>
-                <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#64748b', marginBottom: '8px' }}>
-                  מושגים שהוא מניע, מחזק או שואף אליהם ⬅️ ({conceptNetwork.outgoing.length})
-                </div>
-                {conceptNetwork.outgoing.length === 0 ? (
-                  <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>אין תוצאות מתועדות</div>
+                {selectedNodeQuotes.length === 0 ? (
+                  <div style={{ fontSize: '0.82rem', color: '#94a3b8', fontStyle: 'italic', padding: '12px 0' }}>
+                    לא נמצאו ציטוטים ישירים עבור מושג זה. המושג חולץ על בסיס קשרים בגרף.
+                  </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    {conceptNetwork.outgoing.slice(0, 6).map((item, idx) => (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '260px', overflowY: 'auto' }}>
+                    {selectedNodeQuotes.map((q, idx) => (
                       <div
                         key={idx}
-                        onClick={() => setSelectedConcept(item.node)}
                         style={{
-                          background: '#ffffff',
-                          border: '1px solid #e2e8f0',
-                          padding: '6px 10px',
+                          background: 'rgba(30, 41, 59, 0.6)',
+                          borderRight: '3px solid #38bdf8',
                           borderRadius: '8px',
-                          fontSize: '0.82rem',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          cursor: 'pointer'
+                          padding: '10px 14px'
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{item.node.label || item.node.id}</span>
-                        <span style={{
-                          fontSize: '0.68rem',
-                          padding: '1px 6px',
-                          borderRadius: '4px',
-                          background: '#f1f5f9',
-                          color: (RELATION_HEBREW[item.relation] || {}).color || '#64748b'
-                        }}>
-                          {(RELATION_HEBREW[item.relation] || {}).label || item.relation}
-                        </span>
+                        <div style={{ fontSize: '0.85rem', color: '#e2e8f0', lineHeight: 1.5 }}>
+                          "{q.text}"
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', fontSize: '0.72rem', color: '#94a3b8' }}>
+                          <span>📅 {q.date || 'תאריך מתועד'}</span>
+                          {q.entryId && onNavigateToEntry && (
+                            <button
+                              onClick={() => onNavigateToEntry(q.entryId)}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#38bdf8',
+                                cursor: 'pointer',
+                                fontSize: '0.72rem',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '3px'
+                              }}
+                            >
+                              <span>צפה ברשומה המלאה</span>
+                              <ExternalLink size={12} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
+
+              {/* Direct Causal Connections Column */}
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.7)',
+                borderRadius: '14px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                padding: '16px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', color: '#a855f7', fontSize: '0.9rem', fontWeight: 700 }}>
+                  <TrendingUp size={18} />
+                  <span>קשרים סיבתיים ישירים (גורמים ותוצאות)</span>
+                </div>
+
+                {selectedCausalNetwork && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {/* Incoming */}
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
+                        ⬅️ גורמים שמשפיעים או מפעילים ({selectedCausalNetwork.incoming.length}):
+                      </div>
+                      {selectedCausalNetwork.incoming.length === 0 ? (
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>אין גורמים מתועדים</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {selectedCausalNetwork.incoming.slice(0, 5).map((item, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleSelectNode(item.node)}
+                              style={{
+                                background: 'rgba(30, 41, 59, 0.8)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRadius: '8px',
+                                padding: '4px 8px',
+                                fontSize: '0.78rem',
+                                color: '#e2e8f0',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <span>{item.node.label || item.node.name || item.node.id}</span>
+                              <span style={{ fontSize: '0.68rem', color: '#a855f7' }}>({item.relation})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Outgoing */}
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', marginBottom: '6px' }}>
+                        ➡️ תוצאות, השפעות ויעדים מונעים ({selectedCausalNetwork.outgoing.length}):
+                      </div>
+                      {selectedCausalNetwork.outgoing.length === 0 ? (
+                        <div style={{ fontSize: '0.78rem', color: '#64748b', fontStyle: 'italic' }}>אין תוצאות מתועדות</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {selectedCausalNetwork.outgoing.slice(0, 5).map((item, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => handleSelectNode(item.node)}
+                              style={{
+                                background: 'rgba(30, 41, 59, 0.8)',
+                                border: '1px solid rgba(255, 255, 255, 0.1)',
+                                borderRadius: '8px',
+                                padding: '4px 8px',
+                                fontSize: '0.78rem',
+                                color: '#e2e8f0',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px'
+                              }}
+                            >
+                              <span>{item.node.label || item.node.name || item.node.id}</span>
+                              <span style={{ fontSize: '0.68rem', color: '#38bdf8' }}>({item.relation})</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         )}
 
-        {/* 8 Macro Domain Cards Grid */}
+        {/* 5 Macro Life Domain Cards Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
           gap: '20px'
         }}>
-          {Object.entries(CATEGORY_META).map(([typeKey, meta]) => {
-            const Icon = meta.icon;
-            const nodes = categoryBuckets[typeKey] || [];
-            const isExpanded = activeCategory === typeKey;
+          {Object.entries(LIFE_DOMAINS).map(([key, domain]) => {
+            const Icon = domain.icon;
+            const domainNodes = domainBuckets[domain.id] || [];
+            const isExpanded = activeDomainId === domain.id;
 
             return (
               <div
-                key={typeKey}
+                key={domain.id}
                 style={{
-                  background: '#ffffff',
+                  background: '#111827',
                   borderRadius: '16px',
-                  border: `1px solid ${isExpanded ? meta.color : '#e2e8f0'}`,
-                  boxShadow: isExpanded ? `0 8px 24px ${meta.color}25` : '0 2px 10px rgba(0,0,0,0.03)',
+                  border: `1px solid ${isExpanded ? domain.color : 'rgba(255, 255, 255, 0.08)'}`,
+                  boxShadow: isExpanded ? `0 8px 30px ${domain.color}25` : '0 4px 14px rgba(0, 0, 0, 0.25)',
                   overflow: 'hidden',
                   transition: 'all 0.2s ease',
                   display: 'flex',
@@ -535,8 +978,8 @@ export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
                 {/* Header Banner */}
                 <div style={{
                   padding: '16px 20px',
-                  background: meta.bg,
-                  borderBottom: `1px solid ${meta.border}`,
+                  background: 'rgba(30, 41, 59, 0.6)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center'
@@ -546,92 +989,106 @@ export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
                       width: '36px',
                       height: '36px',
                       borderRadius: '10px',
-                      background: '#ffffff',
-                      color: meta.color,
+                      background: domain.bg,
+                      color: domain.color,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.06)'
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)'
                     }}>
                       <Icon size={20} />
                     </div>
                     <div>
-                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#0f172a' }}>
-                        {meta.label}
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+                        {domain.label}
                       </h3>
-                      <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
-                        {meta.english}
+                      <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                        {domain.english}
                       </span>
                     </div>
                   </div>
 
                   <span style={{
-                    fontSize: '0.82rem',
+                    fontSize: '0.8rem',
                     fontWeight: 700,
                     padding: '4px 10px',
                     borderRadius: '20px',
-                    background: '#ffffff',
-                    color: meta.color,
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)'
+                    background: domain.badgeBg,
+                    color: domain.badgeText
                   }}>
-                    {nodes.length} מושגים
+                    {domainNodes.length} דפוסים
                   </span>
                 </div>
 
-                {/* Description */}
-                <div style={{ padding: '12px 20px 8px 20px', fontSize: '0.8rem', color: '#64748b' }}>
-                  {meta.description}
+                {/* Domain Description */}
+                <div style={{ padding: '12px 20px 8px 20px', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                  {domain.description}
                 </div>
 
-                {/* Top Concepts List */}
+                {/* Top Ranked Patterns (Salience Ranking) */}
                 <div style={{ padding: '10px 20px 16px 20px', flex: 1 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8', marginBottom: '8px' }}>
-                    מושגים מרכזיים בתחום זה:
+                  <div style={{ fontSize: '0.74rem', fontWeight: 700, color: '#64748b', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                    <span>דפוסים מובילים לפי בולטות (Salience):</span>
+                    <span>ציון בולטות</span>
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {nodes.slice(0, isExpanded ? 24 : 7).map(node => (
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {domainNodes.slice(0, isExpanded ? 30 : 6).map(node => (
                       <button
                         key={node.id}
-                        onClick={() => setSelectedConcept(node)}
+                        onClick={() => handleSelectNode(node)}
                         style={{
-                          fontSize: '0.8rem',
-                          padding: '5px 10px',
+                          fontSize: '0.82rem',
+                          padding: '7px 10px',
                           borderRadius: '8px',
-                          border: '1px solid #e2e8f0',
-                          background: '#f8fafc',
-                          color: '#334155',
+                          border: '1px solid rgba(255, 255, 255, 0.06)',
+                          background: selectedNode?.id === node.id ? domain.badgeBg : 'rgba(30, 41, 59, 0.5)',
+                          color: selectedNode?.id === node.id ? domain.badgeText : '#e2e8f0',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '6px',
-                          transition: 'all 0.15s'
+                          justifyContent: 'space-between',
+                          transition: 'all 0.15s ease'
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = meta.badgeBg;
-                          e.currentTarget.style.borderColor = meta.color;
+                          e.currentTarget.style.borderColor = domain.color;
+                          e.currentTarget.style.background = 'rgba(30, 41, 59, 0.9)';
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = '#f8fafc';
-                          e.currentTarget.style.borderColor = '#e2e8f0';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.06)';
+                          e.currentTarget.style.background = selectedNode?.id === node.id ? domain.badgeBg : 'rgba(30, 41, 59, 0.5)';
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{node.label || node.id}</span>
-                        {nodeDegrees[node.id] > 1 && (
-                          <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
-                            ({nodeDegrees[node.id]})
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontWeight: 600 }}>{node.label || node.name || node.id}</span>
+                          {node.frequency > 1 && (
+                            <span style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
+                              ({node.frequency} מופעים)
+                            </span>
+                          )}
+                        </div>
+
+                        <span style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          color: domain.color,
+                          background: 'rgba(0, 0, 0, 0.25)',
+                          padding: '2px 6px',
+                          borderRadius: '6px'
+                        }}>
+                          {node.patternSalience}
+                        </span>
                       </button>
                     ))}
                   </div>
 
-                  {nodes.length > 7 && (
+                  {domainNodes.length > 6 && (
                     <button
-                      onClick={() => setActiveCategory(isExpanded ? null : typeKey)}
+                      onClick={() => setActiveDomainId(isExpanded ? null : domain.id)}
                       style={{
                         marginTop: '12px',
                         fontSize: '0.78rem',
-                        color: meta.color,
+                        color: domain.color,
                         background: 'transparent',
                         border: 'none',
                         cursor: 'pointer',
@@ -639,7 +1096,7 @@ export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
                         padding: 0
                       }}
                     >
-                      {isExpanded ? 'הצג פחות ▲' : `הצג את כל ${nodes.length} המושגים ▼`}
+                      {isExpanded ? 'הצג פחות ▲' : `הצג את כל ${domainNodes.length} הדפוסים ▼`}
                     </button>
                   )}
                 </div>
@@ -647,6 +1104,51 @@ export default function DomainInsightExplorer({ diaryData, onSelectConcept }) {
             );
           })}
         </div>
+
+        {/* Collapsible Noise Section */}
+        {showNoise && (
+          <div style={{
+            marginTop: '32px',
+            background: 'rgba(15, 23, 42, 0.8)',
+            border: '1px solid rgba(245, 158, 11, 0.25)',
+            borderRadius: '16px',
+            padding: '20px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fbbf24', marginBottom: '10px' }}>
+              <AlertCircle size={18} />
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700 }}>
+                מופעים נקודתיים ורעש שסוננו מהסייר הראשי ({noiseNodes.length})
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '14px' }}>
+              מופעים כגון כמויות בדידות, יחידות מידה או תדירויות חד-פעמיות שאינם מייצגים דפוס חיים ארוך טווח:
+            </p>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {noiseNodes.map(n => (
+                <button
+                  key={n.id}
+                  onClick={() => handleSelectNode(n)}
+                  style={{
+                    background: 'rgba(30, 41, 59, 0.6)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '8px',
+                    padding: '4px 10px',
+                    fontSize: '0.78rem',
+                    color: '#94a3b8',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <span>{n.label || n.name || n.id}</span>
+                  <span style={{ fontSize: '0.68rem', color: '#64748b', marginRight: '4px' }}>
+                    (בולטות: {n.patternSalience})
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

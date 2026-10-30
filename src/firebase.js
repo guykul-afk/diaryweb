@@ -1,5 +1,22 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, query, orderBy, doc, connectFirestoreEmulator, getDocsFromServer, getDocFromServer, updateDoc, setDoc, writeBatch, arrayUnion } from 'firebase/firestore';
+import { 
+  getFirestore, 
+  collection, 
+  query, 
+  orderBy, 
+  doc, 
+  connectFirestoreEmulator, 
+  getDocsFromServer, 
+  getDocFromServer, 
+  updateDoc, 
+  setDoc, 
+  writeBatch, 
+  arrayUnion, 
+  deleteDoc,
+  addDoc, 
+  getDocs, 
+  serverTimestamp 
+} from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, connectAuthEmulator } from 'firebase/auth';
 import { getFunctions, httpsCallable, connectFunctionsEmulator } from 'firebase/functions';
 
@@ -29,7 +46,6 @@ export async function fetchSyncedIsaData(uid) {
   }
   return null;
 }
-
 
 if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && window.location.search.includes('useEmulator=true')) {
   console.log("Connecting to local Firebase Emulators...");
@@ -73,6 +89,8 @@ export async function triggerGraphAnalysis(uid, query = 'אנא נתח את הג
   const result = await analyzeFunc({ uid, query });
   return result.data;
 }
+
+export const analyzeGraphDetective = triggerGraphAnalysis;
 
 export async function verifyPasscode(passcode) {
   const verifyFunc = httpsCallable(functions, 'verify_passcode');
@@ -132,8 +150,6 @@ export async function fetchAllRecommendedReadings(uid) {
   }
   return [];
 }
-
-
 
 // Helper to format transcript text (replace 'משתמש' speaker label with 'גיא')
 export function formatTranscript(text) {
@@ -222,7 +238,11 @@ export async function fetchFirebaseGraph(uid) {
       fx: data.fx !== undefined ? data.fx : null,
       fy: data.fy !== undefined ? data.fy : null,
       metrics: data.metrics || null,
-      date: data.date || null
+      date: data.date || null,
+      stances: data.stances || data.properties?.stances || [],
+      sourceQuotes: data.sourceQuotes || data.properties?.sourceQuotes || [],
+      epistemicConfidence: data.epistemicConfidence !== undefined ? data.epistemicConfidence : (data.confidence !== undefined ? data.confidence : 1),
+      provenanceType: data.provenanceType || 'EXTRACTED'
     });
     nodeIds.add(nodeId.toLowerCase());
 
@@ -239,7 +259,11 @@ export async function fetchFirebaseGraph(uid) {
             sentimentScore: edge.sentimentScore !== undefined ? edge.sentimentScore : 0,
             sourceQuotes: edge.sourceQuotes || [],
             timestamp: edge.timestamp,
-            isManual: edge.isManual || false
+            isManual: edge.isManual || false,
+            stances: edge.stances || [],
+            epistemicConfidence: edge.epistemicConfidence !== undefined ? edge.epistemicConfidence : 1,
+            provenanceType: edge.provenanceType || 'EXTRACTED',
+            date: edge.date || null
           });
         }
       });
@@ -260,7 +284,11 @@ export async function fetchFirebaseGraph(uid) {
         weight: 1,
         content: '',
         fx: null,
-        fy: null
+        fy: null,
+        stances: [],
+        sourceQuotes: [],
+        epistemicConfidence: 1,
+        provenanceType: 'EXTRACTED'
       });
       nodeIds.add(targetLower);
     }
@@ -273,7 +301,11 @@ export async function fetchFirebaseGraph(uid) {
         weight: 1,
         content: '',
         fx: null,
-        fy: null
+        fy: null,
+        stances: [],
+        sourceQuotes: [],
+        epistemicConfidence: 1,
+        provenanceType: 'EXTRACTED'
       });
       nodeIds.add(sourceLower);
     }
@@ -328,8 +360,6 @@ export async function fetchTheoreticalConcepts() {
   return { nodes, links };
 }
 
-import { addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
-
 // Save a chat message to Firestore history
 export async function saveChatMessage(uid, role, text) {
   if (!uid) return;
@@ -378,6 +408,7 @@ export async function syncInsightsToGraph(uid) {
   const result = await syncFunc({ uid });
   return result.data;
 }
+
 // Trigger Entity Resolution and Clustering optimization on the knowledge graph
 export async function resolveAndClusterEntities(uid) {
   if (!uid) throw new Error("Missing User ID (UID)");
@@ -501,18 +532,241 @@ export async function fetchUserOutcomes(uid) {
   }
 }
 
-// Save or update a DecisionRecord in Firestore
-export async function saveDecisionRecord(uid, decisionData) {
+// Save or update a DecisionRecord in Firestore and normalize associated predictions
+export async function saveUserDecision(uid, decisionData) {
   if (!uid || !decisionData) throw new Error("Missing UID or decisionData");
+
   const decId = decisionData.id || `dec_${Date.now()}`;
-  const docRef = doc(db, `users/${uid}/decisions`, decId);
+  const nowIso = new Date().toISOString();
+
+  // Normalize and save predictions if present
+  const savedPredictions = [];
+  if (Array.isArray(decisionData.predictions) && decisionData.predictions.length > 0) {
+    for (let i = 0; i < decisionData.predictions.length; i++) {
+      const pred = decisionData.predictions[i];
+      const isString = typeof pred === 'string';
+      const predId = (!isString && pred.id) ? pred.id : `pred_${Date.now()}_${i}`;
+      const expectedOutcome = isString ? pred : (pred.expectedOutcome || pred.predictionText || pred.title || pred.text || '');
+      const predictionText = isString ? pred : (pred.predictionText || pred.expectedOutcome || pred.text || expectedOutcome);
+      const confidence = (!isString && (pred.confidence !== undefined ? pred.confidence : pred.probability)) ?? 0.8;
+      const probability = (!isString && (pred.probability !== undefined ? pred.probability : pred.confidence)) ?? confidence;
+      const targetDate = (!isString && (pred.targetDate || pred.timeHorizon)) || '';
+      const timeHorizon = (!isString && (pred.timeHorizon || pred.targetDate)) || targetDate;
+      const status = (!isString && pred.status) ? pred.status : 'pending';
+      const empiricalStatus = (!isString && pred.empiricalStatus) ? pred.empiricalStatus : 'UNTESTED';
+      const createdAt = (!isString && pred.createdAt) ? pred.createdAt : nowIso;
+      const recordedAt = (!isString && (pred.recordedAt || pred.createdAt)) ? (pred.recordedAt || pred.createdAt) : nowIso;
+
+      const predDoc = {
+        id: predId,
+        decisionId: decId,
+        title: decisionData.title || '',
+        domain: decisionData.domain || 'general',
+        expectedOutcome,
+        predictionText,
+        confidence,
+        probability,
+        targetDate,
+        timeHorizon,
+        status,
+        empiricalStatus,
+        createdAt,
+        recordedAt,
+        updatedAt: nowIso
+      };
+
+      const predRef = doc(db, `users/${uid}/predictions`, predId);
+      await setDoc(predRef, predDoc, { merge: true });
+      savedPredictions.push(predDoc);
+    }
+  }
+
+  const decRef = doc(db, `users/${uid}/decisions`, decId);
   const dataToSave = {
     ...decisionData,
     id: decId,
+    domain: decisionData.domain || 'general',
+    decisionDate: decisionData.decisionDate || nowIso.split('T')[0],
+    updatedAt: nowIso
+  };
+  if (savedPredictions.length > 0) {
+    dataToSave.predictions = savedPredictions;
+  }
+  await setDoc(decRef, dataToSave, { merge: true });
+  return dataToSave;
+}
+
+// Export saveDecisionRecord as alias to preserve backward compatibility
+export const saveDecisionRecord = saveUserDecision;
+
+// Mirror / Decision Consultation
+export async function consultDecisionMirror(uid, payload = {}) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const mirrorFunc = httpsCallable(functions, 'consult_decision_mirror', { timeout: 120000 });
+  const result = await mirrorFunc({ uid, ...payload });
+  return result.data;
+}
+
+// Epistemic scanning across diary entries
+export async function scanDiaryForEpistemicEvents(uid) {
+  if (!uid) throw new Error("Missing User ID (UID)");
+  const scanFunc = httpsCallable(functions, 'scan_diary_for_epistemic_events', { timeout: 180000 });
+  const result = await scanFunc({ uid });
+  return result.data;
+}
+
+export const scanDiaryForOutcomesAndDecisions = scanDiaryForEpistemicEvents;
+
+// Epistemic Candidates
+export async function fetchEpistemicCandidates(uid) {
+  if (!uid) return [];
+  try {
+    const colRef = collection(db, `users/${uid}/epistemic_candidates`);
+    const snap = await getDocsFromServer(colRef);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn("fetchEpistemicCandidates warning:", err);
+    return [];
+  }
+}
+
+export async function resolveEpistemicCandidate(uid, candidateId, status, extraData = {}) {
+  if (!uid || !candidateId) throw new Error("Missing UID or candidateId");
+  const candRef = doc(db, `users/${uid}/epistemic_candidates`, candidateId);
+  const updatePayload = {
+    status,
+    resolvedAt: new Date().toISOString(),
+    ...extraData
+  };
+  await setDoc(candRef, updatePayload, { merge: true });
+  return { id: candidateId, ...updatePayload };
+}
+
+// Ontology Candidates (supports both positional and object arguments)
+export async function updateOntologyCandidateStatus(arg1, candidateIdArg, statusArg, candidateDataArg = {}) {
+  let uid = arg1;
+  let candidateId = candidateIdArg;
+  let status = statusArg;
+  let candidateData = candidateDataArg;
+  if (arg1 && typeof arg1 === 'object') {
+    uid = arg1.uid || 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
+    candidateId = arg1.candidateId || arg1.id;
+    status = arg1.status;
+    candidateData = arg1.candidateData || {};
+  }
+  if (!uid || !candidateId) throw new Error("Missing UID or candidateId");
+  const candRef = doc(db, `users/${uid}/ontology_candidates`, candidateId);
+  const payload = {
+    ...candidateData,
+    id: candidateId,
+    status,
     updatedAt: new Date().toISOString()
   };
-  await setDoc(docRef, dataToSave, { merge: true });
-  return dataToSave;
+  await setDoc(candRef, payload, { merge: true });
+  return payload;
+}
+
+export async function fetchOntologyCandidates(uid) {
+  if (!uid) return [];
+  try {
+    const colRef = collection(db, `users/${uid}/ontology_candidates`);
+    const snap = await getDocsFromServer(colRef);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  } catch (err) {
+    console.warn("fetchOntologyCandidates warning:", err);
+    return [];
+  }
+}
+
+// Entity Reconciliation (supports both positional and object arguments)
+export async function reconcileGraphEntities(arg1, primaryIdArg, duplicateIdArg, actionArg = 'merge') {
+  if (arg1 && typeof arg1 === 'object') {
+    const uid = arg1.uid || 'K9j4Nx0WK7NKYJs6iDUz35LXFai1';
+    const canonicalId = arg1.canonicalId || arg1.primaryId;
+    const mergedIds = Array.isArray(arg1.mergedIds) ? arg1.mergedIds : (arg1.duplicateId ? [arg1.duplicateId] : []);
+    const act = (arg1.action === 'MERGE' || arg1.action === 'merge' || arg1.action === 'SAME_ENTITY') ? 'merge' : 'separate';
+    let lastRec = null;
+    for (const mId of mergedIds) {
+      if (mId && mId !== canonicalId) {
+        lastRec = await reconcileGraphEntities(uid, canonicalId, mId, act);
+      }
+    }
+    return lastRec || { status: 'ok', canonicalId, action: act };
+  }
+  const uid = arg1;
+  const primaryId = primaryIdArg;
+  const duplicateId = duplicateIdArg;
+  const action = actionArg;
+  if (!uid || !primaryId || !duplicateId) throw new Error("Missing UID, primaryId or duplicateId");
+  
+  const recId = `rec_${Date.now()}_${encodeURIComponent(primaryId)}_${encodeURIComponent(duplicateId)}`;
+  const recRef = doc(db, `users/${uid}/entity_reconciliations`, recId);
+  const recData = {
+    id: recId,
+    primaryId,
+    duplicateId,
+    action,
+    timestamp: new Date().toISOString()
+  };
+  await setDoc(recRef, recData, { merge: true });
+
+  if (action === 'merge') {
+    const primaryDocRef = doc(db, `users/${uid}/knowledge_graph_nodes`, primaryId);
+    const duplicateDocRef = doc(db, `users/${uid}/knowledge_graph_nodes`, duplicateId);
+
+    const [primarySnap, dupSnap] = await Promise.all([
+      getDocFromServer(primaryDocRef),
+      getDocFromServer(duplicateDocRef)
+    ]);
+
+    let primaryData = primarySnap.exists() 
+      ? primarySnap.data() 
+      : { id: primaryId, label: primaryId, type: 'Concept', val: 1, relatedEdges: [] };
+    const primaryEdges = primaryData.relatedEdges ? [...primaryData.relatedEdges] : [];
+
+    if (dupSnap.exists()) {
+      const dupData = dupSnap.data();
+      const dupEdges = dupData.relatedEdges || [];
+
+      // Re-point duplicate edges to primaryId
+      const remappedDupEdges = dupEdges.map(edge => ({
+        ...edge,
+        source: edge.source === duplicateId ? primaryId : edge.source,
+        target: edge.target === duplicateId ? primaryId : edge.target
+      })).filter(edge => edge.source !== edge.target);
+
+      // Combine edges avoiding duplicates
+      const existingEdgeKeys = new Set(primaryEdges.map(e => `${e.source}-${e.target}-${e.relation}`));
+      remappedDupEdges.forEach(edge => {
+        const key = `${edge.source}-${edge.target}-${edge.relation}`;
+        if (!existingEdgeKeys.has(key)) {
+          existingEdgeKeys.add(key);
+          primaryEdges.push(edge);
+        }
+      });
+
+      // Merge aliases
+      const aliases = new Set(primaryData.aliases || []);
+      if (dupData.label) aliases.add(dupData.label);
+      if (dupData.aliases && Array.isArray(dupData.aliases)) {
+        dupData.aliases.forEach(a => aliases.add(a));
+      }
+      aliases.add(duplicateId);
+
+      await setDoc(primaryDocRef, {
+        ...primaryData,
+        val: (primaryData.val || 1) + (dupData.val || 1),
+        relatedEdges: primaryEdges,
+        aliases: Array.from(aliases),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+
+      // Delete duplicate document
+      await deleteDoc(duplicateDocRef);
+    }
+  }
+
+  return recData;
 }
 
 // Confirm an outcome and link to prediction & decision
@@ -539,4 +793,3 @@ export async function confirmOutcomeMatch(uid, outcomeData) {
 
   return payload;
 }
-
